@@ -1,18 +1,20 @@
-// app/(tabs)/_layout.tsx
-import CustomHomeHeader from "@/components/navigation/CustomHeader/CustomHomeHeader";
-import CustomReportsHeader from "@/components/navigation/CustomHeader/CustomReportsHeader";
-import CustomSettingsHeader from "@/components/navigation/CustomHeader/CustomSettingsHeader";
-import CustomTransactionsHeader from "@/components/navigation/CustomHeader/CustomTransactionsHeader";
+import { Tabs } from "expo-router";
+import React from "react";
+
 import { TabBarIcon } from "@/components/navigation/TabBarIcon";
 import { Colors } from "@/constants/Colors";
-import { Tabs } from "expo-router";
-import { useColorScheme } from "react-native";
+import { useColorScheme } from "@/hooks/useColorScheme";
+import CustomHomeHeader from "@/components/navigation/CustomHeader/CustomHomeHeader";
+import CustomReportsHeader from "@/components/navigation/CustomHeader/CustomReportsHeader";
+import CustomTransactionsHeader from "@/components/navigation/CustomHeader/CustomTransactionsHeader";
+import CustomSettingsHeader from "@/components/navigation/CustomHeader/CustomSettingsHeader";
 
-export default function TabsLayout() {
+export default function TabLayout() {
   const colorScheme = useColorScheme();
 
   return (
     <Tabs
+      initialRouteName="index"
       screenOptions={{
         tabBarActiveTintColor: Colors[colorScheme ?? "light"].primary,
         headerShown: false,
@@ -33,7 +35,7 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="reports"
+        name="Reports"
         options={{
           title: "Reports",
           tabBarIcon: ({ color, focused }) => (
@@ -47,7 +49,7 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="settings"
+        name="Transactions"
         options={{
           title: "Transactions",
           tabBarIcon: ({ color, focused }) => (
@@ -61,7 +63,7 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="transactions"
+        name="Settings"
         options={{
           title: "Settings",
           tabBarIcon: ({ color, focused }) => (

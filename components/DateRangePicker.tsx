@@ -10,13 +10,7 @@ interface IDateRangePicker {
   isVisible: boolean;
   mode: Mode;
   onCancel: () => void;
-  onConfirm?: ({
-    date,
-    dateString,
-  }: {
-    date: Date;
-    dateString: string;
-  }) => void;
+  onConfirm?: any;
 }
 
 const DateRangePicker = ({
@@ -40,7 +34,7 @@ const DateRangePicker = ({
       isVisible={isVisible}
       mode={mode}
       onCancel={onCancel}
-      onConfirm={(data) => console.log(data)}
+      onConfirm={onConfirm}
       colorOptions={{
         headerColor: Colors[colorScheme ?? "light"].primary,
         weekDaysColor: Colors[colorScheme ?? "light"].primary,
@@ -51,7 +45,7 @@ const DateRangePicker = ({
       endDate={endDate}
       onKeyPressCustom={(data: any) => {
         const weekRange = getCurrentWeekRange(data.startDate);
-        console.log(weekRange)
+
         setStartDate(weekRange.fromDate);
         setEndDate(weekRange.toDate);
       }}

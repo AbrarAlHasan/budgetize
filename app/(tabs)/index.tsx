@@ -1,4 +1,13 @@
-import { Image, StyleSheet, Platform, Text, Pressable } from "react-native";
+import {
+  Image,
+  StyleSheet,
+  Platform,
+  Text,
+  Pressable,
+  View,
+  ScrollView,
+  useColorScheme,
+} from "react-native";
 
 import { HelloWave } from "@/components/HelloWave";
 import ParallaxScrollView from "@/components/ParallaxScrollView";
@@ -8,30 +17,56 @@ import {
   SafeAreaInsetsContext,
   SafeAreaView,
 } from "react-native-safe-area-context";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import DateRangePicker from "@/components/DateRangePicker";
+import { useDispatch, useSelector } from "react-redux";
+import { RootState } from "@/redux/store";
+import {
+  setDateRange,
+  setIsDateRangeVisible,
+} from "@/redux/reducers/slice/homeSlice";
+import { getCurrentWeekRange } from "@/utils/DateCalculator";
+import WeeklySpends from "@/components/HomeScreen/WeeklySpends";
+import MonthlySpends from "@/components/HomeScreen/MonthlySpends";
+import { Colors } from "@/constants/Colors";
 
 export default function HomeScreen() {
   const [isDateRangePickerOpen, setIsDateRangePickerOpen] = useState(false);
 
+  const colorScheme = useColorScheme();
+
+  const homeSlice = useSelector((state: RootState) => state.HomeSlice);
+
+  const dispatch = useDispatch();
+
   const onCancel = () => {
-    setIsDateRangePickerOpen(false);
+    dispatch(setIsDateRangeVisible(false));
   };
-  const onConfirm = (data) => {
-    console.log(data);
+  const onConfirm = (data: any) => {
+    dispatch(setDateRange(getCurrentWeekRange(data?.startDateString)));
+    dispatch(setIsDateRangeVisible(false));
   };
+
+  useEffect(() => {
+    console.log("HELLO");
+  }, [homeSlice.dateRange.fromDate, homeSlice.dateRange.toDate]);
   return (
     <>
-      <Text>Home Screen</Text>
-
-      <Pressable onPress={() => setIsDateRangePickerOpen(true)}>
-        <Text>Open Date Range Picker</Text>
-      </Pressable>
-
+      <ScrollView
+        style={{
+          backgroundColor: Colors[colorScheme ?? "light"].background,
+        }}
+      >
+        <View style={{ paddingHorizontal: 10 }}>
+          <WeeklySpends />
+          <MonthlySpends />
+        </View>
+      </ScrollView>
       <DateRangePicker
-        isVisible={isDateRangePickerOpen}
+        isVisible={homeSlice.isDateRangeVisible}
         onCancel={onCancel}
         mode="range"
+        onConfirm={onConfirm}
       />
     </>
   );

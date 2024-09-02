@@ -1,25 +1,14 @@
-import Ionicons from "@expo/vector-icons/Ionicons";
-import { StyleSheet, Image, Platform } from "react-native";
+import { StyleSheet, Text, View } from 'react-native'
+import React from 'react'
 
-import { Collapsible } from "@/components/Collapsible";
-import { ExternalLink } from "@/components/ExternalLink";
-import ParallaxScrollView from "@/components/ParallaxScrollView";
-import { ThemedText } from "@/components/ThemedText";
-import { ThemedView } from "@/components/ThemedView";
-
-export default function Transactions() {
-  return <ThemedText>Transactions</ThemedText>;
+const Transactions = () => {
+  return (
+    <View>
+      <Text>Transactions</Text>
+    </View>
+  )
 }
 
-const styles = StyleSheet.create({
-  headerImage: {
-    color: "#808080",
-    bottom: -90,
-    left: -35,
-    position: "absolute",
-  },
-  titleContainer: {
-    flexDirection: "row",
-    gap: 8,
-  },
-});
+export default Transactions
+
+const styles = StyleSheet.create({})
