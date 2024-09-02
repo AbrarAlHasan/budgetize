@@ -1,0 +1,143 @@
+diff --git a/node_modules/react-native-neat-date-picker/src/components/Content.tsx b/node_modules/react-native-neat-date-picker/src/components/Content.tsx
+index fb163e5..02265dc 100644
+--- a/node_modules/react-native-neat-date-picker/src/components/Content.tsx
++++ b/node_modules/react-native-neat-date-picker/src/components/Content.tsx
+@@ -17,7 +17,7 @@ const Content = ({
+   colorOptions, chooseYearFirst,
+   daysArray, btnDisabled,
+   displayTime, setDisplayTime,
+-  output, setOutput
++  output, setOutput,onKeyPressCustom
+ }: any) => {
+   const [showChangeYearModal, setShowChangeYearModal] = useState(chooseYearFirst || false)
+ 
+@@ -84,6 +84,7 @@ const Content = ({
+               selectedDateTextColor,
+               selectedDateBackgroundColor
+             }}
++            onKeyPressCustom={onKeyPressCustom}
+           />
+         ))}
+       </View>
+diff --git a/node_modules/react-native-neat-date-picker/src/components/Key.tsx b/node_modules/react-native-neat-date-picker/src/components/Key.tsx
+index e8422a0..0da1384 100644
+--- a/node_modules/react-native-neat-date-picker/src/components/Key.tsx
++++ b/node_modules/react-native-neat-date-picker/src/components/Key.tsx
+@@ -27,9 +27,10 @@ type KeyProps = {
+     mode: Mode;
+     output: Output;
+     setOutput: Dispatch<SetStateAction<Output>>;
++    onKeyPressCustom:any
+ }
+ 
+-const Key: FC<KeyProps> = ({ colorOptions, Day, mode, output, setOutput }: KeyProps) => {
++const Key: FC<KeyProps> = ({ colorOptions, Day, mode, output, setOutput,onKeyPressCustom }: KeyProps) => {
+     const { dateTextColor, backgroundColor, selectedDateTextColor, selectedDateBackgroundColor } = colorOptions
+     const singleMode = mode === 'single'
+     const rangeMode = mode === 'range'
+@@ -45,6 +46,7 @@ const Key: FC<KeyProps> = ({ colorOptions, Day, mode, output, setOutput }: KeyPr
+ 
+         if (singleMode) {
+             const newOutPut = { ...output, date: newDate }
++            onKeyPressCustom(newOutPut)
+             setOutput(newOutPut)
+             return
+         }
+@@ -53,9 +55,11 @@ const Key: FC<KeyProps> = ({ colorOptions, Day, mode, output, setOutput }: KeyPr
+             if (shouldSetStartDate) {
+                 const newOutPut = { ...output, startDate: newDate, endDate: null }
+                 setOutput(newOutPut)
++                onKeyPressCustom(newOutPut)
+             } else {
+                 const newOutPut = { ...output, endDate: newDate }
+                 setOutput(newOutPut)
++                onKeyPressCustom(newOutPut)
+             }
+         }
+     }
+diff --git a/node_modules/react-native-neat-date-picker/src/components/NeatDatePicker.d.tsx b/node_modules/react-native-neat-date-picker/src/components/NeatDatePicker.d.tsx
+index ee30d92..a5a6203 100644
+--- a/node_modules/react-native-neat-date-picker/src/components/NeatDatePicker.d.tsx
++++ b/node_modules/react-native-neat-date-picker/src/components/NeatDatePicker.d.tsx
+@@ -142,6 +142,37 @@ export type NeatDatePickerProps = {
+    * @required
+    */
+   onConfirm: (arg: Object) => void;
++  /**
++   * This callback will execute when user presses confirm button.
++   *
++   * this prop passes an argument `output` For 'single' mode, output contains two properties `date`, `dateString`.
++   * As for 'range' mode, it contains four properties `startDate`, `startDateString`, `endDate` and `endDateString`
++   *
++   * @example
++   * #### single mode:
++   *
++   * ```ts
++   * const onConfirm = ({ date: Date, dateString: string }) => {
++   *   console.log(date.getTime())
++   *   console.log(dateString)
++   * }
++   * ```
++   *
++   * #### range mode:
++   *
++   * ```ts
++   * const onConfirm = (output) => {
++   *   const {startDate, startDateString, endDate, endDateString} = output
++   *   console.log(startDate.getTime())
++   *   console.log(startDateString)
++   *   console.log(endDate.getTime())
++   *   console.log(endDateString)
++   * }
++   * ```
++   *
++   * @required
++   */
++  onKeyPressCustom: (arg: Object) => void;
+   /**
+    * Set this prop to a date if you need to set an initial starting date when opening the date picker the first time. Only works with 'range' mode.
+    */
+diff --git a/node_modules/react-native-neat-date-picker/src/components/NeatDatePicker.tsx b/node_modules/react-native-neat-date-picker/src/components/NeatDatePicker.tsx
+index a71450e..cc5eef3 100644
+--- a/node_modules/react-native-neat-date-picker/src/components/NeatDatePicker.tsx
++++ b/node_modules/react-native-neat-date-picker/src/components/NeatDatePicker.tsx
+@@ -27,7 +27,8 @@ const NeatDatePicker = ({
+     onCancel, onConfirm,
+     startDate,
+     chooseYearFirst,
+-    withoutModal
++    withoutModal,
++    onKeyPressCustom
+ }: NeatDatePickerProps) => {
+ 
+     // displayTime defines which month is going to be shown onto the screen
+@@ -38,6 +39,8 @@ const NeatDatePicker = ({
+     const date = displayTime.getDate()
+     const TODAY = new Date(year, month, date)
+ 
++    
++
+     // output decides which date should be active.
+     const [output, setOutput] = useState<Output>(
+         mode === 'single'
+@@ -48,6 +51,11 @@ const NeatDatePicker = ({
+     // If user presses cancel, reset 'output' state to this 'originalOutput'
+     const [originalOutput, setOriginalOutput] = useState(output)
+ 
++
++    useEffect(()=>{
++        setOutput({...output,startDate:startDate || null,endDate:endDate||null})
++    },[startDate,endDate])
++
+     const minTime = minDate?.getTime()
+     const maxTime = maxDate?.getTime()
+ 
+@@ -195,7 +203,7 @@ const NeatDatePicker = ({
+                     colorOptions, chooseYearFirst,
+                     daysArray, btnDisabled,
+                     displayTime, setDisplayTime,
+-                    output, setOutput
++                    output, setOutput,onKeyPressCustom
+                 }}
+             />
+         </Modal>
