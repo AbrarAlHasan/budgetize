@@ -1,6 +1,6 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import {type Middleware, type Tuple, configureStore} from '@reduxjs/toolkit';
-import {setupListeners} from '@reduxjs/toolkit/query';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { type Middleware, type Tuple, configureStore } from "@reduxjs/toolkit";
+import { setupListeners } from "@reduxjs/toolkit/query";
 import {
   FLUSH,
   PAUSE,
@@ -10,20 +10,20 @@ import {
   PURGE,
   REGISTER,
   REHYDRATE,
-} from 'redux-persist';
-import rootReducer from '../reducers';
+} from "redux-persist";
+import rootReducer from "../reducers";
 
 const persistConfig = {
-  key: 'root',
+  key: "root",
   storage: AsyncStorage,
-  whitelist: ['AuthSlice'],
+  whitelist: ["AuthSlice", "HomeSlice"],
 };
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);
 
 const store = configureStore({
   reducer: persistedReducer,
-  middleware: getDefaultMiddleware => {
+  middleware: (getDefaultMiddleware) => {
     const middlewaresDefault = getDefaultMiddleware({
       serializableCheck: false,
     });
@@ -36,4 +36,4 @@ const persistor = persistStore(store);
 export type RootState = ReturnType<typeof store.getState>;
 setupListeners(store.dispatch);
 
-export {store, persistor};
+export { store, persistor };

@@ -3,22 +3,30 @@ import React from "react";
 import Header from "./Header";
 import CategoryBudget from "./CategoryBudget";
 import { getCurrentMonthRange } from "@/utils/DateCalculator";
+import { useSelector } from "react-redux";
+import { RootState } from "@/redux/store";
 
 const MonthlySpends = () => {
+  const homeSlice = useSelector((state: RootState) => state.HomeSlice);
+
   return (
     <>
       <Header
         label="Monthly"
         leftOverDays={28}
-        budgeted={5000}
-        left={1300}
+        budgeted={homeSlice.totalMonthlyBudget}
+        left={homeSlice.totalMonthlyBudget - homeSlice.totalMonthlyBudgetLeft}
         fromDate={getCurrentMonthRange().fromDate}
         toDate={getCurrentMonthRange().toDate}
       />
-      <CategoryBudget />
-      <CategoryBudget />
-      <CategoryBudget />
-      <CategoryBudget />
+      {homeSlice.monthlyCategories?.map((data, idx) => (
+        <CategoryBudget
+          key={data?.category_id}
+          data={data}
+          type="MONTHLY"
+          idx={idx}
+        />
+      ))}
     </>
   );
 };

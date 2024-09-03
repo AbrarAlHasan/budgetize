@@ -36,6 +36,9 @@ const textStyles = StyleSheet.create({
   semiBold: {
     fontWeight: "600",
   },
+  xxxl: {
+    fontSize: 32,
+  },
   xl: {
     fontSize: 24,
   },

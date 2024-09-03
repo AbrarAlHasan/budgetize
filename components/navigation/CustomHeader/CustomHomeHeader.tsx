@@ -17,6 +17,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/redux/store";
 import { setIsDateRangeVisible } from "@/redux/reducers/slice/homeSlice";
 import { formatDateTimeTimezone } from "@/utils/DateCalculator";
+import { router } from "expo-router";
 const CustomHomeHeader = () => {
   const colorScheme = useColorScheme();
 
@@ -30,11 +31,13 @@ const CustomHomeHeader = () => {
         { backgroundColor: Colors[colorScheme ?? "light"].background },
       ]}
     >
-      <FontAwesome6
-        name="business-time"
-        size={24}
-        color={Colors[colorScheme ?? "light"].primary}
-      />
+      <Pressable onPress={() => router.navigate("/(auth)/")}>
+        <FontAwesome6
+          name="business-time"
+          size={24}
+          color={Colors[colorScheme ?? "light"].primary}
+        />
+      </Pressable>
       <Pressable
         onPress={() => {
           dispatch(setIsDateRangeVisible(true));
@@ -47,11 +50,17 @@ const CustomHomeHeader = () => {
           )} - ${formatDateTimeTimezone(homeSlice.dateRange.toDate, "MMM DD")}`}
         </Text>
       </Pressable>
-      <FontAwesome6
-        name="edit"
-        size={24}
-        color={Colors[colorScheme ?? "light"].primary}
-      />
+      <Pressable
+        onPress={() => {
+          router.navigate("/(stack)/addTransaction");
+        }}
+      >
+        <FontAwesome6
+          name="edit"
+          size={24}
+          color={Colors[colorScheme ?? "light"].primary}
+        />
+      </Pressable>
     </SafeAreaView>
   );
 };

@@ -1,14 +1,30 @@
+import { ICategory, ICategorySpends } from "@/types/HomeScreenTypes";
 import { getCurrentWeekRange } from "@/utils/DateCalculator";
 import { type PayloadAction, createSlice } from "@reduxjs/toolkit";
 
-interface IHomeSlice {}
+interface IHomeSlice {
+  isDateRangeVisible: boolean;
+  dateRange: { fromDate: Date; toDate: Date };
+  totalWeeklyBudget: number;
+  weeklyCategories: Array<ICategory>;
+  totalMonthlyBudget: number;
+  monthlyCategories: Array<ICategory>;
+  totalWeeklyBudgetLeft: number;
+  totalMonthlyBudgetLeft: number;
+}
 
-const initialState = {
+const initialState: IHomeSlice = {
   dateRange: {
     fromDate: getCurrentWeekRange().fromDate,
     toDate: getCurrentWeekRange().toDate,
   },
   isDateRangeVisible: false,
+  totalWeeklyBudget: 0,
+  weeklyCategories: [],
+  totalMonthlyBudget: 0,
+  monthlyCategories: [],
+  totalWeeklyBudgetLeft: 0,
+  totalMonthlyBudgetLeft: 0,
 };
 
 const homeSlice = createSlice({
@@ -21,9 +37,36 @@ const homeSlice = createSlice({
     setDateRange: (state, action) => {
       state.dateRange = action.payload;
     },
+    setTotalWeeklyBudget: (state, action) => {
+      state.totalWeeklyBudget = action.payload;
+    },
+    setWeeklyCategories: (state, action) => {
+      state.weeklyCategories = action.payload;
+    },
+    setTotalMonthlyBudget: (state, action) => {
+      state.totalMonthlyBudget = action.payload;
+    },
+    setMonthlyCategories: (state, action) => {
+      state.monthlyCategories = action.payload;
+    },
+    setTotalWeeklyBudgetLeft: (state, action) => {
+      state.totalWeeklyBudgetLeft = action.payload;
+    },
+    setTotalMonthlyBudgetLeft: (state, action) => {
+      state.totalMonthlyBudgetLeft = action.payload;
+    },
   },
 });
 
-export const { setIsDateRangeVisible, setDateRange } = homeSlice.actions;
+export const {
+  setIsDateRangeVisible,
+  setDateRange,
+  setTotalWeeklyBudget,
+  setWeeklyCategories,
+  setTotalMonthlyBudget,
+  setMonthlyCategories,
+  setTotalWeeklyBudgetLeft,
+  setTotalMonthlyBudgetLeft,
+} = homeSlice.actions;
 
 export default homeSlice.reducer;

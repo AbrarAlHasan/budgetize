@@ -35,14 +35,17 @@ const MoneyManager = () => {
   );
 
   return (
-    <Stack>
+    <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" options={{ headerShown: false }} />
       {!isAuthenticated ? (
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       ) : (
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       )}
-      <Slot />
+      <Stack.Screen
+        name="(stack)"
+        options={{ headerShown: false, presentation: "formSheet" }}
+      />
     </Stack>
   );
 };

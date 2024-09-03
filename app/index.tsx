@@ -7,6 +7,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Text } from "react-native";
 import { setCheckingAuthentication } from "@/redux/reducers/slice/authSlice";
 import { checkActiveSessionAction } from "@/api/authentication.action";
+import { setDateRange } from "@/redux/reducers/slice/homeSlice";
+import { getCurrentWeekRange } from "@/utils/DateCalculator";
 
 export default function Startup() {
   const router = useRouter();
@@ -17,10 +19,11 @@ export default function Startup() {
   const fetchInitialData = async () => {
     try {
       const response = await checkActiveSessionAction();
+      dispatch(setDateRange(getCurrentWeekRange()));
       if (response) {
-        router.navigate("/(tabs)/");
+        router.replace("/(tabs)/");
       } else {
-        router.navigate("/(auth)/");
+        router.replace("/(auth)/");
       }
     } catch (error) {}
   };

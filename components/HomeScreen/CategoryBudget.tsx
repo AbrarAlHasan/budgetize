@@ -1,52 +1,136 @@
-import { StyleSheet, Text, useColorScheme, View } from "react-native";
-import React from "react";
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  useColorScheme,
+  View,
+} from "react-native";
+import React, { useEffect, useState } from "react";
 import { Colors } from "@/constants/Colors";
 import { commonStyles, textStyles } from "@/stylings/CustomStyles";
+import { ICategory, ITransaction } from "@/types/HomeScreenTypes";
+import { formatPrice } from "@/utils/PriceFormatter";
+import { supabase } from "@/lib/supabase";
+import { useDispatch, useSelector } from "react-redux";
+import { RootState } from "@/redux/store";
+import { setWeeklyCategories } from "@/redux/reducers/slice/homeSlice";
+import { formatDateTimeTimezone } from "@/utils/DateCalculator";
+import { router } from "expo-router";
 
-const CategoryBudget = () => {
+const CategoryBudget = ({
+  data,
+  type,
+  idx,
+}: {
+  data: ICategory;
+  type: "MONTHLY" | "WEEKLY";
+  idx: number;
+}) => {
   const colorScheme = useColorScheme();
+
+  const [totalSpent, setTotalSpent] = useState(0);
+
+  useEffect(() => {
+    setTotalSpent(
+      data?.transactions?.reduce((acc, curr) => acc + curr.amount, 0)
+    );
+  }, [data]);
+
+  const navigateToTransactions = () => {
+    router.navigate({
+      pathname: "/(stack)/transactions",
+      params: { category_id: data?.category_id, type: type },
+    });
+  };
+
   return (
-    <View
-      style={{
-        width: "100%",
-        padding: 10,
-        height: 64,
-        flexDirection: "row",
-        gap: 4,
-        alignItems: "center",
-      }}
-    >
+    <Pressable style={{ width: "100%" }} onPress={navigateToTransactions}>
       <View
-        style={[
-          { gap: 8, flex: 2, flexDirection: "row", alignItems: "center" },
-        ]}
+        style={{
+          width: "100%",
+          padding: 10,
+          height: 64,
+          flexDirection: "row",
+          gap: 4,
+          alignItems: "center",
+        }}
       >
         <View
           style={[
-            commonStyles.alignJustifyCenter,
-            {
-              backgroundColor: Colors[colorScheme ?? "light"].primary,
-              borderRadius: 100,
-              aspectRatio: 1,
-              height: 32,
-            },
+            { gap: 8, flex: 2, flexDirection: "row", alignItems: "center" },
           ]}
         >
-          <Text style={[textStyles.sm, { paddingLeft: 3, paddingTop: 2 }]}>
-            😀
+          <View
+            style={[
+              commonStyles.alignJustifyCenter,
+              {
+                backgroundColor: data?.background_color || Colors.dark.primary,
+                borderRadius: 100,
+                aspectRatio: 1,
+                height: 32,
+              },
+            ]}
+          >
+            <Text style={[textStyles.sm, { paddingLeft: 3, paddingTop: 2 }]}>
+              {data?.icon}
+            </Text>
+          </View>
+          <Text style={[textStyles.bolder, textStyles.sm]}>
+            {data?.category_name}
           </Text>
         </View>
-        <Text style={[textStyles.bolder, textStyles.sm]}>Coffee Shop</Text>
-      </View>
 
-      <View style={{ gap: 5, flex: 1 }}>
-        <Text style={[textStyles.bolder, textStyles.sm]}>2,546,65</Text>
-      </View>
+        <View style={{ gap: 5, flex: 1 }}>
+          <Text style={[textStyles.bolder, textStyles.sm]}>
+            {formatPrice().format(data?.amount_allocated || 0)}
+          </Text>
+        </View>
 
-      <View style={{ gap: 5, flex: 1, alignItems: "flex-end" }}>
-        <Text style={[textStyles.bolder, textStyles.sm]}>34,345</Text>
+        <View
+          style={{
+            gap: 5,
+            flex: 1,
+            alignItems: "flex-end",
+          }}
+        >
+          <View
+            style={{
+              backgroundColor:
+                totalSpent > data?.amount_allocated
+                  ? Colors.light.lightRed
+                  : data?.amount_allocated / 2 < totalSpent
+                  ? Colors.light.lightOrange
+                  : Colors.light.lightGreen,
+              borderRadius: 20,
+              width: "100%",
+              alignItems: "center",
+              justifyContent: "center",
+              paddingHorizontal: 10,
+              height: 24,
+            }}
+          >
+            <Text
+              style={[
+                textStyles.bolder,
+                textStyles.sm,
+                {
+                  color:
+                    totalSpent > data?.amount_allocated
+                      ? Colors.light.darkRed
+                      : data?.amount_allocated / 2 < totalSpent
+                      ? Colors.light.darkOrange
+                      : Colors.light.darkGreen,
+                },
+              ]}
+              adjustsFontSizeToFit={true}
+              numberOfLines={1}
+            >
+              {formatPrice().format(data?.amount_allocated - totalSpent || 0)}
+            </Text>
+          </View>
+        </View>
       </View>
-    </View>
+    </Pressable>
   );
 };
 
