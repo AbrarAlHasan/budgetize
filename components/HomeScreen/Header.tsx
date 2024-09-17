@@ -41,7 +41,13 @@ const Header = ({
         <Text style={{ color: Colors[colorScheme ?? "light"].gray }}>
           {label}
         </Text>
-        <Text style={[textStyles.semiBold]}>
+        <Text
+          style={[
+            textStyles.semiBold,
+            textStyles.xs,
+            { color: Colors[colorScheme ?? "light"].darkText },
+          ]}
+        >
           {diffInDays(fromDate, toDate)}
         </Text>
       </View>
@@ -50,14 +56,27 @@ const Header = ({
         <Text style={{ color: Colors[colorScheme ?? "light"].gray }}>
           Budgeted
         </Text>
-        <Text style={[textStyles.semiBold]}>
+        <Text
+          style={[
+            textStyles.semiBold,
+            textStyles.xs,
+            { color: Colors[colorScheme ?? "light"].darkText },
+          ]}
+        >
           {formatPrice().format(budgeted)}
         </Text>
       </View>
 
       <View style={{ gap: 5, flex: 1, alignItems: "flex-end" }}>
         <Text style={{ color: Colors[colorScheme ?? "light"].gray }}>Left</Text>
-        <Text style={[textStyles.semiBold]}>{formatPrice().format(left)}</Text>
+        <Text
+          style={[
+            textStyles.semiBold,
+            { color: Colors[colorScheme ?? "light"].darkText },
+          ]}
+        >
+          {formatPrice().format(left)}
+        </Text>
       </View>
     </View>
   );

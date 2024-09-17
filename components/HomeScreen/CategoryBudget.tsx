@@ -75,13 +75,27 @@ const CategoryBudget = ({
               {data?.icon}
             </Text>
           </View>
-          <Text style={[textStyles.bolder, textStyles.sm]}>
+          <Text
+            style={[
+              textStyles.semiBold,
+              textStyles.xs,
+              { color: Colors[colorScheme ?? "light"].darkText },
+            ]}
+          >
             {data?.category_name}
           </Text>
         </View>
 
         <View style={{ gap: 5, flex: 1 }}>
-          <Text style={[textStyles.bolder, textStyles.sm]}>
+          <Text
+            adjustsFontSizeToFit={true}
+            style={[
+              textStyles.semiBold,
+              textStyles.xs,
+              { color: Colors[colorScheme ?? "light"].darkText },
+            ]}
+            numberOfLines={1}
+          >
             {formatPrice().format(data?.amount_allocated || 0)}
           </Text>
         </View>
@@ -111,8 +125,8 @@ const CategoryBudget = ({
           >
             <Text
               style={[
-                textStyles.bolder,
-                textStyles.sm,
+                textStyles.semiBold,
+                textStyles.xs,
                 {
                   color:
                     totalSpent > data?.amount_allocated

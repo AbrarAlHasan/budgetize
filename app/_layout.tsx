@@ -2,10 +2,13 @@
 import { RootState, store } from "@/redux/store";
 import { Stack, Slot } from "expo-router";
 import { useState, useEffect } from "react";
-import { View, ActivityIndicator } from "react-native";
+import { View, ActivityIndicator, useColorScheme } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { Provider, useSelector } from "react-redux";
 import { ToastProvider } from "react-native-toast-notifications";
+import BackgroundScheduler from "@/components/BackgroundScheduler";
+import { Colors } from "@/constants/Colors";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 export default function Layout() {
   // const [isLoading, setIsLoading] = useState(true);
@@ -19,13 +22,16 @@ export default function Layout() {
   // }
 
   return (
-    <Provider store={store}>
-      <ToastProvider>
-        <SafeAreaProvider>
-          <MoneyManager />
-        </SafeAreaProvider>
-      </ToastProvider>
-    </Provider>
+    <GestureHandlerRootView  style={{ flex: 1 }}>
+      <Provider store={store}>
+        <ToastProvider>
+          <SafeAreaProvider>
+            <MoneyManager />
+          </SafeAreaProvider>
+        </ToastProvider>
+        <BackgroundScheduler />
+      </Provider>
+    </GestureHandlerRootView>
   );
 }
 
@@ -34,18 +40,22 @@ const MoneyManager = () => {
     (state: RootState) => state.AuthSlice.isAuthenticated
   );
 
+  const colorScheme = useColorScheme();
+
   return (
-    <Stack screenOptions={{ headerShown: false }}>
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        navigationBarColor: Colors[colorScheme ?? "light"].background,
+      }}
+    >
       <Stack.Screen name="index" options={{ headerShown: false }} />
       {!isAuthenticated ? (
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       ) : (
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       )}
-      <Stack.Screen
-        name="(stack)"
-        options={{ headerShown: false, presentation: "formSheet" }}
-      />
+      <Stack.Screen name="(stack)" options={{ headerShown: false }} />
     </Stack>
   );
 };

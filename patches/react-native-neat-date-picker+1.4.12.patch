@@ -98,10 +98,21 @@ index ee30d92..a5a6203 100644
     * Set this prop to a date if you need to set an initial starting date when opening the date picker the first time. Only works with 'range' mode.
     */
 diff --git a/node_modules/react-native-neat-date-picker/src/components/NeatDatePicker.tsx b/node_modules/react-native-neat-date-picker/src/components/NeatDatePicker.tsx
-index a71450e..cc5eef3 100644
+index a71450e..ce724e1 100644
 --- a/node_modules/react-native-neat-date-picker/src/components/NeatDatePicker.tsx
 +++ b/node_modules/react-native-neat-date-picker/src/components/NeatDatePicker.tsx
-@@ -27,7 +27,8 @@ const NeatDatePicker = ({
+@@ -18,18 +18,20 @@ I18nManager.allowRTL(false)
+ const winY = Dimensions.get('screen').height
+ 
+ const NeatDatePicker = ({
+-    colorOptions, dateStringFormat,
++    colorOptions, dateStringFormat='yyyy-mm-dd',
+     endDate, initialDate,
+     isVisible, language,
+     maxDate, minDate,
+-    modalStyles, mode,
++    modalStyles={ justifyContent: 'center' }, mode,
+     onBackButtonPress, onBackdropPress,
      onCancel, onConfirm,
      startDate,
      chooseYearFirst,
@@ -109,9 +120,12 @@ index a71450e..cc5eef3 100644
 +    withoutModal,
 +    onKeyPressCustom
  }: NeatDatePickerProps) => {
- 
+     
++    
      // displayTime defines which month is going to be shown onto the screen
-@@ -38,6 +39,8 @@ const NeatDatePicker = ({
+     // For 'single' mode, displayTime is also the initial selected date when opening DatePicker at the first time.
+     const [displayTime, setDisplayTime] = useState(initialDate ?? new Date())
+@@ -38,6 +40,8 @@ const NeatDatePicker = ({
      const date = displayTime.getDate()
      const TODAY = new Date(year, month, date)
  
@@ -120,7 +134,7 @@ index a71450e..cc5eef3 100644
      // output decides which date should be active.
      const [output, setOutput] = useState<Output>(
          mode === 'single'
-@@ -48,6 +51,11 @@ const NeatDatePicker = ({
+@@ -48,6 +52,11 @@ const NeatDatePicker = ({
      // If user presses cancel, reset 'output' state to this 'originalOutput'
      const [originalOutput, setOriginalOutput] = useState(output)
  
@@ -132,7 +146,7 @@ index a71450e..cc5eef3 100644
      const minTime = minDate?.getTime()
      const maxTime = maxDate?.getTime()
  
-@@ -195,7 +203,7 @@ const NeatDatePicker = ({
+@@ -195,17 +204,13 @@ const NeatDatePicker = ({
                      colorOptions, chooseYearFirst,
                      daysArray, btnDisabled,
                      displayTime, setDisplayTime,
@@ -141,3 +155,13 @@ index a71450e..cc5eef3 100644
                  }}
              />
          </Modal>
+     )
+ }
+ 
+-NeatDatePicker.defaultProps = {
+-    dateStringFormat: 'yyyy-mm-dd',
+-    modalStyles: { justifyContent: 'center' }
+-}
+ 
+ export default NeatDatePicker
+ 

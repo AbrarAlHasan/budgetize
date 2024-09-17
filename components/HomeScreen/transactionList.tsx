@@ -33,11 +33,18 @@ const TransactionList = ({
 
   return (
     <ScrollView style={{ flex: 1, paddingTop: 20 }}>
-      {sortedDateList?.map((item) => {
+      {sortedDateList?.map((item: any) => {
         return (
           <View style={{ paddingVertical: 14 }}>
             <Text
-              style={[textStyles.bolder, textStyles.md, { paddingVertical: 5 }]}
+              style={[
+                textStyles.bolder,
+                textStyles.md,
+                {
+                  paddingVertical: 5,
+                  color: Colors[colorScheme ?? "light"].darkText,
+                },
+              ]}
             >
               {formatDateTimeTimezone(item, "DD MMMM")}
             </Text>
@@ -61,9 +68,18 @@ const TransactionList = ({
                     }}
                   />
                   <Text
-                    style={[textStyles.semiBold, textStyles.sm, { flex: 1 }]}
+                    style={[
+                      textStyles.semiBold,
+                      textStyles.sm,
+                      {
+                        flex: 1,
+                        color: data?.description
+                          ? Colors[colorScheme ?? "light"].darkText
+                          : Colors[colorScheme ?? "light"].lightGray,
+                      },
+                    ]}
                   >
-                    {data?.description}
+                    {data?.description || "No Description"}
                   </Text>
                   <Text
                     style={[

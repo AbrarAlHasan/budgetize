@@ -16,6 +16,13 @@ export default function TabsLayout() {
       screenOptions={{
         tabBarActiveTintColor: Colors[colorScheme ?? "light"].primary,
         headerShown: false,
+        tabBarVisibilityAnimationConfig: {
+          show: { animation: "spring", config: { delay: 1000 } },
+          hide: { animation: "spring" },
+        },
+        tabBarStyle: {
+          backgroundColor: Colors[colorScheme ?? "light"].background,
+        },
       }}
     >
       <Tabs.Screen
@@ -46,8 +53,9 @@ export default function TabsLayout() {
           headerShown: true,
         }}
       />
+
       <Tabs.Screen
-        name="settings"
+        name="transactions"
         options={{
           title: "Transactions",
           tabBarIcon: ({ color, focused }) => (
@@ -61,7 +69,7 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="transactions"
+        name="settings"
         options={{
           title: "Settings",
           tabBarIcon: ({ color, focused }) => (

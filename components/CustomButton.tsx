@@ -5,6 +5,7 @@ import {
   Text,
   useColorScheme,
   View,
+  ViewStyle,
 } from "react-native";
 import React from "react";
 import { Colors } from "@/constants/Colors";
@@ -16,6 +17,7 @@ interface ICustomButton {
   customTextColor?: string;
   label: string;
   onPress: () => void;
+  customStyle?: ViewStyle;
 }
 
 const CustomButton = ({
@@ -24,6 +26,7 @@ const CustomButton = ({
   customTextColor,
   label = "Button",
   onPress,
+  customStyle,
 }: ICustomButton) => {
   const colorscheme = useColorScheme();
   let backgroundColor = Colors[colorscheme ?? "light"].primary;
@@ -43,7 +46,7 @@ const CustomButton = ({
     textColor = customTextColor;
   }
   return (
-    <Pressable style={{ width: "100%" }} onPress={onPress}>
+    <Pressable onPress={onPress}>
       <View
         style={[
           commonStyles.alignJustifyCenter,
@@ -53,6 +56,7 @@ const CustomButton = ({
             flexDirection: "row",
             padding: 12,
             borderRadius: 10,
+            ...customStyle,
           },
         ]}
       >

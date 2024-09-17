@@ -1,6 +1,11 @@
 import { supabase } from "@/lib/supabase";
-import { setCheckingAuthentication } from "@/redux/reducers/slice/authSlice";
+import {
+  logout,
+  setCheckingAuthentication,
+  setUserDetails,
+} from "@/redux/reducers/slice/authSlice";
 import { store } from "@/redux/store";
+import { router } from "expo-router";
 
 export const initiateLogin = async (email: string, password: string) => {
   try {
@@ -17,7 +22,7 @@ export const initiateLogin = async (email: string, password: string) => {
 export const checkActiveSessionAction = async () => {
   try {
     const { data, error } = await supabase.auth.getSession();
-
+    console.log(data);
     if (data?.session?.access_token) {
       store.dispatch(
         setCheckingAuthentication({
@@ -45,4 +50,13 @@ export const checkActiveSessionAction = async () => {
     return false;
     console.log(error);
   }
+};
+
+export const initiateLogout = async () => {
+  try {
+    const response = await supabase.auth.signOut();
+    console.log(response);
+    store.dispatch(logout());
+    router.replace("/(auth)/");
+  } catch (error) {}
 };

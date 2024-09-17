@@ -19,6 +19,7 @@ export default function Startup() {
   const fetchInitialData = async () => {
     try {
       const response = await checkActiveSessionAction();
+      console.log(response);
       dispatch(setDateRange(getCurrentWeekRange()));
       if (response) {
         router.replace("/(tabs)/");

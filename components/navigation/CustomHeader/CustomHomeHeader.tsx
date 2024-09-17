@@ -7,7 +7,10 @@ import {
   View,
 } from "react-native";
 import React from "react";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
 import { header, textStyles } from "@/stylings/CustomStyles";
 import { ThemedText } from "@/components/ThemedText";
@@ -18,20 +21,30 @@ import { RootState } from "@/redux/store";
 import { setIsDateRangeVisible } from "@/redux/reducers/slice/homeSlice";
 import { formatDateTimeTimezone } from "@/utils/DateCalculator";
 import { router } from "expo-router";
+import { initiateLogout } from "@/api/authentication.action";
 const CustomHomeHeader = () => {
   const colorScheme = useColorScheme();
+  const { top } = useSafeAreaInsets();
 
   const homeSlice = useSelector((state: RootState) => state.HomeSlice);
   const dispatch = useDispatch();
 
   return (
-    <SafeAreaView
+    <View
       style={[
         header.headerLayout,
-        { backgroundColor: Colors[colorScheme ?? "light"].background },
+        {
+          backgroundColor: Colors[colorScheme ?? "light"].background,
+          paddingTop: top + 10,
+          paddingBottom: 20,
+        },
       ]}
     >
-      <Pressable onPress={() => router.navigate("/(auth)/")}>
+      <Pressable
+        onPress={() => {
+          initiateLogout();
+        }}
+      >
         <FontAwesome6
           name="business-time"
           size={24}
@@ -43,7 +56,13 @@ const CustomHomeHeader = () => {
           dispatch(setIsDateRangeVisible(true));
         }}
       >
-        <Text style={[textStyles.bolder, textStyles.lg]}>
+        <Text
+          style={[
+            textStyles.bolder,
+            textStyles.lg,
+            { color: Colors[colorScheme ?? "light"].darkText },
+          ]}
+        >
           {`${formatDateTimeTimezone(
             homeSlice.dateRange.fromDate,
             "MMM DD"
@@ -61,7 +80,7 @@ const CustomHomeHeader = () => {
           color={Colors[colorScheme ?? "light"].primary}
         />
       </Pressable>
-    </SafeAreaView>
+    </View>
   );
 };
 

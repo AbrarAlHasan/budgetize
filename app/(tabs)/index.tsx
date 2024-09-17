@@ -17,7 +17,7 @@ import {
   SafeAreaInsetsContext,
   SafeAreaView,
 } from "react-native-safe-area-context";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import DateRangePicker from "@/components/DateRangePicker";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState, store } from "@/redux/store";
@@ -42,6 +42,9 @@ import { Colors } from "@/constants/Colors";
 import { getCurrentMonthBudget, getCurrentWeekBudget } from "@/api/home.action";
 import { supabase } from "@/lib/supabase";
 import { ICategory, ITransaction } from "@/types/HomeScreenTypes";
+import FloatingButton from "@/components/FloatingButton";
+import { router, useFocusEffect } from "expo-router";
+import DottedButton from "@/components/DottedButton";
 
 export default function HomeScreen() {
   const [isDateRangePickerOpen, setIsDateRangePickerOpen] = useState(false);
@@ -60,56 +63,62 @@ export default function HomeScreen() {
     dispatch(setIsDateRangeVisible(false));
   };
 
-  useEffect(() => {
-    fetchData();
-  }, [homeSlice.dateRange.fromDate]);
+  // useEffect(() => {
+  //   fetchData();
+  // }, [homeSlice.dateRange.fromDate]);
 
-  const fetchData = async () => {
-    try {
-      const [weeklyResponse, monthlyResponse] = await Promise.all([
-        getCurrentWeekBudget({
-          fromDate: homeSlice.dateRange.fromDate,
-          toDate: homeSlice.dateRange.toDate,
-        }),
-        getCurrentMonthBudget(
-          getCurrentMonthRange(homeSlice.dateRange.fromDate)
-        ),
-      ]);
-      let weeklySpentAmount = 0;
-      let monthlySpentAmount = 0;
-      dispatch(
-        setTotalWeeklyBudget(
-          weeklyResponse?.response?.reduce((acc, currentValue: ICategory) => {
-            const spentAmount = currentValue?.transactions?.reduce(
-              (accu: number, curr: ITransaction) => accu + curr.amount,
-              0
-            );
-            weeklySpentAmount += spentAmount;
-            return acc + currentValue.amount_allocated;
-          }, 0)
-        )
-      );
-      dispatch(setWeeklyCategories(weeklyResponse?.response));
+  // useFocusEffect(
+  //   useCallback(() => {
+  //     fetchData();
+  //   }, [homeSlice.dateRange.fromDate])
+  // );
 
-      dispatch(
-        setTotalMonthlyBudget(
-          monthlyResponse?.response?.reduce((acc, currentValue: ICategory) => {
-            const spentAmount = currentValue?.transactions?.reduce(
-              (accu: number, curr: ITransaction) => accu + curr.amount,
-              0
-            );
-            monthlySpentAmount += spentAmount;
-            return acc + currentValue.amount_allocated;
-          }, 0)
-        )
-      );
-      dispatch(setMonthlyCategories(monthlyResponse?.response));
-      dispatch(setTotalWeeklyBudgetLeft(weeklySpentAmount));
-      dispatch(setTotalMonthlyBudgetLeft(monthlySpentAmount));
-    } catch (error) {
-    } finally {
-    }
-  };
+  // const fetchData = async () => {
+  //   try {
+  //     const [weeklyResponse, monthlyResponse] = await Promise.all([
+  //       getCurrentWeekBudget({
+  //         fromDate: homeSlice.dateRange.fromDate,
+  //         toDate: homeSlice.dateRange.toDate,
+  //       }),
+  //       getCurrentMonthBudget(
+  //         getCurrentMonthRange(homeSlice.dateRange.fromDate)
+  //       ),
+  //     ]);
+  //     let weeklySpentAmount = 0;
+  //     let monthlySpentAmount = 0;
+  //     dispatch(
+  //       setTotalWeeklyBudget(
+  //         weeklyResponse?.response?.reduce((acc, currentValue: ICategory) => {
+  //           const spentAmount = currentValue?.transactions?.reduce(
+  //             (accu: number, curr: ITransaction) => accu + curr.amount,
+  //             0
+  //           );
+  //           weeklySpentAmount += spentAmount;
+  //           return acc + currentValue.amount_allocated;
+  //         }, 0)
+  //       )
+  //     );
+  //     dispatch(setWeeklyCategories(weeklyResponse?.response));
+
+  //     dispatch(
+  //       setTotalMonthlyBudget(
+  //         monthlyResponse?.response?.reduce((acc, currentValue: ICategory) => {
+  //           const spentAmount = currentValue?.transactions?.reduce(
+  //             (accu: number, curr: ITransaction) => accu + curr.amount,
+  //             0
+  //           );
+  //           monthlySpentAmount += spentAmount;
+  //           return acc + currentValue.amount_allocated;
+  //         }, 0)
+  //       )
+  //     );
+  //     dispatch(setMonthlyCategories(monthlyResponse?.response));
+  //     dispatch(setTotalWeeklyBudgetLeft(weeklySpentAmount));
+  //     dispatch(setTotalMonthlyBudgetLeft(monthlySpentAmount));
+  //   } catch (error) {
+  //   } finally {
+  //   }
+  // };
 
   return (
     <>
@@ -122,12 +131,23 @@ export default function HomeScreen() {
           <WeeklySpends />
           <MonthlySpends />
         </View>
+        <DottedButton
+          label="Add New Category"
+          onPress={() => {
+            router.navigate("/(stack)/addCategory");
+          }}
+        />
       </ScrollView>
       <DateRangePicker
         isVisible={homeSlice.isDateRangeVisible}
         onCancel={onCancel}
         mode="range"
         onConfirm={onConfirm}
+      />
+      <FloatingButton
+        onPress={() => {
+          router.navigate("/(stack)/addTransaction");
+        }}
       />
     </>
   );

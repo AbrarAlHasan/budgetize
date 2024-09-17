@@ -11,22 +11,28 @@ const MonthlySpends = () => {
 
   return (
     <>
-      <Header
-        label="Monthly"
-        leftOverDays={28}
-        budgeted={homeSlice.totalMonthlyBudget}
-        left={homeSlice.totalMonthlyBudget - homeSlice.totalMonthlyBudgetLeft}
-        fromDate={getCurrentMonthRange().fromDate}
-        toDate={getCurrentMonthRange().toDate}
-      />
-      {homeSlice.monthlyCategories?.map((data, idx) => (
-        <CategoryBudget
-          key={data?.category_id}
-          data={data}
-          type="MONTHLY"
-          idx={idx}
-        />
-      ))}
+      {homeSlice.monthlyCategories?.length > 0 && (
+        <>
+          <Header
+            label="Monthly"
+            leftOverDays={28}
+            budgeted={homeSlice.totalMonthlyBudget}
+            left={
+              homeSlice.totalMonthlyBudget - homeSlice.totalMonthlyBudgetLeft
+            }
+            fromDate={getCurrentMonthRange().fromDate}
+            toDate={getCurrentMonthRange().toDate}
+          />
+          {homeSlice.monthlyCategories?.map((data, idx) => (
+            <CategoryBudget
+              key={data?.category_id}
+              data={data}
+              type="MONTHLY"
+              idx={idx}
+            />
+          ))}
+        </>
+      )}
     </>
   );
 };

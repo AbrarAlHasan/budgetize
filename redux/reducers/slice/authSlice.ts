@@ -11,7 +11,7 @@ interface IUserDetails {
   email: string;
   name: string;
   phonenumber: string;
-  userid: string;
+  user_id: string;
 }
 
 const initialState: AuthSlice = {
@@ -35,10 +35,18 @@ const authSlice = createSlice({
     setUserDetails: (state, action) => {
       state.userDetails = action.payload;
     },
+    logout: (state) => {
+      state.userDetails = null;
+      state.isAuthenticated = false;
+    },
   },
 });
 
-export const { setLanguage, setCheckingAuthentication, setUserDetails } =
-  authSlice.actions;
+export const {
+  setLanguage,
+  setCheckingAuthentication,
+  setUserDetails,
+  logout,
+} = authSlice.actions;
 
 export default authSlice.reducer;

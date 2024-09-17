@@ -5,26 +5,45 @@ import {
   useColorScheme,
   View,
 } from "react-native";
-import React from "react";
+import React, { Dispatch, SetStateAction } from "react";
 import { textStyles } from "@/stylings/CustomStyles";
 import { Colors } from "@/constants/Colors";
 
 interface ICustomTextInput {
   label: string;
   placeholder: string;
-  type?: "password" | "normal";
+  type?: "password" | "normal" | "settings";
+  onChangeText: Dispatch<SetStateAction<any>>;
+  value: string | undefined;
+  showLabel?: boolean;
 }
 
 const CustomTextInput = ({
   label,
   placeholder,
   type = "normal",
+  onChangeText,
+  value,
+  showLabel = true,
 }: ICustomTextInput) => {
   const colorScheme = useColorScheme();
+
   return (
-    <View style={{ width: "100%", gap: 12 }}>
-      <Text style={[textStyles.semiBold, textStyles.md]}>{label}</Text>
+    <View style={{ width: "100%", gap: 12, marginVertical: 10 }}>
+      {showLabel && (
+        <Text
+          style={[
+            textStyles.semiBold,
+            textStyles.md,
+            { color: Colors[colorScheme ?? "light"].darkText },
+          ]}
+        >
+          {label}
+        </Text>
+      )}
       <TextInput
+        value={value}
+        onChangeText={onChangeText}
         style={{
           backgroundColor: Colors[colorScheme ?? "light"].lightGray,
           padding: 18,
@@ -32,6 +51,7 @@ const CustomTextInput = ({
         }}
         placeholder={placeholder}
         autoCapitalize="none"
+        placeholderTextColor={Colors[colorScheme ?? "light"].darkText}
       />
     </View>
   );

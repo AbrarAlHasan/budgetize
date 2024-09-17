@@ -10,22 +10,28 @@ const WeeklySpends = () => {
   const homeSlice = useSelector((state: RootState) => state.HomeSlice);
   return (
     <>
-      <Header
-        label="Weekly"
-        leftOverDays={6}
-        budgeted={homeSlice.totalWeeklyBudget}
-        left={homeSlice.totalWeeklyBudget - homeSlice.totalWeeklyBudgetLeft}
-        fromDate={getCurrentWeekRange(homeSlice.dateRange.fromDate).fromDate}
-        toDate={getCurrentWeekRange(homeSlice.dateRange.toDate).toDate}
-      />
-      {homeSlice.weeklyCategories?.map((data, idx) => (
-        <CategoryBudget
-          key={data?.category_id}
-          data={data}
-          type="WEEKLY"
-          idx={idx}
-        />
-      ))}
+      {homeSlice.weeklyCategories?.length > 0 && (
+        <>
+          <Header
+            label="Weekly"
+            leftOverDays={6}
+            budgeted={homeSlice.totalWeeklyBudget}
+            left={homeSlice.totalWeeklyBudget - homeSlice.totalWeeklyBudgetLeft}
+            fromDate={
+              getCurrentWeekRange(homeSlice.dateRange.fromDate).fromDate
+            }
+            toDate={getCurrentWeekRange(homeSlice.dateRange.toDate).toDate}
+          />
+          {homeSlice.weeklyCategories?.map((data, idx) => (
+            <CategoryBudget
+              key={data?.category_id}
+              data={data}
+              type="WEEKLY"
+              idx={idx}
+            />
+          ))}
+        </>
+      )}
     </>
   );
 };

@@ -34,7 +34,7 @@ export const getCurrentMonthRange = (customDate?: Date) => {
   };
 };
 
-export const formatDateTimeTimezone = (date: Date, format?: string) => {
+export const formatDateTimeTimezone = (date: Date | null, format?: string) => {
   return moment(date || new Date()).format(format || "YYYY-MM-DD");
 };
 

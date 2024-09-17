@@ -10,11 +10,15 @@ export default function StackLayout() {
       />
       <Stack.Screen
         name="addTransaction"
-        options={{ headerShown: false, presentation: "modal" }}
+        options={{ headerShown: false, animation: "none" }}
       />
       <Stack.Screen
         name="transactions"
         options={{ headerShown: false, presentation: "formSheet" }}
+      />
+      <Stack.Screen
+        name="confirmTransaction"
+        options={{ headerShown: false }}
       />
     </Stack>
   );

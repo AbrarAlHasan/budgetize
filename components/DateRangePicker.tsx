@@ -40,6 +40,11 @@ const DateRangePicker = ({
         weekDaysColor: Colors[colorScheme ?? "light"].primary,
         selectedDateBackgroundColor: Colors[colorScheme ?? "light"].primary,
         confirmButtonColor: Colors[colorScheme ?? "light"].primary,
+        backgroundColor: Colors[colorScheme ?? "light"].background,
+        dateTextColor: Colors[colorScheme ?? "light"].darkText,
+        changeYearModalColor: Colors[colorScheme ?? "light"].primary,
+        headerTextColor: Colors[colorScheme ?? "light"].lightText,
+        selectedDateTextColor: Colors[colorScheme ?? "light"].lightText,
       }}
       startDate={startDate}
       endDate={endDate}

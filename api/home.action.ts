@@ -13,9 +13,10 @@ export const getCurrentWeekBudget = async ({
     const response = await supabase
       .from("category")
       .select("*, transactions(*)")
-      .eq("user_id", store.getState().AuthSlice.userDetails?.userid)
+      .eq("user_id", store.getState().AuthSlice.userDetails?.user_id)
       .gte("transactions.date", formatDateTimeTimezone(fromDate))
       .lte("transactions.date", formatDateTimeTimezone(toDate))
+      .lte("created_at", formatDateTimeTimezone(toDate))
       .eq("type", "WEEKLY");
 
     return { response: response?.data, error: response?.error };
@@ -35,9 +36,10 @@ export const getCurrentMonthBudget = async ({
     const response = await supabase
       .from("category")
       .select("*, transactions(*)")
-      .eq("user_id", store.getState().AuthSlice.userDetails?.userid)
+      .eq("user_id", store.getState().AuthSlice.userDetails?.user_id)
       .gte("transactions.date", formatDateTimeTimezone(fromDate))
       .lte("transactions.date", formatDateTimeTimezone(toDate))
+      .lte("created_at", formatDateTimeTimezone(toDate))
       .eq("type", "MONTHLY");
 
     return { response: response?.data, error: response?.error };
@@ -59,4 +61,30 @@ export const getTransactionsBasedOnCategory = async (
       .gte("transactions.date", formatDateTimeTimezone(fromDate))
       .lte("transactions.date", formatDateTimeTimezone(toDate));
   } catch (error) {}
+};
+
+export const getWeeklyCategoryList = async () => {
+  try {
+    const response = await supabase
+      .from("category")
+      .select()
+      .eq("user_id", store.getState().AuthSlice.userDetails?.user_id)
+      .eq("type", "WEEKLY");
+    return { response: response?.data, error: response?.error };
+  } catch (error) {
+    return { response: null, error: error };
+  }
+};
+
+export const getMonthlyCategoryList = async () => {
+  try {
+    const response = await supabase
+      .from("category")
+      .select()
+      .eq("user_id", store.getState().AuthSlice.userDetails?.user_id)
+      .eq("type", "MONTHLY");
+    return { response: response?.data, error: response?.error };
+  } catch (error) {
+    return { response: null, error: error };
+  }
 };
