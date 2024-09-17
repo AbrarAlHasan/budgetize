@@ -41,7 +41,7 @@ const Login = () => {
         email,
         password
       );
-      console.log(data, error?.message);
+
       if (error === null) {
         const { data, error } = await supabase
           .from("users")
@@ -49,7 +49,7 @@ const Login = () => {
           .eq("email", "abraralhasan111@gmail.com")
           .limit(1)
           .maybeSingle();
-        console.log("DB", { data, error });
+
 
         if (error === null) {
           dispatch(setUserDetails(data));

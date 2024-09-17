@@ -33,9 +33,9 @@ const TransactionList = ({
 
   return (
     <ScrollView style={{ flex: 1, paddingTop: 20 }}>
-      {sortedDateList?.map((item: any) => {
+      {sortedDateList?.map((item: any, index: number) => {
         return (
-          <View style={{ paddingVertical: 14 }}>
+          <View key={index} style={{ paddingVertical: 14 }}>
             <Text
               style={[
                 textStyles.bolder,
@@ -48,9 +48,10 @@ const TransactionList = ({
             >
               {formatDateTimeTimezone(item, "DD MMMM")}
             </Text>
-            {transactionData[item]?.map((data: ITransaction) => {
+            {transactionData[item]?.map((data: ITransaction, index: number) => {
               return (
                 <View
+                  key={index}
                   style={{
                     paddingHorizontal: 20,
                     paddingVertical: 10,

@@ -22,7 +22,7 @@ export const initiateLogin = async (email: string, password: string) => {
 export const checkActiveSessionAction = async () => {
   try {
     const { data, error } = await supabase.auth.getSession();
-    console.log(data);
+
     if (data?.session?.access_token) {
       store.dispatch(
         setCheckingAuthentication({
@@ -55,7 +55,7 @@ export const checkActiveSessionAction = async () => {
 export const initiateLogout = async () => {
   try {
     const response = await supabase.auth.signOut();
-    console.log(response);
+
     store.dispatch(logout());
     router.replace("/(auth)/");
   } catch (error) {}

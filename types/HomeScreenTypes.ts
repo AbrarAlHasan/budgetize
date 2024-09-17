@@ -1,7 +1,7 @@
 export interface ICategory {
   amount_allocated: number;
   background_color: string;
-  category_id: 1;
+  category_id: number;
   category_name: string;
   created_at: string;
   icon: string;

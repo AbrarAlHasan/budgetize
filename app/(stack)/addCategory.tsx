@@ -22,10 +22,15 @@ import Animated, {
   interpolateColor,
 } from "react-native-reanimated";
 import { useToast } from "react-native-toast-notifications";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/redux/store";
 import { supabase } from "@/lib/supabase";
 import { router, useLocalSearchParams } from "expo-router";
+import { ICategory } from "@/types/HomeScreenTypes";
+import {
+  triggerCategoryApi,
+  triggerHomeApi,
+} from "@/redux/reducers/slice/homeSlice";
 
 const COLOR_LIST = [
   "#FF0000",
@@ -54,16 +59,23 @@ const AddCategory = () => {
   const { top } = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const toast = useToast();
-  const { categoryId } = useLocalSearchParams();
+  const { categoryId }: { categoryId: string } = useLocalSearchParams();
 
   const authSlice = useSelector((state: RootState) => state.AuthSlice);
+  const homeSlice = useSelector((state: RootState) => state.HomeSlice);
+  const dispatch = useDispatch();
 
   const [backgroundColor, setBackgroundColor] = useState("#000000");
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const [icon, setIcon] = useState("👻");
-  const [categoryType, setCategoryType] = useState("WEEKLY");
+  const [categoryType, setCategoryType] = useState<"WEEKLY" | "MONTHLY">(
+    "WEEKLY"
+  );
   const [categoryName, setCategoryName] = useState("");
   const [categoryAmount, setCategoryAmount] = useState("");
+  const [categoryDetails, setCategoryDetails] = useState<ICategory | null>(
+    null
+  );
 
   const colorPosition = useSharedValue(0);
   const previousColorPosition = useSharedValue(0);
@@ -82,7 +94,24 @@ const AddCategory = () => {
   //   };
   // });
 
-  useEffect(() => {}, []);
+  useEffect(() => {
+    const concatenatedCategory = [
+      ...homeSlice?.weeklyCategoryList,
+      ...homeSlice?.monthlyCategoryList,
+    ];
+    const category = concatenatedCategory?.filter(
+      (data) => "" + data.category_id == categoryId
+    )[0];
+
+    if (category) {
+      setCategoryDetails(category);
+      setCategoryAmount(category?.amount_allocated.toString());
+      setBackgroundColor(category?.background_color);
+      setCategoryName(category?.category_name);
+      setCategoryType(category?.type);
+      setIcon(category?.icon);
+    }
+  }, []);
 
   // const changeColor = (index: number) => {
   //   previousColorPosition.value = newColorPosition.value;
@@ -108,18 +137,31 @@ const AddCategory = () => {
 
   const onCreate = async () => {
     if (validate()) {
-      const payload = {
+      const payload: any = {
         type: categoryType,
-        user_id: authSlice?.userDetails?.user_id,
+        user_id: authSlice?.userDetails?.user_id as string,
         background_color: backgroundColor,
         icon: icon,
         category_name: categoryName,
-        amount_allocated: categoryAmount,
+        amount_allocated: parseFloat(categoryAmount),
       };
+      if (categoryDetails?.category_id) {
+        delete payload.user_id;
+      }
+      let response;
+      if (categoryDetails?.category_id) {
+        response = await supabase
+          .from("category")
+          .update(payload)
+          .eq("category_id", categoryDetails?.category_id);
+      } else {
+        response = await supabase.from("category").insert(payload);
+      }
 
-      const response = await supabase.from("category").insert(payload);
       if (response.error === null) {
-        router.back();
+        dispatch(triggerHomeApi());
+        dispatch(triggerCategoryApi());
+        router.replace("/(tabs)/");
       }
     }
   };
@@ -195,7 +237,7 @@ const AddCategory = () => {
                 { color: Colors[colorScheme ?? "light"].primary },
               ]}
             >
-              Create
+              {categoryDetails?.category_id ? "Update" : "Create"}
             </Text>
           </Pressable>
         </View>

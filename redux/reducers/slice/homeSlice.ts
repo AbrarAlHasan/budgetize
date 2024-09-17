@@ -14,6 +14,7 @@ interface IHomeSlice {
   weeklyCategoryList: Array<ICategory>;
   monthlyCategoryList: Array<ICategory>;
   homeDataApiTrigger: boolean;
+  categoryDataApiTrigger: boolean;
 }
 
 const initialState: IHomeSlice = {
@@ -31,6 +32,7 @@ const initialState: IHomeSlice = {
   weeklyCategoryList: [],
   monthlyCategoryList: [],
   homeDataApiTrigger: false,
+  categoryDataApiTrigger: false,
 };
 
 const homeSlice = createSlice({
@@ -70,6 +72,9 @@ const homeSlice = createSlice({
     triggerHomeApi: (state) => {
       state.homeDataApiTrigger = !state.homeDataApiTrigger;
     },
+    triggerCategoryApi: (state) => {
+      state.categoryDataApiTrigger = !state.categoryDataApiTrigger;
+    },
   },
 });
 
@@ -85,6 +90,7 @@ export const {
   setWeeklyCategoryList,
   setMonthlyCategoryList,
   triggerHomeApi,
+  triggerCategoryApi,
 } = homeSlice.actions;
 
 export default homeSlice.reducer;

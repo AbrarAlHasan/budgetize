@@ -94,7 +94,7 @@ const BackgroundScheduler = () => {
       return;
     }
     fetchCategoryList();
-  }, [authSlice?.isAuthenticated]);
+  }, [authSlice?.isAuthenticated, homeSlice.categoryDataApiTrigger]);
 
   useEffect(() => {
     console.log("TRIGGERED HOME BACKGROUND", authSlice?.isAuthenticated);
