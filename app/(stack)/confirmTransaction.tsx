@@ -32,7 +32,7 @@ import Checkbox from "expo-checkbox";
 import { useToast } from "react-native-toast-notifications";
 import { supabase } from "@/lib/supabase";
 import { useDispatch, useSelector } from "react-redux";
-import { RootState } from "@/redux/store";
+import { RootState, store } from "@/redux/store";
 import { triggerHomeApi } from "@/redux/reducers/slice/homeSlice";
 
 const ConfirmTransaction = () => {
@@ -70,6 +70,7 @@ const ConfirmTransaction = () => {
       description: description,
       date: formatDateTimeTimezone(spentDate, "YYYY-MM-DD"),
       amount: parseFloat(amount),
+      user_id: store.getState().AuthSlice.userDetails?.user_id,
     };
     const { data, error } = await supabase.from("transactions").insert(payload);
     if (error === null) {

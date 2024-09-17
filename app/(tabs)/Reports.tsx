@@ -1,14 +1,39 @@
-import { StyleSheet, Text, View } from 'react-native'
-import React from 'react'
-
+import { StyleSheet, Text, View } from "react-native";
+import React, { useEffect, useState } from "react";
+import { WeeklyBarChart } from "@/components/Reports/WeeklyBarChart";
+import { BACKGROUND_COLOR, data } from "@/components/Reports/constants";
+import { supabase } from "@/lib/supabase";
+import { store } from "@/redux/store";
 const Reports = () => {
+  const [activeWeekIndex, setActiveWeekIndex] = useState(0);
+
+  useEffect(() => {
+    fetchInitialData();
+  }, []);
+
+  const fetchInitialData = async () => {
+    // const response = await supabase.functions('get_weekly_grouped_transactions')
+    const response = await supabase.functions.invoke(
+      "get_weekly_grouped_transactions",
+      {
+        body: { userId: store.getState().AuthSlice.userDetails?.user_id },
+      }
+    );
+
+    
+    console.log(response, store.getState().AuthSlice.userDetails?.user_id);
+  };
   return (
-    <View>
-      <Text>Reports</Text>
+    <View style={{ flex: 1, padding: 20 }}>
+      <WeeklyBarChart
+        weeks={data}
+        activeWeekIndex={activeWeekIndex}
+        onWeekChange={setActiveWeekIndex}
+      />
     </View>
-  )
-}
+  );
+};
 
-export default Reports
+export default Reports;
 
-const styles = StyleSheet.create({})
+const styles = StyleSheet.create({});
