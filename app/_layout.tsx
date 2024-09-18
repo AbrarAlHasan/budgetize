@@ -9,6 +9,10 @@ import { ToastProvider } from "react-native-toast-notifications";
 import BackgroundScheduler from "@/components/BackgroundScheduler";
 import { Colors } from "@/constants/Colors";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import * as Linking from "expo-linking";
+import { LinkingOptions } from "@react-navigation/native";
+
+const prefix = Linking.createURL("/");
 
 export default function Layout() {
   // const [isLoading, setIsLoading] = useState(true);
@@ -21,8 +25,50 @@ export default function Layout() {
   //   );
   // }
 
+  const parseSupabaseUrl = (url: string) => {
+    let parsedUrl = url;
+    if (url.includes("#")) {
+      parsedUrl = url.replace("#", "?");
+    }
+
+    return parsedUrl;
+  };
+
+  const getInitialURL = async () => {
+    const url = await Linking.getInitialURL();
+
+    if (url !== null) {
+      return parseSupabaseUrl(url);
+    }
+
+    return url;
+  };
+
+  const subscribe = (listener: (url: string) => void) => {
+    const onReceiveURL = ({ url }: { url: string }) => {
+      console.log("SUBSCRIBE", url);
+      listener(url);
+    };
+    const subscription = Linking.addEventListener("url", onReceiveURL);
+
+    return () => {
+      subscription.remove();
+    };
+  };
+
+  const linking: LinkingOptions<any> = {
+    prefixes: [prefix],
+    config: {
+      screens: {
+        ResetPasswordScreen: "/ResetPassword",
+      },
+    },
+    getInitialURL,
+    subscribe,
+  };
+
   return (
-    <GestureHandlerRootView  style={{ flex: 1 }}>
+    <GestureHandlerRootView style={{ flex: 1 }}>
       <Provider store={store}>
         <ToastProvider>
           <SafeAreaProvider>

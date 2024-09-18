@@ -18,6 +18,7 @@ import AntDesign from "@expo/vector-icons/AntDesign";
 import { initiateLogout } from "@/api/authentication.action";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import BottomSheet from "@/components/BottomSheet";
+import ResetPasswordModal from "@/components/Settings/ResetPasswordModal";
 interface ICustomSettingsButton {
   leftIcon?: any;
   label?: string;
@@ -106,28 +107,10 @@ const Settings = () => {
           initiateLogout();
         }}
       />
-      <BottomSheet bottomSheetModalRef={bottomSheetModalRef} index={2}>
-        <>
-          <CustomTextInput
-            label="Current Password"
-            value={currentPassword}
-            onChangeText={setCurrentPassword}
-            placeholder="Name"
-          />
-          <CustomTextInput
-            label="New Password"
-            value={newPassword}
-            onChangeText={setNewPassword}
-            placeholder="Name"
-          />
-          <CustomTextInput
-            label="Confirm Password"
-            value={confirmNewPassword}
-            onChangeText={setConfirmNewPassword}
-            placeholder="Name"
-          />
-        </>
-      </BottomSheet>
+      <ResetPasswordModal
+        bottomSheetModalRef={bottomSheetModalRef}
+        email={email as string}
+      />
     </View>
   );
 };

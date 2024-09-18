@@ -18,7 +18,7 @@ interface IBottomSheet {
 const BottomSheet = ({
   children,
   bottomSheetModalRef,
-  snapPoints = ["25%", "50%", "75%", "100%"],
+  snapPoints = ["25%", "50%", "75%", "98%"],
   index = 1,
 }: IBottomSheet) => {
   const colorScheme = useColorScheme();
@@ -28,12 +28,23 @@ const BottomSheet = ({
         ref={bottomSheetModalRef}
         index={index}
         snapPoints={snapPoints}
-        onChange={(data) => console.log(data)}
+        onChange={(data) => {}}
       >
         <BottomSheetView
           style={[
             styles.contentContainer,
-            { backgroundColor: Colors[colorScheme ?? "light"].background },
+            {
+              backgroundColor: Colors[colorScheme ?? "light"].background,
+              borderRadius: 32,
+              // borderWidth: 1,
+              // borderColor: Colors[colorScheme ?? "light"].gray,
+              shadowColor: Colors[colorScheme ?? "light"].gray,
+              shadowOffset: { width: 1, height: -3 },
+              shadowOpacity: 0.2,
+              shadowRadius: 3,
+              elevation: 5,
+              marginTop: 5,
+            },
           ]}
         >
           {children}

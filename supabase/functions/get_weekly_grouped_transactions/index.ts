@@ -33,6 +33,8 @@ GROUP BY
       (key, value) => (typeof value === "bigint" ? value.toString() : value),
       2
     );
+    console.log(body);
+    
 
     // Return the response with the correct content type header
     return new Response(body, {

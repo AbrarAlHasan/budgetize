@@ -16,6 +16,7 @@ interface ICustomTextInput {
   onChangeText: Dispatch<SetStateAction<any>>;
   value: string | undefined;
   showLabel?: boolean;
+  onFocus?: () => void;
 }
 
 const CustomTextInput = ({
@@ -25,6 +26,7 @@ const CustomTextInput = ({
   onChangeText,
   value,
   showLabel = true,
+  onFocus = () => {},
 }: ICustomTextInput) => {
   const colorScheme = useColorScheme();
 
@@ -52,6 +54,7 @@ const CustomTextInput = ({
         placeholder={placeholder}
         autoCapitalize="none"
         placeholderTextColor={Colors[colorScheme ?? "light"].darkText}
+        onFocus={onFocus}
       />
     </View>
   );

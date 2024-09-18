@@ -49,7 +49,7 @@ const Onboarding = () => {
           Supa-Base as Backend Service
         </Text>
       </View>
-      <View style={{ width: "100%", gap: 20 }}>
+      <View style={{ width: "100%" }}>
         <CustomButton
           colorType="primary"
           label="Create An Account"

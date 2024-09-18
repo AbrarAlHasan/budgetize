@@ -56,6 +56,7 @@ const CustomButton = ({
             flexDirection: "row",
             padding: 12,
             borderRadius: 10,
+            marginVertical: 10,
             ...customStyle,
           },
         ]}
