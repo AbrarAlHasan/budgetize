@@ -61,7 +61,7 @@ Deno.serve(async (req) => {
     .eq("email", request?.email?.trim())
     .limit(1)
     .maybeSingle();
-  console.log("USER DETAILS",userDetails);
+  console.log("USER DETAILS", userDetails);
   let responseData = {
     error: false,
     message: "Password Reset Successfull",
@@ -102,7 +102,10 @@ Deno.serve(async (req) => {
     if (userCreatedResponse?.error === null) {
       const updatedUserResponse = await supabaseClient
         .from("users")
-        .update({ auth_user_id: userCreatedResponse?.data?.user?.id })
+        .update({
+          auth_user_id: userCreatedResponse?.data?.user?.id,
+          initial_password_changed: false,
+        })
         .eq("auth_user_id", userDetails?.data?.auth_user_id);
 
       console.log("UPDATED USER", updatedUserResponse);

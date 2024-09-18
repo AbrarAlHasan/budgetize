@@ -2,7 +2,7 @@
 import { useEffect } from "react";
 import { useRouter } from "expo-router";
 import { useDispatch, useSelector } from "react-redux";
-import { RootState } from "@/redux/store";
+import { RootState, store } from "@/redux/store";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Text } from "react-native";
 import { setCheckingAuthentication } from "@/redux/reducers/slice/authSlice";
@@ -21,7 +21,7 @@ export default function Startup() {
       const response = await checkActiveSessionAction();
 
       dispatch(setDateRange(getCurrentWeekRange()));
-      if (response) {
+      if (response && authSlice?.userDetails !== null) {
         router.replace("/(tabs)/");
       } else {
         router.replace("/(auth)/");

@@ -20,7 +20,7 @@ import {
 } from "@/redux/reducers/slice/authSlice";
 import { useDispatch } from "react-redux";
 import { initiateLogin } from "@/api/authentication.action";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 
 interface IResetPasswordModal {
   bottomSheetModalRef: React.RefObject<BottomSheetModalMethods>;
@@ -38,6 +38,12 @@ const ResetPasswordModal = ({
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
 
   const [bottomSheetSnap, setBottomSheetSnap] = useState(2);
+
+  const onBottomSheetChange = (data: number) => {
+    if (data === -1) {
+      setCurrentPassword(existingPassword ?? "");
+    }
+  };
 
   const toast = useToast();
   const dispatch = useDispatch();
@@ -115,7 +121,6 @@ const ResetPasswordModal = ({
     } finally {
       setConfirmNewPassword("");
       setNewPassword("");
-      setCurrentPassword("");
     }
   };
 
@@ -142,6 +147,7 @@ const ResetPasswordModal = ({
     <BottomSheet
       bottomSheetModalRef={bottomSheetModalRef}
       index={bottomSheetSnap}
+      onBottomSheetChange={onBottomSheetChange}
     >
       <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
         <KeyboardAvoidingView style={{ flex: 1, width: "100%" }}>

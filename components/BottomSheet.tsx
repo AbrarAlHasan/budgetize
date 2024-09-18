@@ -13,6 +13,7 @@ interface IBottomSheet {
   snapPoints?: Array<string>;
   bottomSheetModalRef: React.RefObject<BottomSheetModalMethods>;
   index: number;
+  onBottomSheetChange: (data: number) => void;
 }
 
 const BottomSheet = ({
@@ -20,6 +21,7 @@ const BottomSheet = ({
   bottomSheetModalRef,
   snapPoints = ["25%", "50%", "75%", "98%"],
   index = 1,
+  onBottomSheetChange = () => {},
 }: IBottomSheet) => {
   const colorScheme = useColorScheme();
   return (
@@ -28,7 +30,9 @@ const BottomSheet = ({
         ref={bottomSheetModalRef}
         index={index}
         snapPoints={snapPoints}
-        onChange={(data) => {}}
+        onChange={(data) => {
+          onBottomSheetChange(data);
+        }}
       >
         <BottomSheetView
           style={[
