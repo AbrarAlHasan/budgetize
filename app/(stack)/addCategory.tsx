@@ -31,6 +31,7 @@ import {
   triggerCategoryApi,
   triggerHomeApi,
 } from "@/redux/reducers/slice/homeSlice";
+import { getMonthlyRanges, getWeeklyDateRanges } from "@/utils/DateCalculator";
 
 const COLOR_LIST = [
   "#FF0000",
@@ -136,8 +137,11 @@ const AddCategory = () => {
   };
 
   const onCreate = async () => {
+    if (categoryDetails?.category_id) {
+      toast.show("Edit Category Functionality is still under development");
+    }
     if (validate()) {
-      const payload: any = {
+      const singlePayload: any = {
         type: categoryType,
         user_id: authSlice?.userDetails?.user_id as string,
         background_color: backgroundColor,
@@ -145,10 +149,26 @@ const AddCategory = () => {
         category_name: categoryName,
         amount_allocated: parseFloat(categoryAmount),
       };
-      if (categoryDetails?.category_id) {
-        delete payload.user_id;
-      }
+      // if (categoryDetails?.category_id) {
+      //   delete payload.user_id;
+      // }
       let response;
+
+      let rangeList = [];
+      if (categoryType === "WEEKLY") {
+        rangeList = getWeeklyDateRanges();
+      } else {
+        rangeList = getMonthlyRanges();
+      }
+      const payload = rangeList?.map((data) => {
+        return {
+          from_date: data?.fromDate,
+          to_date: data?.toDate,
+          ...singlePayload,
+        };
+      });
+      console.log(payload);
+
       if (categoryDetails?.category_id) {
         response = await supabase
           .from("category")
@@ -157,7 +177,7 @@ const AddCategory = () => {
       } else {
         response = await supabase.from("category").insert(payload);
       }
-
+      console.log(response);
       if (response.error === null) {
         dispatch(triggerHomeApi());
         dispatch(triggerCategoryApi());
@@ -167,243 +187,245 @@ const AddCategory = () => {
   };
 
   return (
-    <TouchableWithoutFeedback
-      style={{ zIndex: 1 }}
-      onPress={() => {
-        Keyboard.dismiss();
-        if (isEmojiPickerOpen) {
-          setIsEmojiPickerOpen(false);
-        }
-      }}
-    >
-      <View
-        style={[
-          {
-            paddingTop: top,
-            flex: 1,
-            alignItems: "center",
-            paddingHorizontal: 20,
-            backgroundColor: Colors[colorScheme ?? "light"].background,
-            position: "relative",
-          },
-        ]}
+    <ScrollView>
+      <TouchableWithoutFeedback
+        style={{ zIndex: 1 }}
+        onPress={() => {
+          Keyboard.dismiss();
+          if (isEmojiPickerOpen) {
+            setIsEmojiPickerOpen(false);
+          }
+        }}
       >
-        {isEmojiPickerOpen && (
-          <View
-            style={{
-              position: "absolute",
-              aspectRatio: 1,
-              top: "30%",
-              zIndex: 2,
-            }}
-          >
-            <EmojiModal
-              backgroundStyle={{
-                backgroundColor: "transparent",
-              }}
-              onEmojiSelected={(emoji) => {
-                setIcon(emoji as string);
-                setIsEmojiPickerOpen(false);
-              }}
-              onPressOutside={() => {
-                console.log("TRIGG");
-                setIsEmojiPickerOpen(false);
-              }}
-            />
-          </View>
-        )}
         <View
           style={[
-            commonStyles.alignJustifyBetween,
             {
-              flexDirection: "row",
-              marginTop: 10,
-              width: "100%",
+              paddingTop: top,
+              flex: 1,
+              alignItems: "center",
+              paddingHorizontal: 20,
+              backgroundColor: Colors[colorScheme ?? "light"].background,
+              position: "relative",
             },
           ]}
         >
-          <Pressable style={{ padding: 10 }} onPress={() => router.back()}>
-            <Ionicons
-              name="close"
-              size={24}
-              color={Colors[colorScheme ?? "light"].darkText}
-            />
-          </Pressable>
-          <Pressable onPress={onCreate}>
-            <Text
-              style={[
-                textStyles.semiBold,
-                textStyles.md,
-                { color: Colors[colorScheme ?? "light"].primary },
-              ]}
-            >
-              {categoryDetails?.category_id ? "Update" : "Create"}
-            </Text>
-          </Pressable>
-        </View>
-        <ScrollView
-          contentContainerStyle={[commonStyles.alignJustifyCenter]}
-          style={[{ width: "100%" }]}
-          showsVerticalScrollIndicator={false}
-          nestedScrollEnabled={true}
-          scrollEnabled={!isEmojiPickerOpen}
-        >
-          <Pressable
-            onPress={() => {
-              setIsEmojiPickerOpen((prevState) => !prevState);
-            }}
-            style={[
-              commonStyles.alignJustifyCenter,
-              {
-                backgroundColor: backgroundColor,
-                width: 100,
+          {isEmojiPickerOpen && (
+            <View
+              style={{
+                position: "absolute",
                 aspectRatio: 1,
-                borderRadius: 100,
-                margin: 20,
-                position: "relative",
-                zIndex: 1,
+                top: "30%",
+                zIndex: 2,
+              }}
+            >
+              <EmojiModal
+                backgroundStyle={{
+                  backgroundColor: "transparent",
+                }}
+                onEmojiSelected={(emoji) => {
+                  setIcon(emoji as string);
+                  setIsEmojiPickerOpen(false);
+                }}
+                onPressOutside={() => {
+                  console.log("TRIGG");
+                  setIsEmojiPickerOpen(false);
+                }}
+              />
+            </View>
+          )}
+          <View
+            style={[
+              commonStyles.alignJustifyBetween,
+              {
+                flexDirection: "row",
+                marginTop: 10,
+                width: "100%",
               },
-              // animatedStyle,
             ]}
           >
-            <Text style={[{ fontSize: 45 }]}>{icon}</Text>
-            <View
+            <Pressable style={{ padding: 10 }} onPress={() => router.back()}>
+              <Ionicons
+                name="close"
+                size={24}
+                color={Colors[colorScheme ?? "light"].darkText}
+              />
+            </Pressable>
+            <Pressable onPress={onCreate}>
+              <Text
+                style={[
+                  textStyles.semiBold,
+                  textStyles.md,
+                  { color: Colors[colorScheme ?? "light"].primary },
+                ]}
+              >
+                {categoryDetails?.category_id ? "Update" : "Create"}
+              </Text>
+            </Pressable>
+          </View>
+          <ScrollView
+            contentContainerStyle={[commonStyles.alignJustifyCenter]}
+            style={[{ width: "100%" }]}
+            showsVerticalScrollIndicator={false}
+            nestedScrollEnabled={true}
+            scrollEnabled={!isEmojiPickerOpen}
+          >
+            <Pressable
+              onPress={() => {
+                setIsEmojiPickerOpen((prevState) => !prevState);
+              }}
               style={[
                 commonStyles.alignJustifyCenter,
                 {
-                  backgroundColor: Colors[colorScheme ?? "light"].background,
+                  backgroundColor: backgroundColor,
+                  width: 100,
+                  aspectRatio: 1,
                   borderRadius: 100,
-                  padding: 10,
-                  position: "absolute",
-                  right: -5,
-                  bottom: -5,
-                  shadowColor: Colors[colorScheme ?? "light"].darkText,
-                  shadowRadius: 100,
-                  shadowOffset: { height: 30, width: 30 },
-                  shadowOpacity: 1,
+                  margin: 20,
+                  position: "relative",
+                  zIndex: 1,
                 },
+                // animatedStyle,
               ]}
             >
-              <Ionicons
-                name="pencil"
-                size={16}
-                color={Colors[colorScheme ?? "light"].gray}
-              />
-            </View>
-          </Pressable>
-
-          <CustomTextInput
-            label="Category Name"
-            placeholder="Category Name"
-            onChangeText={setCategoryName}
-            value={categoryName}
-          />
-
-          <View style={{ marginVertical: 20, flexDirection: "row", gap: 20 }}>
-            <View style={{ flex: 1 }}>
-              <CustomTextInput
-                label="Amount Allocated"
-                placeholder="₹"
-                onChangeText={setCategoryAmount}
-                value={categoryAmount}
-              />
-            </View>
-            <View style={{ flex: 1, gap: 10 }}>
-              <Pressable
-                onPress={() => {
-                  setCategoryType("WEEKLY");
-                }}
+              <Text style={[{ fontSize: 45 }]}>{icon}</Text>
+              <View
                 style={[
                   commonStyles.alignJustifyCenter,
                   {
-                    flex: 1,
-                    backgroundColor:
-                      categoryType === "WEEKLY"
-                        ? Colors[colorScheme ?? "light"].primary
-                        : Colors[colorScheme ?? "light"].lightGray,
-                    borderRadius: 10,
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    textStyles.bolder,
-                    textStyles.md,
-                    {
-                      color:
-                        categoryType === "WEEKLY"
-                          ? Colors[colorScheme ?? "light"].lightText
-                          : Colors[colorScheme ?? "light"].darkText,
-                    },
-                  ]}
-                >
-                  Weekly
-                </Text>
-              </Pressable>
-              <Pressable
-                onPress={() => {
-                  setCategoryType("MONTHLY");
-                }}
-                style={[
-                  commonStyles.alignJustifyCenter,
-                  {
-                    flex: 1,
-                    backgroundColor:
-                      categoryType === "MONTHLY"
-                        ? Colors[colorScheme ?? "light"].primary
-                        : Colors[colorScheme ?? "light"].lightGray,
-                    borderRadius: 10,
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    textStyles.bolder,
-                    textStyles.md,
-                    {
-                      color:
-                        categoryType === "MONTHLY"
-                          ? Colors[colorScheme ?? "light"].lightText
-                          : Colors[colorScheme ?? "light"].darkText,
-                    },
-                  ]}
-                >
-                  Monthly
-                </Text>
-              </Pressable>
-            </View>
-          </View>
-
-          {/* COLOR LIST */}
-          <View
-            style={{
-              flexDirection: "row",
-              width: "100%",
-              flexWrap: "wrap",
-              alignItems: "center",
-              gap: 31,
-              marginVertical: 32,
-              justifyContent: "center",
-            }}
-          >
-            {COLOR_LIST?.map((data: string, index: number) => {
-              return (
-                <Pressable
-                  key={index}
-                  onPress={() => changeColor(data)}
-                  style={{
-                    backgroundColor: data,
+                    backgroundColor: Colors[colorScheme ?? "light"].background,
                     borderRadius: 100,
-                    width: "13%",
-                    aspectRatio: 1,
-                  }}
+                    padding: 10,
+                    position: "absolute",
+                    right: -5,
+                    bottom: -5,
+                    shadowColor: Colors[colorScheme ?? "light"].darkText,
+                    shadowRadius: 100,
+                    shadowOffset: { height: 30, width: 30 },
+                    shadowOpacity: 1,
+                  },
+                ]}
+              >
+                <Ionicons
+                  name="pencil"
+                  size={16}
+                  color={Colors[colorScheme ?? "light"].gray}
                 />
-              );
-            })}
-          </View>
-        </ScrollView>
-      </View>
-    </TouchableWithoutFeedback>
+              </View>
+            </Pressable>
+
+            <CustomTextInput
+              label="Category Name"
+              placeholder="Category Name"
+              onChangeText={setCategoryName}
+              value={categoryName}
+            />
+
+            <View style={{ marginVertical: 20, flexDirection: "row", gap: 20 }}>
+              <View style={{ flex: 1 }}>
+                <CustomTextInput
+                  label="Amount Allocated"
+                  placeholder="₹"
+                  onChangeText={setCategoryAmount}
+                  value={categoryAmount}
+                />
+              </View>
+              <View style={{ flex: 1, gap: 10 }}>
+                <Pressable
+                  onPress={() => {
+                    setCategoryType("WEEKLY");
+                  }}
+                  style={[
+                    commonStyles.alignJustifyCenter,
+                    {
+                      flex: 1,
+                      backgroundColor:
+                        categoryType === "WEEKLY"
+                          ? Colors[colorScheme ?? "light"].primary
+                          : Colors[colorScheme ?? "light"].lightGray,
+                      borderRadius: 10,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      textStyles.bolder,
+                      textStyles.md,
+                      {
+                        color:
+                          categoryType === "WEEKLY"
+                            ? Colors[colorScheme ?? "light"].lightText
+                            : Colors[colorScheme ?? "light"].darkText,
+                      },
+                    ]}
+                  >
+                    Weekly
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => {
+                    setCategoryType("MONTHLY");
+                  }}
+                  style={[
+                    commonStyles.alignJustifyCenter,
+                    {
+                      flex: 1,
+                      backgroundColor:
+                        categoryType === "MONTHLY"
+                          ? Colors[colorScheme ?? "light"].primary
+                          : Colors[colorScheme ?? "light"].lightGray,
+                      borderRadius: 10,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      textStyles.bolder,
+                      textStyles.md,
+                      {
+                        color:
+                          categoryType === "MONTHLY"
+                            ? Colors[colorScheme ?? "light"].lightText
+                            : Colors[colorScheme ?? "light"].darkText,
+                      },
+                    ]}
+                  >
+                    Monthly
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+
+            {/* COLOR LIST */}
+            <View
+              style={{
+                flexDirection: "row",
+                width: "100%",
+                flexWrap: "wrap",
+                alignItems: "center",
+                gap: 31,
+                marginVertical: 32,
+                justifyContent: "center",
+              }}
+            >
+              {COLOR_LIST?.map((data: string, index: number) => {
+                return (
+                  <Pressable
+                    key={index}
+                    onPress={() => changeColor(data)}
+                    style={{
+                      backgroundColor: data,
+                      borderRadius: 100,
+                      width: "13%",
+                      aspectRatio: 1,
+                    }}
+                  />
+                );
+              })}
+            </View>
+          </ScrollView>
+        </View>
+      </TouchableWithoutFeedback>
+    </ScrollView>
   );
 };
 

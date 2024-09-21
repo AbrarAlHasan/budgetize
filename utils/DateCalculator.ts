@@ -1,3 +1,4 @@
+import { store } from "@/redux/store";
 import moment from "moment";
 
 export const getCurrentWeekRange = (customDate?: Date) => {
@@ -51,3 +52,61 @@ export const diffInDays = (fromDate: Date, toDate: Date) => {
     return `${daysLeft} Days Left`;
   }
 };
+
+export function getWeeklyDateRanges(endMonthFromCurrentMonth = 2) {
+  const dateRanges: Array<{ fromDate: string; toDate: string }> = [];
+
+  let fromDate = moment(store.getState().HomeSlice.dateRange.fromDate).startOf(
+    "week"
+  );
+  let toDate = moment(store.getState().HomeSlice.dateRange.toDate).endOf(
+    "week"
+  );
+  const endDate = moment()
+    .add(endMonthFromCurrentMonth, "months")
+    .startOf("month");
+
+  while (fromDate.isBefore(endDate) && toDate.isBefore(endDate)) {
+    dateRanges.push({
+      fromDate: fromDate.format("YYYY-MM-DD"),
+      toDate: toDate.format("YYYY-MM-DD"),
+    });
+
+    const diff = moment(toDate).diff(moment(fromDate), "days");
+
+    fromDate = moment(fromDate).add(diff > 0 ? diff + 1 : diff, "days");
+    toDate = moment(fromDate).endOf("week");
+    if (moment(fromDate).endOf("month").isBefore(toDate)) {
+      toDate = moment(fromDate).endOf("months");
+    }
+  }
+
+  return dateRanges;
+}
+
+export function getMonthlyRanges(endMonthFromCurrentMonth = 2) {
+  const dateRanges: Array<{ fromDate: string; toDate: string }> = [];
+  let fromDate = moment(store.getState().HomeSlice.dateRange.fromDate).startOf(
+    "month"
+  );
+  let toDate = moment(store.getState().HomeSlice.dateRange.toDate).endOf(
+    "month"
+  );
+
+  const endDate = moment()
+    .add(endMonthFromCurrentMonth, "months")
+    .startOf("month");
+
+  while (fromDate.isBefore(endDate) && toDate.isBefore(endDate)) {
+    dateRanges.push({
+      fromDate: fromDate.format("YYYY-MM-DD"),
+      toDate: toDate.format("YYYY-MM-DD"),
+    });
+
+    fromDate = moment(fromDate).add(1, "month");
+    toDate = moment(fromDate).endOf("month");
+  }
+
+  console.log({ dateRanges });
+  return dateRanges;
+}

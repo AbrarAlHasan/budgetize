@@ -20,6 +20,7 @@ import {
 } from "@/redux/reducers/slice/homeSlice";
 import { RootState } from "@/redux/store";
 import { getCurrentMonthRange } from "@/utils/DateCalculator";
+import moment from "moment";
 
 const BackgroundScheduler = () => {
   const dispatch = useDispatch();
@@ -28,8 +29,16 @@ const BackgroundScheduler = () => {
 
   const fetchCategoryList = async () => {
     const [weeklyCategory, monthlyCategory] = await Promise.all([
-      getWeeklyCategoryList(),
-      getMonthlyCategoryList(),
+      getWeeklyCategoryList({
+        fromDate: homeSlice.dateRange.fromDate,
+        toDate: homeSlice.dateRange.toDate,
+      }),
+      getMonthlyCategoryList({
+        fromDate: moment(homeSlice.dateRange.fromDate)
+          .startOf("month")
+          .toDate(),
+        toDate: moment(homeSlice.dateRange.fromDate).endOf("month").toDate(),
+      }),
     ]);
 
     if (weeklyCategory?.error === null) {
@@ -102,6 +111,7 @@ const BackgroundScheduler = () => {
       return;
     }
     fetchHomeData();
+    fetchCategoryList();
   }, [
     authSlice?.isAuthenticated,
     homeSlice.dateRange.fromDate,
