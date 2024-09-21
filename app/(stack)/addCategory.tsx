@@ -31,6 +31,12 @@ import {
   triggerCategoryApi,
   triggerHomeApi,
 } from "@/redux/reducers/slice/homeSlice";
+import moment from "moment";
+import {
+  formatDateTimeTimezone,
+  getCurrentMonthRange,
+  getCurrentWeekRange,
+} from "@/utils/DateCalculator";
 
 const COLOR_LIST = [
   "#FF0000",
@@ -148,6 +154,17 @@ const AddCategory = () => {
       if (categoryDetails?.category_id) {
         delete payload.user_id;
       }
+      if (categoryType === "WEEKLY") {
+        payload.from_date = formatDateTimeTimezone(
+          homeSlice?.dateRange?.fromDate
+        );
+      }
+      if (categoryType === "MONTHLY") {
+        payload.from_date = formatDateTimeTimezone(
+          moment(homeSlice?.dateRange?.fromDate)?.startOf("month").toDate()
+        );
+      }
+
       let response;
       if (categoryDetails?.category_id) {
         response = await supabase
@@ -206,7 +223,6 @@ const AddCategory = () => {
                 setIsEmojiPickerOpen(false);
               }}
               onPressOutside={() => {
-                console.log("TRIGG");
                 setIsEmojiPickerOpen(false);
               }}
             />
@@ -375,15 +391,15 @@ const AddCategory = () => {
           </View>
 
           {/* COLOR LIST */}
-          <View
+          <Pressable
             style={{
               flexDirection: "row",
               width: "100%",
               flexWrap: "wrap",
               alignItems: "center",
-              gap: 31,
               marginVertical: 32,
               justifyContent: "center",
+              gap: 31,
             }}
           >
             {COLOR_LIST?.map((data: string, index: number) => {
@@ -400,7 +416,7 @@ const AddCategory = () => {
                 />
               );
             })}
-          </View>
+          </Pressable>
         </ScrollView>
       </View>
     </TouchableWithoutFeedback>

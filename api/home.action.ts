@@ -16,7 +16,7 @@ export const getCurrentWeekBudget = async ({
       .eq("user_id", store.getState().AuthSlice.userDetails?.user_id)
       .gte("transactions.date", formatDateTimeTimezone(fromDate))
       .lte("transactions.date", formatDateTimeTimezone(toDate))
-      .lte("created_at", formatDateTimeTimezone(toDate))
+      .lte("from_date", formatDateTimeTimezone(fromDate))
       .eq("type", "WEEKLY");
 
     return { response: response?.data, error: response?.error };
@@ -39,7 +39,7 @@ export const getCurrentMonthBudget = async ({
       .eq("user_id", store.getState().AuthSlice.userDetails?.user_id)
       .gte("transactions.date", formatDateTimeTimezone(fromDate))
       .lte("transactions.date", formatDateTimeTimezone(toDate))
-      .lte("created_at", formatDateTimeTimezone(toDate))
+      .lte("from_date", formatDateTimeTimezone(fromDate))
       .eq("type", "MONTHLY");
 
     return { response: response?.data, error: response?.error };

@@ -5,6 +5,8 @@ import DatePicker from "react-native-neat-date-picker";
 import { Mode } from "react-native-neat-date-picker/src/components/Key";
 import { Colors } from "@/constants/Colors";
 import { getCurrentWeekRange } from "@/utils/DateCalculator";
+import { useSelector } from "react-redux";
+import { RootState } from "@/redux/store";
 
 interface IDateRangePicker {
   isVisible: boolean;
@@ -21,13 +23,14 @@ const DateRangePicker = ({
 }: IDateRangePicker) => {
   const colorScheme = useColorScheme();
 
-  const [startDate, setStartDate] = useState(getCurrentWeekRange().fromDate);
-  const [endDate, setEndDate] = useState(getCurrentWeekRange().toDate);
+  const homeSlice = useSelector((state: RootState) => state.HomeSlice);
+
+  const [startDate, setStartDate] = useState(homeSlice?.dateRange?.fromDate);
+  const [endDate, setEndDate] = useState(homeSlice?.dateRange?.toDate);
 
   useEffect(() => {
-    const weekRange = getCurrentWeekRange();
-    setStartDate(weekRange.fromDate);
-    setEndDate(weekRange.toDate);
+    setStartDate(homeSlice?.dateRange?.fromDate);
+    setEndDate(homeSlice?.dateRange?.toDate);
   }, []);
   return (
     <DatePicker

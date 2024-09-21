@@ -82,7 +82,7 @@ const Signup = () => {
       const response = await supabase
         .from("account_creation_requests")
         .insert(payload);
-      console.log(response);
+
       if (response.error === null) {
         const edgeResponse = await supabase.functions.invoke("create-user");
         toast.show(
@@ -93,7 +93,7 @@ const Signup = () => {
           }
         );
         router.replace("/(auth)/login");
-        console.log({ edgeResponse });
+
         return;
       }
       toast.show(response?.error?.details, { type: "danger" });

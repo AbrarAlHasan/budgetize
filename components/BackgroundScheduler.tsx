@@ -88,8 +88,6 @@ const BackgroundScheduler = () => {
   };
 
   useEffect(() => {
-    console.log("TRIGGERED CATEGORY BACKGROUND", authSlice?.isAuthenticated);
-
     if (!authSlice?.isAuthenticated) {
       return;
     }
@@ -97,7 +95,6 @@ const BackgroundScheduler = () => {
   }, [authSlice?.isAuthenticated, homeSlice.categoryDataApiTrigger]);
 
   useEffect(() => {
-    console.log("TRIGGERED HOME BACKGROUND", authSlice?.isAuthenticated);
     if (!authSlice?.isAuthenticated) {
       return;
     }

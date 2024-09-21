@@ -9,7 +9,7 @@ import { router } from "expo-router";
 
 export const initiateLogin = async (email: string, password: string) => {
   try {
-    console.log({ email, password });
+
     const { data, error } = await supabase.auth.signInWithPassword({
       email: email,
       password: password,

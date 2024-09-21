@@ -19,9 +19,6 @@ const Reports = () => {
         body: { userId: store.getState().AuthSlice.userDetails?.user_id },
       }
     );
-
-    
-    console.log(response, store.getState().AuthSlice.userDetails?.user_id);
   };
   return (
     <View style={{ flex: 1, padding: 20 }}>
