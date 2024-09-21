@@ -7,6 +7,7 @@ import { Colors } from "@/constants/Colors";
 import { getCurrentWeekRange } from "@/utils/DateCalculator";
 import { useSelector } from "react-redux";
 import { RootState } from "@/redux/store";
+import moment from "moment";
 
 interface IDateRangePicker {
   isVisible: boolean;
@@ -57,7 +58,31 @@ const DateRangePicker = ({
         setStartDate(weekRange.fromDate);
         setEndDate(weekRange.toDate);
       }}
-    ></DatePicker>
+      modalStyles={{ top: -50 }}
+      onShortcutPress={(data) => {
+        if (data === "LAST_WEEK") {
+          const weekRange = getCurrentWeekRange(
+            moment().subtract(1, "week").toDate()
+          );
+          setStartDate(weekRange.fromDate);
+          setEndDate(weekRange.toDate);
+        }
+
+        if (data === "THIS_WEEK") {
+          const weekRange = getCurrentWeekRange(moment().toDate());
+          setStartDate(weekRange.fromDate);
+          setEndDate(weekRange.toDate);
+        }
+
+        if (data === "NEXT_WEEK") {
+          const weekRange = getCurrentWeekRange(
+            moment().add(1, "week").toDate()
+          );
+          setStartDate(weekRange.fromDate);
+          setEndDate(weekRange.toDate);
+        }
+      }}
+    />
   );
 };
 

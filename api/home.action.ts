@@ -10,6 +10,7 @@ export const getCurrentWeekBudget = async ({
   toDate: Date;
 }) => {
   try {
+    console.log("ENTERED", formatDateTimeTimezone(fromDate));
     const response = await supabase
       .from("category")
       .select("*, transactions(*)")
@@ -18,9 +19,11 @@ export const getCurrentWeekBudget = async ({
       .lte("transactions.date", formatDateTimeTimezone(toDate))
       .lte("from_date", formatDateTimeTimezone(fromDate))
       .eq("type", "WEEKLY");
-
+    console.log("HEELO");
+    console.log({ response });
     return { response: response?.data, error: response?.error };
   } catch (error) {
+    console.log("HELO");
     return { response: null, error: error };
   }
 };
