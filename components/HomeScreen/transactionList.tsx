@@ -48,6 +48,7 @@ const TransactionList = ({
             >
               {formatDateTimeTimezone(item, "DD MMMM")}
             </Text>
+            {console.log(transactionData[item])}
             {transactionData[item]?.map((data: ITransaction, index: number) => {
               return (
                 <View

@@ -8,6 +8,8 @@ export interface ICategory {
   type: "WEEKLY" | "MONTHLY";
   user_id: string;
   transactions: Array<ITransaction>;
+  from_date: string;
+  to_date: string | null;
 }
 
 export interface ITransaction {

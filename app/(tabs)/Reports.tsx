@@ -4,6 +4,8 @@ import { WeeklyBarChart } from "@/components/Reports/WeeklyBarChart";
 import { BACKGROUND_COLOR, data } from "@/components/Reports/constants";
 import { supabase } from "@/lib/supabase";
 import { store } from "@/redux/store";
+import ComingSoonReport from "@/components/Reports/ComingSoonReport";
+import ComingSoon from "@/components/ComingSoon";
 const Reports = () => {
   const [activeWeekIndex, setActiveWeekIndex] = useState(0);
 
@@ -21,13 +23,16 @@ const Reports = () => {
     );
   };
   return (
-    <View style={{ flex: 1, padding: 20 }}>
-      <WeeklyBarChart
-        weeks={data}
-        activeWeekIndex={activeWeekIndex}
-        onWeekChange={setActiveWeekIndex}
-      />
-    </View>
+    <>
+      {/* <View style={{ flex: 1, padding: 20 }}>
+        <WeeklyBarChart
+          weeks={data}
+          activeWeekIndex={activeWeekIndex}
+          onWeekChange={setActiveWeekIndex}
+        />
+      </View> */}
+      <ComingSoon renderBackground={() => <ComingSoonReport />} />
+    </>
   );
 };
 
