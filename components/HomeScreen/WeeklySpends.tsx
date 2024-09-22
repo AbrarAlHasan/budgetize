@@ -22,7 +22,7 @@ const WeeklySpends = () => {
             }
             toDate={getCurrentWeekRange(homeSlice.dateRange.toDate).toDate}
           />
-          {console.log(homeSlice.weeklyCategories)}
+
           {homeSlice.weeklyCategories?.map((data, idx) => (
             <CategoryBudget
               key={data?.category_id}
