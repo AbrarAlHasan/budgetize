@@ -6,6 +6,8 @@ import { commonStyles, textStyles } from "@/stylings/CustomStyles";
 import CustomButton from "@/components/CustomButton";
 import { router } from "expo-router";
 import { Colors } from "@/constants/Colors";
+import LottieView from "lottie-react-native";
+
 const Onboarding = () => {
   const colorScheme = useColorScheme();
   const onCreateAccountClick = () => {
@@ -28,7 +30,15 @@ const Onboarding = () => {
         },
       ]}
     >
-      <Image source={AppLogo} width={64} height={64} />
+      {/* <Image source={AppLogo} width={64} height={64} /> */}
+      <LottieView
+        autoPlay
+        style={{
+          width: 300,
+          height: 300,
+        }}
+        source={require("@/assets/gifs/Budget.json")}
+      />
       <Text
         style={[
           textStyles.xl,
