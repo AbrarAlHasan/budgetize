@@ -23,10 +23,6 @@ import BorderLine from "@/components/BorderLine";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import DateRangePicker from "@/components/DateRangePicker";
 import { formatDateTimeTimezone } from "@/utils/DateCalculator";
-import {
-  getMonthlyCategoryList,
-  getWeeklyCategoryList,
-} from "@/api/home.action";
 import { ICategory } from "@/types/HomeScreenTypes";
 import Checkbox from "expo-checkbox";
 import { useToast } from "react-native-toast-notifications";

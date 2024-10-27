@@ -87,12 +87,12 @@ const BackgroundScheduler = () => {
     }
   };
 
-  useEffect(() => {
-    if (!authSlice?.isAuthenticated) {
-      return;
-    }
-    fetchCategoryList();
-  }, [authSlice?.isAuthenticated, homeSlice.categoryDataApiTrigger]);
+  // useEffect(() => {
+  //   if (!authSlice?.isAuthenticated) {
+  //     return;
+  //   }
+  //   fetchCategoryList();
+  // }, [authSlice?.isAuthenticated, homeSlice.categoryDataApiTrigger]);
 
   useEffect(() => {
     if (!authSlice?.isAuthenticated) {
