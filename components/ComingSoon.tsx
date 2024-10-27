@@ -4,6 +4,7 @@ import { BlurView } from "expo-blur";
 import { Image } from "expo-image";
 import { Colors } from "@/constants/Colors";
 import { commonStyles } from "@/stylings/CustomStyles";
+import LottieView from "lottie-react-native";
 
 const ComingSoon = ({
   renderBackground = () => <></>,
@@ -17,13 +18,14 @@ const ComingSoon = ({
       style={[
         {
           flex: 1,
-          backgroundColor: Colors[colorScheme ?? "light"].lightGray,
+          backgroundColor: Colors[colorScheme ?? "light"].background,
           alignItems: "center",
+          justifyContent: "center",
         },
       ]}
     >
-      {renderBackground()}
-      <BlurView
+      {/* {renderBackground()} */}
+      {/* <BlurView
         intensity={25}
         style={[
           commonStyles.alignJustifyCenter,
@@ -34,7 +36,15 @@ const ComingSoon = ({
           source={require("../assets/images/under-construction.png")}
           style={{ width: 500, aspectRatio: 1 }}
         />
-      </BlurView>
+      </BlurView> */}
+      <LottieView
+        autoPlay
+        style={{
+          width: 400,
+          aspectRatio: 1,
+        }}
+        source={require("@/assets/gifs/UnderDevelopment.json")}
+      />
     </View>
   );
 };

@@ -109,7 +109,7 @@ const Login = () => {
   const onForgotPasswordClick = async () => {
     if (validateForgetPassword()) {
       const response = await supabase.functions.invoke("forgot-password", {
-        body: { email: "abraralhasan123@gmail.com" },
+        body: { email: email },
       });
 
       if (response?.data?.error === true) {
