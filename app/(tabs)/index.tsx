@@ -17,7 +17,7 @@ import {
   SafeAreaInsetsContext,
   SafeAreaView,
 } from "react-native-safe-area-context";
-import { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import DateRangePicker from "@/components/DateRangePicker";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState, store } from "@/redux/store";

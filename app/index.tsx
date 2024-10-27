@@ -1,5 +1,5 @@
 // app/startup.tsx
-import { useEffect } from "react";
+import React,{ useEffect } from "react";
 import { useRouter } from "expo-router";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState, store } from "@/redux/store";
