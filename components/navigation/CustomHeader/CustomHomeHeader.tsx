@@ -22,7 +22,14 @@ import { setIsDateRangeVisible } from "@/redux/reducers/slice/homeSlice";
 import { formatDateTimeTimezone } from "@/utils/DateCalculator";
 import { router } from "expo-router";
 import { initiateLogout } from "@/api/authentication.action";
-const CustomHomeHeader = () => {
+import { AntDesign } from "@expo/vector-icons";
+const CustomHomeHeader = ({
+  onlyDateRange,
+  showBack,
+}: {
+  onlyDateRange?: boolean;
+  showBack?: boolean;
+}) => {
   const colorScheme = useColorScheme();
   const { top } = useSafeAreaInsets();
 
@@ -37,20 +44,35 @@ const CustomHomeHeader = () => {
           backgroundColor: Colors[colorScheme ?? "light"].background,
           paddingTop: top + 10,
           paddingBottom: 20,
+          justifyContent: onlyDateRange ? "center" : "space-between",
+          position: "relative",
         },
       ]}
     >
-      <Pressable
-        onPress={() => {
-          initiateLogout();
-        }}
-      >
-        <FontAwesome6
-          name="business-time"
-          size={24}
-          color={Colors[colorScheme ?? "light"].primary}
-        />
-      </Pressable>
+      {showBack && (
+        <Pressable
+          onPress={() => {
+            router.back();
+          }}
+          style={{ position: "absolute", left: 10, zIndex: 20, bottom: 20 }}
+        >
+          <AntDesign
+            name="left"
+            size={24}
+            color={Colors[colorScheme ?? "light"].darkText}
+          />
+        </Pressable>
+      )}
+
+      {!onlyDateRange && (
+        <Pressable onPress={() => {}}>
+          <FontAwesome6
+            name="business-time"
+            size={24}
+            color={Colors[colorScheme ?? "light"].primary}
+          />
+        </Pressable>
+      )}
       <Pressable
         onPress={() => {
           dispatch(setIsDateRangeVisible(true));
@@ -69,17 +91,19 @@ const CustomHomeHeader = () => {
           )} - ${formatDateTimeTimezone(homeSlice.dateRange.toDate, "MMM DD")}`}
         </Text>
       </Pressable>
-      <Pressable
-        onPress={() => {
-          router.navigate("/(stack)/addTransaction");
-        }}
-      >
-        <FontAwesome6
-          name="edit"
-          size={24}
-          color={Colors[colorScheme ?? "light"].primary}
-        />
-      </Pressable>
+      {!onlyDateRange && (
+        <Pressable
+          onPress={() => {
+            router.navigate("/(stack)/addCategory");
+          }}
+        >
+          <FontAwesome6
+            name="edit"
+            size={24}
+            color={Colors[colorScheme ?? "light"].primary}
+          />
+        </Pressable>
+      )}
     </View>
   );
 };

@@ -1,4 +1,8 @@
-import { ICategory, ICategorySpends } from "@/types/HomeScreenTypes";
+import {
+  ICategory,
+  ICategoryBudget,
+  ICategorySpends,
+} from "@/types/HomeScreenTypes";
 import { getCurrentWeekRange } from "@/utils/DateCalculator";
 import { type PayloadAction, createSlice } from "@reduxjs/toolkit";
 
@@ -15,6 +19,8 @@ interface IHomeSlice {
   monthlyCategoryList: Array<ICategory>;
   homeDataApiTrigger: boolean;
   categoryDataApiTrigger: boolean;
+  weeklyCategoryBudget: Array<ICategoryBudget>;
+  monthlyCategoryBudget: Array<ICategoryBudget>;
 }
 
 const initialState: IHomeSlice = {
@@ -33,6 +39,8 @@ const initialState: IHomeSlice = {
   monthlyCategoryList: [],
   homeDataApiTrigger: false,
   categoryDataApiTrigger: false,
+  weeklyCategoryBudget: [],
+  monthlyCategoryBudget: [],
 };
 
 const homeSlice = createSlice({
@@ -75,6 +83,12 @@ const homeSlice = createSlice({
     triggerCategoryApi: (state) => {
       state.categoryDataApiTrigger = !state.categoryDataApiTrigger;
     },
+    setWeeklyCategoryBudget: (state, action) => {
+      state.weeklyCategoryBudget = action.payload;
+    },
+    setMonthlyCategoryBudget: (state, action) => {
+      state.monthlyCategoryBudget = action.payload;
+    },
   },
 });
 
@@ -91,6 +105,8 @@ export const {
   setMonthlyCategoryList,
   triggerHomeApi,
   triggerCategoryApi,
+  setWeeklyCategoryBudget,
+  setMonthlyCategoryBudget,
 } = homeSlice.actions;
 
 export default homeSlice.reducer;

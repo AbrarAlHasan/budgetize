@@ -132,7 +132,7 @@ const Login = () => {
         { flex: 1, backgroundColor: Colors[colorScheme ?? "light"].background },
       ]}
     >
-      <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
+      <TouchableWithoutFeedback onPress={() => {}}>
         <KeyboardAvoidingView
           style={[
             commonStyles.alignJustifyCenter,

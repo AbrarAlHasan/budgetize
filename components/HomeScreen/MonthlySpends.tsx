@@ -11,7 +11,7 @@ const MonthlySpends = () => {
 
   return (
     <>
-      {homeSlice.monthlyCategories?.length > 0 && (
+      {homeSlice.monthlyCategoryBudget?.length > 0 && (
         <>
           <Header
             label="Monthly"
@@ -23,7 +23,7 @@ const MonthlySpends = () => {
             fromDate={getCurrentMonthRange().fromDate}
             toDate={getCurrentMonthRange().toDate}
           />
-          {homeSlice.monthlyCategories?.map((data, idx) => (
+          {homeSlice.monthlyCategoryBudget?.map((data, idx) => (
             <CategoryBudget
               key={data?.category_id}
               data={data}

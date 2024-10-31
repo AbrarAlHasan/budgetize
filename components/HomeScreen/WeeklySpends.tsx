@@ -8,9 +8,10 @@ import { RootState } from "@/redux/store";
 
 const WeeklySpends = () => {
   const homeSlice = useSelector((state: RootState) => state.HomeSlice);
+
   return (
     <>
-      {homeSlice.weeklyCategories?.length > 0 && (
+      {homeSlice.weeklyCategoryBudget?.length > 0 && (
         <>
           <Header
             label="Weekly"
@@ -23,7 +24,7 @@ const WeeklySpends = () => {
             toDate={getCurrentWeekRange(homeSlice.dateRange.toDate).toDate}
           />
 
-          {homeSlice.weeklyCategories?.map((data, idx) => (
+          {homeSlice.weeklyCategoryBudget?.map((data, idx) => (
             <CategoryBudget
               key={data?.category_id}
               data={data}

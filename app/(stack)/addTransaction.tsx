@@ -6,18 +6,26 @@ import {
   useColorScheme,
   View,
 } from "react-native";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Colors } from "@/constants/Colors";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import CustomButton from "@/components/CustomButton";
 import { commonStyles } from "@/stylings/CustomStyles";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
+import { supabase } from "@/lib/supabase";
 const keyBoardValues = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0"];
 const AddTransaction = () => {
   const colorScheme = useColorScheme();
+  const routeParams = useLocalSearchParams();
 
   const [amount, setAmount] = useState("0");
+
+  useEffect(() => {
+    if (routeParams?.type === "BUDGET") {
+      setAmount(routeParams?.budgetAmount as string);
+    }
+  }, []);
 
   const handlePress = (value: string) => {
     if (value === "." && amount.includes(".")) {
@@ -36,6 +44,33 @@ const AddTransaction = () => {
   const handleBackspace = () => {
     setAmount(amount.slice(0, -1) || "0");
   };
+
+  const onConfirm = () => {
+    if (routeParams?.type === "BUDGET") {
+      updateBudget();
+      return;
+    }
+    router.navigate({
+      pathname: "/(stack)/confirmTransaction",
+      params: { amount },
+    });
+  };
+
+  const updateBudget = async () => {
+    const payload = {
+      amount: parseInt(amount),
+    };
+
+    const response = await supabase
+      .from("budget")
+      .update(payload)
+      .eq("id", routeParams?.budgetId);
+
+    if(response?.error ===null){
+      router.back()
+    }
+  };
+
   return (
     <SafeAreaView
       style={[
@@ -106,10 +141,7 @@ const AddTransaction = () => {
         label="Continue"
         colorType="primary"
         onPress={() => {
-          router.navigate({
-            pathname: "/(stack)/confirmTransaction",
-            params: { amount },
-          });
+          onConfirm();
         }}
       />
     </SafeAreaView>

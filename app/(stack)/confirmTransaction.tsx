@@ -22,14 +22,27 @@ import CustomTextInput from "@/components/CustomTextInput";
 import BorderLine from "@/components/BorderLine";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import DateRangePicker from "@/components/DateRangePicker";
-import { formatDateTimeTimezone } from "@/utils/DateCalculator";
-import { ICategory } from "@/types/HomeScreenTypes";
+import {
+  formatDateTimeTimezone,
+  getCurrentMonthRange,
+  getCurrentWeekRange,
+} from "@/utils/DateCalculator";
+import {
+  ICategory,
+  ICategoryBudget,
+  ICategoryV2,
+} from "@/types/HomeScreenTypes";
 import Checkbox from "expo-checkbox";
 import { useToast } from "react-native-toast-notifications";
 import { supabase } from "@/lib/supabase";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState, store } from "@/redux/store";
 import { triggerHomeApi } from "@/redux/reducers/slice/homeSlice";
+import {
+  getCategoryBasedOnDate,
+  getCurrentMonthBudgetV2,
+  getCurrentWeekBudgetV2,
+} from "@/api/home.action";
 
 const ConfirmTransaction = () => {
   const { amount }: { amount: string } = useLocalSearchParams();
@@ -39,21 +52,64 @@ const ConfirmTransaction = () => {
   const dispatch = useDispatch();
 
   const [isDateRangeVisible, setIsDateRangeVisible] = useState(false);
-  const [spentDate, setSpentDate] = useState<Date | null>(null);
+  const [spentDate, setSpentDate] = useState<Date>(new Date());
 
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] =
+    useState<ICategoryBudget | null>(null);
 
   const [description, setDescription] = useState("");
 
-  const { weeklyCategoryList, monthlyCategoryList } = useSelector(
-    (state: RootState) => state.HomeSlice
-  );
+  // const { weeklyCategoryList, monthlyCategoryList } = useSelector(
+  //   (state: RootState) => state.HomeSlice
+  // );
+
+  useEffect(() => {
+    fetchCategoryList(spentDate);
+  }, []);
+
+  const [weeklyCategoryList, setWeeklyCategoryList] =
+    useState<ICategoryBudget[]>();
+  const [monthlyCategoryList, setMonthlyCategoryList] =
+    useState<ICategoryBudget[]>();
 
   const toast = useToast();
+
+  const fetchCategoryList = async (date: Date) => {
+    const currentWeek = getCurrentWeekRange(date);
+    const currentMonth = getCurrentMonthRange(date);
+    const [weeklyCategoryResponse, monthlyCategoryResponse] =
+      await Promise.allSettled([
+        getCurrentWeekBudgetV2({
+          ...currentWeek,
+        }),
+        getCurrentMonthBudgetV2({
+          ...currentMonth,
+        }),
+      ]);
+
+    if (
+      weeklyCategoryResponse?.status === "fulfilled" &&
+      weeklyCategoryResponse?.value?.error === null
+    ) {
+      setWeeklyCategoryList(
+        weeklyCategoryResponse?.value?.response as ICategoryBudget[]
+      );
+    }
+    if (
+      monthlyCategoryResponse?.status === "fulfilled" &&
+      monthlyCategoryResponse?.value?.error === null
+    ) {
+      setMonthlyCategoryList(
+        monthlyCategoryResponse?.value?.response as ICategoryBudget[]
+      );
+    }
+  };
 
   const confirmDateRange = (date: any) => {
     setIsDateRangeVisible(false);
     setSpentDate(new Date(date?.dateString));
+    fetchCategoryList(new Date(date?.dateString));
+    setSelectedCategory(null);
   };
 
   const addTransaction = async () => {
@@ -62,17 +118,21 @@ const ConfirmTransaction = () => {
       return;
     }
     const payload = {
-      category_id: parseInt(selectedCategory as string),
+      category_id: selectedCategory?.category_id,
       description: description,
       date: formatDateTimeTimezone(spentDate, "YYYY-MM-DD"),
       amount: parseFloat(amount),
       user_id: store.getState().AuthSlice.userDetails?.user_id,
+      category_type: selectedCategory?.category_type,
     };
+    console.log(payload);
+
     const { data, error } = await supabase.from("transactions").insert(payload);
     if (error === null) {
       dispatch(triggerHomeApi());
       router.replace("/(tabs)/");
     }
+    console.log(error);
   };
 
   return (
@@ -232,7 +292,7 @@ const ConfirmTransaction = () => {
           </Text>
         </View>
         <View>
-          {weeklyCategoryList?.map((data: ICategory) => {
+          {weeklyCategoryList?.map((data) => {
             return (
               <View
                 key={data?.category_id}
@@ -278,7 +338,7 @@ const ConfirmTransaction = () => {
           </Text>
         </View>
         <View>
-          {monthlyCategoryList?.map((data: ICategory) => {
+          {monthlyCategoryList?.map((data) => {
             return (
               <View
                 key={data?.category_id}
@@ -315,29 +375,33 @@ const ConfirmTransaction = () => {
 
 export default ConfirmTransaction;
 
-const CategoryList = ({
+export const CategoryList = ({
   data,
   selectedCategory,
   setSelectedCategory,
 }: {
-  data: ICategory;
-  selectedCategory: string | null;
-  setSelectedCategory: (value: string) => void;
+  data: ICategoryBudget;
+  selectedCategory: ICategoryBudget | null;
+  setSelectedCategory: (value: ICategoryBudget) => void;
 }) => {
   const colorScheme = useColorScheme();
   return (
     <>
       <Pressable
         onPress={() => {
-          setSelectedCategory(data?.category_id.toString());
+          setSelectedCategory(data);
         }}
-        style={[commonStyles.alignJustifyCenter, { flexDirection: "row" }]}
+        style={[
+          commonStyles.alignJustifyCenter,
+          { flexDirection: "row", flex: 1 },
+        ]}
       >
         <View
           style={[
             commonStyles.alignJustifyCenter,
             {
-              backgroundColor: data?.background_color || Colors.dark.primary,
+              backgroundColor:
+                data?.category?.background_color || Colors.dark.primary,
               borderRadius: 100,
               aspectRatio: 1,
               height: 40,
@@ -345,30 +409,73 @@ const CategoryList = ({
           ]}
         >
           <Text style={[textStyles.xl, { paddingLeft: 3, paddingTop: 2 }]}>
-            {data?.icon}
+            {data?.category?.icon}
           </Text>
         </View>
-        <Text
-          style={[
-            textStyles.bolder,
-            textStyles.sm,
-            {
-              flex: 1,
-              marginLeft: 20,
-              color: Colors[colorScheme ?? "light"].darkText,
-            },
-          ]}
+        <View
+          style={{
+            flex: 1,
+            marginLeft: 20,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
         >
-          {data?.category_name}
-        </Text>
+          <Text
+            style={[
+              textStyles.bolder,
+              textStyles.sm,
+              {
+                color: Colors[colorScheme ?? "light"].darkText,
+                maxWidth: "60%",
+              },
+            ]}
+          >
+            {data?.category?.category_name}
+          </Text>
+          <View
+            style={{
+              backgroundColor:
+                data?.amountSpent > data?.amount
+                  ? Colors.light.lightRed
+                  : data?.amount / 2 < data?.amountSpent
+                  ? Colors.light.lightOrange
+                  : Colors.light.lightGreen,
+              borderRadius: 20,
+              alignItems: "center",
+              justifyContent: "center",
+              paddingHorizontal: 10,
+              height: 24,
+            }}
+          >
+            <Text
+              style={[
+                textStyles.semiBold,
+                textStyles.xs,
+                {
+                  color:
+                    data?.amountSpent > data?.amount
+                      ? Colors.light.darkRed
+                      : data?.amount / 2 < data?.amountSpent
+                      ? Colors.light.darkOrange
+                      : Colors.light.darkGreen,
+                },
+              ]}
+              adjustsFontSizeToFit={true}
+              numberOfLines={1}
+            >
+              {formatPrice().format(data?.amount - data?.amountSpent || 0)}
+            </Text>
+          </View>
+        </View>
         <Checkbox
           style={{ margin: 8, borderRadius: 100, width: 20, aspectRatio: 1 }}
-          value={data?.category_id.toString() == selectedCategory}
+          value={data?.category_id == selectedCategory?.category_id}
           onValueChange={() => {
-            setSelectedCategory(data?.category_id.toString());
+            setSelectedCategory(data);
           }}
           color={
-            data?.category_id.toString() == selectedCategory
+            data?.category_id == selectedCategory?.category_id
               ? Colors[colorScheme ?? "light"].primary
               : undefined
           }

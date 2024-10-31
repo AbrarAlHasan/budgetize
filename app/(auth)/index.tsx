@@ -1,4 +1,11 @@
-import { Image, StyleSheet, Text, useColorScheme, View } from "react-native";
+import {
+  Image,
+  Platform,
+  StyleSheet,
+  Text,
+  useColorScheme,
+  View,
+} from "react-native";
 import React from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AppLogo from "../../assets/images/icon.png";
@@ -7,6 +14,7 @@ import CustomButton from "@/components/CustomButton";
 import { router } from "expo-router";
 import { Colors } from "@/constants/Colors";
 import LottieView from "lottie-react-native";
+import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 
 const Onboarding = () => {
   const colorScheme = useColorScheme();
@@ -31,14 +39,26 @@ const Onboarding = () => {
       ]}
     >
       {/* <Image source={AppLogo} width={64} height={64} /> */}
-      <LottieView
-        autoPlay
-        style={{
-          width: 300,
-          height: 300,
-        }}
-        source={require("@/assets/gifs/Budget.json")}
-      />
+      {Platform.OS === "web" ? (
+        <DotLottieReact
+          autoplay={true}
+          style={{
+            width: 300,
+            height: 300,
+          }}
+          src={"../../assets/gifs/Budget.json"}
+          loop={true}
+        />
+      ) : (
+        <LottieView
+          autoPlay
+          style={{
+            width: 300,
+            height: 300,
+          }}
+          source={require("@/assets/gifs/Budget.json")}
+        />
+      )}
       <Text
         style={[
           textStyles.xl,

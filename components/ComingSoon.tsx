@@ -1,10 +1,11 @@
-import { StyleSheet, Text, useColorScheme, View } from "react-native";
+import { Platform, StyleSheet, Text, useColorScheme, View } from "react-native";
 import React, { ReactElement } from "react";
 import { BlurView } from "expo-blur";
 import { Image } from "expo-image";
 import { Colors } from "@/constants/Colors";
 import { commonStyles } from "@/stylings/CustomStyles";
 import LottieView from "lottie-react-native";
+import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 
 const ComingSoon = ({
   renderBackground = () => <></>,
@@ -37,14 +38,35 @@ const ComingSoon = ({
           style={{ width: 500, aspectRatio: 1 }}
         />
       </BlurView> */}
-      <LottieView
+
+      {Platform.OS === "web" ? (
+        <DotLottieReact
+          autoplay={true}
+          style={{
+            width: 400,
+            aspectRatio: 1,
+          }}
+          src={"../../assets/gifs/UnderDevelopment.json"}
+          loop={true}
+        />
+      ) : (
+        <LottieView
+          autoPlay
+          style={{
+            width: 400,
+            aspectRatio: 1,
+          }}
+          source={require("@/assets/gifs/UnderDevelopment.json")}
+        />
+      )}
+      {/* <LottieView
         autoPlay
         style={{
           width: 400,
           aspectRatio: 1,
         }}
         source={require("@/assets/gifs/UnderDevelopment.json")}
-      />
+      /> */}
     </View>
   );
 };

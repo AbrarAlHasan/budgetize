@@ -2,7 +2,13 @@
 import { RootState, store } from "@/redux/store";
 import { Stack, Slot } from "expo-router";
 import { useState, useEffect } from "react";
-import { View, ActivityIndicator, useColorScheme } from "react-native";
+import {
+  View,
+  ActivityIndicator,
+  useColorScheme,
+  Platform,
+  AppRegistry,
+} from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { Provider, useSelector } from "react-redux";
 import { ToastProvider } from "react-native-toast-notifications";
@@ -11,6 +17,7 @@ import { Colors } from "@/constants/Colors";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import * as Linking from "expo-linking";
 import { LinkingOptions } from "@react-navigation/native";
+import LoadingWrapper from "@/components/LoadingWrapper";
 
 const prefix = Linking.createURL("/");
 
@@ -71,9 +78,11 @@ export default function Layout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <Provider store={store}>
         <ToastProvider>
+          {/* <LoadingWrapper> */}
           <SafeAreaProvider>
             <MoneyManager />
           </SafeAreaProvider>
+          {/* </LoadingWrapper> */}
         </ToastProvider>
         <BackgroundScheduler />
       </Provider>

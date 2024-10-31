@@ -16,7 +16,12 @@ import {
   getCurrentMonthRange,
   getCurrentWeekRange,
 } from "@/utils/DateCalculator";
-import { ICategory, IDateRange } from "@/types/HomeScreenTypes";
+import {
+  ICategory,
+  ICategoryBudget,
+  ICategoryV2,
+  IDateRange,
+} from "@/types/HomeScreenTypes";
 import { textStyles } from "@/stylings/CustomStyles";
 import { Colors } from "@/constants/Colors";
 import { formatPrice } from "@/utils/PriceFormatter";
@@ -29,7 +34,8 @@ const Transactions = () => {
   const colorScheme = useColorScheme();
   const homeSlice = useSelector((state: RootState) => state.HomeSlice);
 
-  const [categoryDetails, setCategoryDetails] = useState<ICategory>();
+  const [categoryDetails, setCategoryDetails] = useState<ICategoryV2>();
+  const [budgetDetails, setBudgetDetails] = useState<ICategoryBudget>();
   const [dateRange, setDateRange] = useState<IDateRange>({
     fromDate: new Date(),
     toDate: new Date(),
@@ -38,41 +44,14 @@ const Transactions = () => {
   const [totalAmountSpent, setTotalAmountSpent] = useState(0);
 
   useEffect(() => {
-    // let fromDate = new Date();
-    // let toDate = new Date();
-    // if (type === "MONTHLY") {
-    //   fromDate = getCurrentMonthRange(homeSlice.dateRange.fromDate).fromDate;
-    //   toDate = getCurrentMonthRange(homeSlice.dateRange.fromDate).toDate;
-    // } else {
-    //   fromDate = homeSlice.dateRange.fromDate;
-    //   toDate = homeSlice.dateRange.toDate;
-    // }
-    // const response = getTransactionsBasedOnCategory(Number(category_id), fromDate, toDate);
-    let selectedCategory;
-    if (type === "MONTHLY") {
-      selectedCategory = homeSlice.monthlyCategories.filter(
-        (data) => data.category_id == Number(category_id)
-      )[0];
-      setCategoryDetails(selectedCategory);
-
-      setDateRange(getCurrentMonthRange(homeSlice.dateRange.fromDate));
-    }
-    if (type === "WEEKLY") {
-      selectedCategory = homeSlice.weeklyCategories.filter(
-        (data) => data.category_id == Number(category_id)
-      )[0];
-      setCategoryDetails(selectedCategory);
-
-      setDateRange(getCurrentWeekRange(homeSlice.dateRange.fromDate));
-    }
-
-    setTotalAmountSpent(
-      selectedCategory?.transactions?.reduce(
-        (acc, cur) => acc + cur.amount,
-        0
-      ) || 0
-    );
+    const selectedBudget = homeSlice.weeklyCategoryBudget?.filter(
+      (data) => data?.category_id === Number(category_id)
+    )[0];
+    setBudgetDetails(selectedBudget);
+    setCategoryDetails(selectedBudget?.category);
+    console.log(selectedBudget);
   }, [category_id]);
+
   return (
     <SafeAreaView
       style={{
@@ -186,7 +165,7 @@ const Transactions = () => {
                   { color: Colors[colorScheme ?? "light"].darkText },
                 ]}
               >
-                {formatPrice().format(categoryDetails?.amount_allocated || 0)}
+                {formatPrice().format(budgetDetails?.amount || 0)}
               </Text>
               <Text style={{ color: Colors[colorScheme ?? "light"].darkText }}>
                 {" "}
@@ -209,8 +188,8 @@ const Transactions = () => {
                 ]}
               >
                 {formatPrice().format(
-                  (categoryDetails?.amount_allocated || 0) -
-                    (totalAmountSpent || 0)
+                  (budgetDetails?.amount || 0) -
+                    (budgetDetails?.amountSpent || 0)
                 )}
               </Text>
               <Text style={{ color: Colors[colorScheme ?? "light"].darkText }}>
@@ -229,7 +208,10 @@ const Transactions = () => {
             opacity: 0.5,
           }}
         />
-        <TransactionList transactions={categoryDetails?.transactions || []} />
+        <TransactionList
+          key={"Transaction"}
+          transactions={budgetDetails?.transaction}
+        />
       </View>
     </SafeAreaView>
   );

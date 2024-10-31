@@ -7,7 +7,7 @@ import {
   View,
 } from "react-native";
 import React, { useEffect, useState } from "react";
-import { ITransaction } from "@/types/HomeScreenTypes";
+import { ITransaction, ITransactionV2 } from "@/types/HomeScreenTypes";
 import { groupData } from "@/utils/CommonUtlis";
 import { formatDateTimeTimezone } from "@/utils/DateCalculator";
 import { textStyles } from "@/stylings/CustomStyles";
@@ -15,14 +15,15 @@ import { Colors } from "@/constants/Colors";
 import { formatPrice } from "@/utils/PriceFormatter";
 
 const TransactionList = ({
-  transactions = [],
+  transactions,
 }: {
-  transactions?: ITransaction[];
+  transactions?: Array<ITransactionV2> | undefined;
 }) => {
   const colorScheme = useColorScheme();
   const [transactionData, setTransactionData] = useState<any>();
   const [sortedDateList, setSortedDateList] = useState<any>([]);
   useEffect(() => {
+    console.log(transactions);
     const groupedData = groupData(transactions, "date");
     setTransactionData(groupedData);
 
@@ -55,6 +56,7 @@ const TransactionList = ({
             {transactionData[item]?.map((data: ITransaction, index: number) => {
               return (
                 <Pressable
+                  key={data?.id}
                   onPress={() => {
                     setShowUpdateAction((prevState) =>
                       prevState ? null : data?.id

@@ -12,9 +12,12 @@ import {
   REHYDRATE,
 } from "redux-persist";
 import rootReducer from "../reducers";
+import localStorage from "redux-persist/lib/storage";
+import { Platform } from "react-native";
 
 const persistConfig = {
   key: "root",
+  // storage: Platform.OS === "web" ? localStorage : AsyncStorage,
   storage: AsyncStorage,
   whitelist: ["AuthSlice", "HomeSlice"],
 };

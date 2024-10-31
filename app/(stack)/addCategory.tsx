@@ -26,17 +26,18 @@ import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/redux/store";
 import { supabase } from "@/lib/supabase";
 import { router, useLocalSearchParams } from "expo-router";
-import { ICategory } from "@/types/HomeScreenTypes";
+import { ICategory, ICategoryV2 } from "@/types/HomeScreenTypes";
 import {
   triggerCategoryApi,
   triggerHomeApi,
 } from "@/redux/reducers/slice/homeSlice";
 import moment from "moment";
+import { formatDateTimeTimezone } from "@/utils/DateCalculator";
+import { fetchCategoryBasedOnName } from "@/api/category.action";
 import {
-  formatDateTimeTimezone,
-  getCurrentMonthRange,
-  getCurrentWeekRange,
-} from "@/utils/DateCalculator";
+  disableLoading,
+  enableLoading,
+} from "@/redux/reducers/slice/globalSlice";
 
 const COLOR_LIST = [
   "#FF0000",
@@ -78,46 +79,44 @@ const AddCategory = () => {
     "WEEKLY"
   );
   const [categoryName, setCategoryName] = useState("");
-  const [categoryAmount, setCategoryAmount] = useState("");
-  const [categoryDetails, setCategoryDetails] = useState<ICategory | null>(
+
+  const [categoryDetails, setCategoryDetails] = useState<ICategoryV2 | null>(
     null
   );
 
-  const colorPosition = useSharedValue(0);
-  const previousColorPosition = useSharedValue(0);
-  const newColorPosition = useSharedValue(0);
-
-  // const animatedStyle = useAnimatedStyle(() => {
-  //   return {
-  //     backgroundColor: interpolateColor(
-  //       colorPosition.value,
-  //       [0, 1],
-  //       [
-  //         COLOR_LIST[previousColorPosition.value],
-  //         COLOR_LIST[newColorPosition.value],
-  //       ]
-  //     ),
-  //   };
-  // });
-
   useEffect(() => {
     const concatenatedCategory = [
-      ...homeSlice?.weeklyCategoryList,
-      ...homeSlice?.monthlyCategoryList,
+      ...homeSlice?.weeklyCategoryBudget,
+      ...homeSlice?.monthlyCategoryBudget,
     ];
-    const category = concatenatedCategory?.filter(
+    const selectedBudgetCategory = concatenatedCategory?.filter(
       (data) => "" + data.category_id == categoryId
     )[0];
 
-    if (category) {
-      setCategoryDetails(category);
-      setCategoryAmount(category?.amount_allocated.toString());
-      setBackgroundColor(category?.background_color);
-      setCategoryName(category?.category_name);
-      setCategoryType(category?.type);
-      setIcon(category?.icon);
+    console.log(homeSlice);
+
+    if (selectedBudgetCategory) {
+      setCategoryDetails(selectedBudgetCategory?.category);
+
+      setBackgroundColor(selectedBudgetCategory?.category?.background_color);
+      setCategoryName(selectedBudgetCategory?.category?.category_name);
+      setCategoryType(selectedBudgetCategory?.category?.type);
+      setIcon(selectedBudgetCategory?.category?.icon);
     }
   }, []);
+
+  const checkCategoryAlreadyAvailable = async () => {
+    const response: any = await fetchCategoryBasedOnName({
+      name: categoryName,
+      categoryType: categoryType,
+      categoryId: categoryId,
+    });
+    console.log("RES", response);
+    if (response?.response?.length > 0) {
+      return true;
+    }
+    return false;
+  };
 
   // const changeColor = (index: number) => {
   //   previousColorPosition.value = newColorPosition.value;
@@ -129,7 +128,7 @@ const AddCategory = () => {
     setBackgroundColor(color);
   };
 
-  const validate = () => {
+  const validate = async () => {
     if (!categoryName.trim()) {
       toast.show("Please Enter Category Name", {
         type: "danger",
@@ -138,31 +137,32 @@ const AddCategory = () => {
       return false;
     }
 
+    if (await checkCategoryAlreadyAvailable()) {
+      toast.show(
+        "The category name is already used. Please enter a different category name",
+        {
+          type: "warning",
+          duration: 2000,
+          placement: "top",
+        }
+      );
+      return false;
+    }
     return true;
   };
 
   const onCreate = async () => {
-    if (validate()) {
+    dispatch(enableLoading());
+    if (await validate()) {
       const payload: any = {
         type: categoryType,
         user_id: authSlice?.userDetails?.user_id as string,
         background_color: backgroundColor,
         icon: icon,
         category_name: categoryName,
-        amount_allocated: parseFloat(categoryAmount),
       };
       if (categoryDetails?.category_id) {
         delete payload.user_id;
-      }
-      if (categoryType === "WEEKLY") {
-        payload.from_date = formatDateTimeTimezone(
-          homeSlice?.dateRange?.fromDate
-        );
-      }
-      if (categoryType === "MONTHLY") {
-        payload.from_date = formatDateTimeTimezone(
-          moment(homeSlice?.dateRange?.fromDate)?.startOf("month").toDate()
-        );
       }
 
       let response;
@@ -179,15 +179,25 @@ const AddCategory = () => {
         dispatch(triggerHomeApi());
         dispatch(triggerCategoryApi());
         router.replace("/(tabs)/");
+        dispatch(disableLoading());
       }
     }
+  };
+
+  const categoryTypeCannotBeEdited = () => {
+    toast.show("Category type cannot be edited", {
+      type: "warning",
+      duration: 1000,
+      placement: "top",
+    });
+    return;
   };
 
   return (
     <TouchableWithoutFeedback
       style={{ zIndex: 1 }}
       onPress={() => {
-        Keyboard.dismiss();
+        // Keyboard.dismiss();
         if (isEmojiPickerOpen) {
           setIsEmojiPickerOpen(false);
         }
@@ -315,79 +325,87 @@ const AddCategory = () => {
             value={categoryName}
           />
 
-          <View style={{ marginVertical: 20, flexDirection: "row", gap: 20 }}>
-            <View style={{ flex: 1 }}>
-              <CustomTextInput
-                label="Amount Allocated"
-                placeholder="₹"
-                onChangeText={setCategoryAmount}
-                value={categoryAmount}
-              />
-            </View>
-            <View style={{ flex: 1, gap: 10 }}>
-              <Pressable
-                onPress={() => {
-                  setCategoryType("WEEKLY");
-                }}
+          <View
+            style={{
+              marginVertical: 20,
+              gap: 20,
+              flexDirection: "row",
+              width: "100%",
+            }}
+          >
+            <Pressable
+              onPress={() => {
+                if (categoryId) {
+                  categoryTypeCannotBeEdited();
+                  return;
+                }
+                setCategoryType("WEEKLY");
+              }}
+              style={[
+                commonStyles.alignJustifyCenter,
+                {
+                  flex: 1,
+                  backgroundColor:
+                    categoryType === "WEEKLY"
+                      ? Colors[colorScheme ?? "light"].primary
+                      : Colors[colorScheme ?? "light"].lightGray,
+                  borderRadius: 10,
+                  paddingVertical: 14,
+                },
+              ]}
+            >
+              <Text
                 style={[
-                  commonStyles.alignJustifyCenter,
+                  textStyles.bolder,
+                  textStyles.md,
                   {
-                    flex: 1,
-                    backgroundColor:
+                    color:
                       categoryType === "WEEKLY"
-                        ? Colors[colorScheme ?? "light"].primary
-                        : Colors[colorScheme ?? "light"].lightGray,
-                    borderRadius: 10,
+                        ? Colors[colorScheme ?? "light"].lightText
+                        : Colors[colorScheme ?? "light"].darkText,
                   },
                 ]}
               >
-                <Text
-                  style={[
-                    textStyles.bolder,
-                    textStyles.md,
-                    {
-                      color:
-                        categoryType === "WEEKLY"
-                          ? Colors[colorScheme ?? "light"].lightText
-                          : Colors[colorScheme ?? "light"].darkText,
-                    },
-                  ]}
-                >
-                  Weekly
-                </Text>
-              </Pressable>
-              <Pressable
-                onPress={() => {
-                  setCategoryType("MONTHLY");
-                }}
+                Weekly
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => {
+                if (categoryId) {
+                  categoryTypeCannotBeEdited();
+
+                  return;
+                }
+                setCategoryType("MONTHLY");
+              }}
+              style={[
+                commonStyles.alignJustifyCenter,
+                {
+                  flex: 1,
+                  backgroundColor:
+                    categoryType === "MONTHLY"
+                      ? Colors[colorScheme ?? "light"].primary
+                      : Colors[colorScheme ?? "light"].lightGray,
+                  borderRadius: 10,
+                  paddingVertical: 14,
+                },
+              ]}
+            >
+              <Text
                 style={[
-                  commonStyles.alignJustifyCenter,
+                  textStyles.bolder,
+                  textStyles.md,
                   {
-                    flex: 1,
-                    backgroundColor:
+                    color:
                       categoryType === "MONTHLY"
-                        ? Colors[colorScheme ?? "light"].primary
-                        : Colors[colorScheme ?? "light"].lightGray,
-                    borderRadius: 10,
+                        ? Colors[colorScheme ?? "light"].lightText
+                        : Colors[colorScheme ?? "light"].darkText,
                   },
                 ]}
               >
-                <Text
-                  style={[
-                    textStyles.bolder,
-                    textStyles.md,
-                    {
-                      color:
-                        categoryType === "MONTHLY"
-                          ? Colors[colorScheme ?? "light"].lightText
-                          : Colors[colorScheme ?? "light"].darkText,
-                    },
-                  ]}
-                >
-                  Monthly
-                </Text>
-              </Pressable>
-            </View>
+                Monthly
+              </Text>
+            </Pressable>
           </View>
 
           {/* COLOR LIST */}

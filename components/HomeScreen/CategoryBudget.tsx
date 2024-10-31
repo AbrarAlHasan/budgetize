@@ -8,7 +8,11 @@ import {
 import React, { useEffect, useState } from "react";
 import { Colors } from "@/constants/Colors";
 import { commonStyles, textStyles } from "@/stylings/CustomStyles";
-import { ICategory, ITransaction } from "@/types/HomeScreenTypes";
+import {
+  ICategory,
+  ICategoryBudget,
+  ITransaction,
+} from "@/types/HomeScreenTypes";
 import { formatPrice } from "@/utils/PriceFormatter";
 import { supabase } from "@/lib/supabase";
 import { useDispatch, useSelector } from "react-redux";
@@ -22,7 +26,7 @@ const CategoryBudget = ({
   type,
   idx,
 }: {
-  data: ICategory;
+  data: ICategoryBudget;
   type: "MONTHLY" | "WEEKLY";
   idx: number;
 }) => {
@@ -31,9 +35,9 @@ const CategoryBudget = ({
   const [totalSpent, setTotalSpent] = useState(0);
 
   useEffect(() => {
-    setTotalSpent(
-      data?.transactions?.reduce((acc, curr) => acc + curr.amount, 0)
-    );
+    // setTotalSpent(
+    //   data?.transactions?.reduce((acc, curr) => acc + curr.amount, 0)
+    // );
   }, [data]);
 
   const navigateToTransactions = () => {
@@ -64,7 +68,8 @@ const CategoryBudget = ({
             style={[
               commonStyles.alignJustifyCenter,
               {
-                backgroundColor: data?.background_color || Colors.dark.primary,
+                backgroundColor:
+                  data?.category?.background_color || Colors.dark.primary,
                 borderRadius: 100,
                 aspectRatio: 1,
                 height: 32,
@@ -72,7 +77,7 @@ const CategoryBudget = ({
             ]}
           >
             <Text style={[textStyles.sm, { paddingLeft: 3, paddingTop: 2 }]}>
-              {data?.icon}
+              {data?.category?.icon}
             </Text>
           </View>
           <Text
@@ -82,7 +87,7 @@ const CategoryBudget = ({
               { color: Colors[colorScheme ?? "light"].darkText },
             ]}
           >
-            {data?.category_name}
+            {data?.category?.category_name}
           </Text>
         </View>
 
@@ -96,7 +101,7 @@ const CategoryBudget = ({
             ]}
             numberOfLines={1}
           >
-            {formatPrice().format(data?.amount_allocated || 0)}
+            {formatPrice().format(data?.amount || 0)}
           </Text>
         </View>
 
@@ -110,9 +115,9 @@ const CategoryBudget = ({
           <View
             style={{
               backgroundColor:
-                totalSpent > data?.amount_allocated
+                data?.amountSpent > data?.amount
                   ? Colors.light.lightRed
-                  : data?.amount_allocated / 2 < totalSpent
+                  : data?.amount / 2 < data?.amountSpent
                   ? Colors.light.lightOrange
                   : Colors.light.lightGreen,
               borderRadius: 20,
@@ -129,9 +134,9 @@ const CategoryBudget = ({
                 textStyles.xs,
                 {
                   color:
-                    totalSpent > data?.amount_allocated
+                    data?.amountSpent > data?.amount
                       ? Colors.light.darkRed
-                      : data?.amount_allocated / 2 < totalSpent
+                      : data?.amount / 2 < data?.amountSpent
                       ? Colors.light.darkOrange
                       : Colors.light.darkGreen,
                 },
@@ -139,7 +144,7 @@ const CategoryBudget = ({
               adjustsFontSizeToFit={true}
               numberOfLines={1}
             >
-              {formatPrice().format(data?.amount_allocated - totalSpent || 0)}
+              {formatPrice().format(data?.amount - data?.amountSpent || 0)}
             </Text>
           </View>
         </View>

@@ -41,14 +41,6 @@ export default function HomeScreen() {
 
   const dispatch = useDispatch();
 
-  const onCancel = () => {
-    dispatch(setIsDateRangeVisible(false));
-  };
-  const onConfirm = (data: any) => {
-    dispatch(setDateRange(getCurrentWeekRange(data?.startDateString)));
-    dispatch(setIsDateRangeVisible(false));
-  };
-
   return (
     <>
       <ScrollView
@@ -61,18 +53,13 @@ export default function HomeScreen() {
           <MonthlySpends />
         </View>
         <DottedButton
-          label="Add New Category"
+          label="Add / Edit Budget"
           onPress={() => {
-            router.navigate("/(stack)/addCategory");
+            router.navigate("/(stack)/(addBudget)/addBudget");
           }}
         />
       </ScrollView>
-      <DateRangePicker
-        isVisible={homeSlice.isDateRangeVisible}
-        onCancel={onCancel}
-        mode="range"
-        onConfirm={onConfirm}
-      />
+
       <FloatingButton
         onPress={() => {
           router.navigate("/(stack)/addTransaction");

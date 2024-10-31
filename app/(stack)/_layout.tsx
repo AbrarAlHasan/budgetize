@@ -20,6 +20,7 @@ export default function StackLayout() {
         name="confirmTransaction"
         options={{ headerShown: false }}
       />
+      <Stack.Screen name="(addBudget)" options={{ headerShown: false }} />
     </Stack>
   );
 }
