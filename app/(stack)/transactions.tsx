@@ -56,6 +56,7 @@ const Transactions = () => {
         (data) => data?.category_id === Number(category_id)
       )[0];
     }
+
     setBudgetDetails(selectedBudget);
     setCategoryDetails(selectedBudget?.category);
   }, [category_id]);
@@ -147,12 +148,10 @@ const Transactions = () => {
                 { color: Colors[colorScheme ?? "light"].darkText },
               ]}
             >
-              {type === "WEEKLY"
-                ? `${formatDateTimeTimezone(
-                    dateRange?.fromDate,
-                    "MMM D"
-                  )} - ${formatDateTimeTimezone(dateRange?.toDate, "D")}`
-                : formatDateTimeTimezone(dateRange.fromDate, "MMM YYYY")}
+              {`${formatDateTimeTimezone(
+                budgetDetails?.from_date,
+                "MMM D"
+              )} - ${formatDateTimeTimezone(budgetDetails?.to_date, "D")}`}
             </Text>
             <Text
               style={[

@@ -132,7 +132,7 @@ const BackgroundScheduler = () => {
   };
 
   useEffect(() => {
-    if (!authSlice?.isAuthenticated) {
+    if (!authSlice?.isAuthenticated || authSlice?.checkingAuthentication) {
       return;
     }
     // fetchHomeData();

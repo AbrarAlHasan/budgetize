@@ -36,7 +36,11 @@ const LoadingWrapper = ({ children }: any) => {
               width,
             }}
           >
-            <LottieAnimation src="loader" style={{ width: 200, height: 200 }} />
+            <LottieAnimation
+              src={require("@/assets/gifs/Loading.json")}
+              style={{ width: 200, height: 200 }}
+              type={"loader"}
+            />
           </View>
         </>
       )}

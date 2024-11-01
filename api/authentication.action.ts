@@ -36,7 +36,7 @@ export const checkActiveSessionAction = async () => {
       store.dispatch(
         setCheckingAuthentication({
           isAuthenticated: false,
-          checkingAuthentication: true,
+          checkingAuthentication: false,
         })
       );
       return false;
@@ -45,7 +45,7 @@ export const checkActiveSessionAction = async () => {
     store.dispatch(
       setCheckingAuthentication({
         isAuthenticated: false,
-        checkingAuthentication: true,
+        checkingAuthentication: false,
       })
     );
     return false;
