@@ -14,7 +14,9 @@
     "start-supabase": "supabase start",
     "stop-supabase": "supabase stop",
     "link-supabase": "supabase link --project-ref",
-    "patch-date-picker": "npx patch-package react-native-neat-date-picker"
+    "patch-date-picker": "npx patch-package react-native-neat-date-picker",
+    "deploy-supabase-function": "supabase functions deploy <FUnCTION_NAME> --project-ref <PROJECT_REF>",
+    "generate-apk": "eas build -p android --profile preview"
   },
   "jest": {
     "preset": "jest-expo"

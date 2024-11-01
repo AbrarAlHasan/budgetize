@@ -10,6 +10,50 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 import nodemailer from "npm:nodemailer@6.9.10";
 import * as postgres from "https://deno.land/x/postgres@v0.17.0/mod.ts";
 
+const defaultCategoryList = [
+  {
+    category_name: "Breakfast",
+    type: "WEEKLY",
+  },
+  {
+    category_name: "Lunch",
+    type: "WEEKLY",
+  },
+  {
+    category_name: "Dinner",
+    type: "WEEKLY",
+  },
+  {
+    category_name: "Snacks",
+    type: "WEEKLY",
+  },
+  {
+    category_name: "Petrol / Diesel",
+    type: "WEEKLY",
+  },
+
+  {
+    category_name: "Travel",
+    type: "MONTHLY",
+  },
+  {
+    category_name: "Rent",
+    type: "MONTHLY",
+  },
+  {
+    category_name: "Electricity Bill",
+    type: "MONTHLY",
+  },
+  {
+    category_name: "Recharge",
+    type: "MONTHLY",
+  },
+  {
+    category_name: "Shopping",
+    type: "MONTHLY",
+  },
+];
+
 //CONNECT TO SUPABASE CLIENT
 const supabaseClient = createClient(
   Deno.env.get("SUPABASE_URL") ??
@@ -28,7 +72,7 @@ const pool = new postgres.Pool(databaseUrl, 3, true);
 //GENERATE RANDOM PASSWORD
 function generateRandomPassword(length = 12) {
   const characters =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
+    "ABCDEFGHJKLMNOPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz0123456789!@#$%^&*";
   let randomPassword = "";
 
   for (let i = 0; i < length; i++) {
@@ -70,6 +114,8 @@ Deno.serve(async (req) => {
         user_metadata: { name: data?.name },
       });
 
+      console.log(userCreatedResponse);
+
       if (userCreatedResponse.error === null) {
         const updatedUserResponse = await supabaseClient
           .from("account_creation_requests")
@@ -78,10 +124,27 @@ Deno.serve(async (req) => {
         const newUserPayload = {
           name: data?.name,
           email: data?.email,
+          auth_user_id: userCreatedResponse?.data?.id,
         };
         const newUser = await supabaseClient
           .from("users")
           .insert(newUserPayload);
+
+        const userDetailsAfterCreation = await supabaseClient
+          .from("users")
+          .select()
+          .eq("email", request?.email?.trim())
+          .limit(1)
+          .maybeSingle();
+
+        if (userDetailsAfterCreation?.data != null) {
+          const categoryPayload = defaultCategoryList?.map((data) => {
+            return { ...data, user_id: userDetailsAfterCreation?.user_id };
+          });
+
+          await supabaseClient.from("category").insert(categoryPayload);
+        }
+
         await transport.sendMail({
           from: "abraralhasanprogrammer@gmail.com",
           to: authDetails?.email,

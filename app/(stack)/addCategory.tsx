@@ -38,6 +38,7 @@ import {
   disableLoading,
   enableLoading,
 } from "@/redux/reducers/slice/globalSlice";
+import { fetchHomeDataV2 } from "@/api/home.action";
 
 const COLOR_LIST = [
   "#FF0000",
@@ -66,7 +67,10 @@ const AddCategory = () => {
   const { top } = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const toast = useToast();
-  const { categoryId }: { categoryId: string } = useLocalSearchParams();
+  const {
+    categoryId,
+    type: paramsType,
+  }: { categoryId: string; type?: string } = useLocalSearchParams();
 
   const authSlice = useSelector((state: RootState) => state.AuthSlice);
   const homeSlice = useSelector((state: RootState) => state.HomeSlice);
@@ -93,8 +97,6 @@ const AddCategory = () => {
       (data) => "" + data.category_id == categoryId
     )[0];
 
-
-
     if (selectedBudgetCategory) {
       setCategoryDetails(selectedBudgetCategory?.category);
 
@@ -102,6 +104,12 @@ const AddCategory = () => {
       setCategoryName(selectedBudgetCategory?.category?.category_name);
       setCategoryType(selectedBudgetCategory?.category?.type);
       setIcon(selectedBudgetCategory?.category?.icon);
+    }
+    if (paramsType === "WEEKLY") {
+      setCategoryType("WEEKLY");
+    }
+    if (paramsType === "MONTHLY") {
+      setCategoryType("MONTHLY");
     }
   }, []);
 
@@ -152,8 +160,8 @@ const AddCategory = () => {
   };
 
   const onCreate = async () => {
+    dispatch(enableLoading());
     if (await validate()) {
-      dispatch(enableLoading());
       const payload: any = {
         type: categoryType,
         user_id: authSlice?.userDetails?.user_id as string,
@@ -176,9 +184,9 @@ const AddCategory = () => {
       }
 
       if (response.error === null) {
-        dispatch(triggerHomeApi());
+        await fetchHomeDataV2();
         dispatch(triggerCategoryApi());
-        router.replace("/(tabs)/");
+        router.back();
       }
       dispatch(disableLoading());
     }

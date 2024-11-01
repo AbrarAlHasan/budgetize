@@ -39,6 +39,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { RootState, store } from "@/redux/store";
 import { triggerHomeApi } from "@/redux/reducers/slice/homeSlice";
 import {
+  fetchHomeDataV2,
   getCategoryBasedOnDate,
   getCurrentMonthBudgetV2,
   getCurrentWeekBudgetV2,
@@ -129,7 +130,7 @@ const ConfirmTransaction = () => {
 
     const { data, error } = await supabase.from("transactions").insert(payload);
     if (error === null) {
-      dispatch(triggerHomeApi());
+      await fetchHomeDataV2();
       router.replace("/(tabs)/");
     }
     console.log(error);

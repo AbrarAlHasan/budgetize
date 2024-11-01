@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const SafeAreaWrapper = ({ children }: { children: ReactElement }) => {
   const colorScheme = useColorScheme();
-  const { top } = useSafeAreaInsets();
+  const { top, bottom } = useSafeAreaInsets();
 
   return (
     <View
@@ -13,6 +13,7 @@ const SafeAreaWrapper = ({ children }: { children: ReactElement }) => {
         flex: 1,
         paddingTop: top,
         backgroundColor: Colors[colorScheme ?? "light"].background,
+        paddingBottom: bottom,
       }}
     >
       {children}

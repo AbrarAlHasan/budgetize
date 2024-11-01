@@ -20,6 +20,7 @@ import { toDate } from "date-fns";
 import { router } from "expo-router";
 import { Colors } from "@/constants/Colors";
 import { triggerHomeApi } from "@/redux/reducers/slice/homeSlice";
+import { fetchHomeDataV2 } from "@/api/home.action";
 
 const WeeklySpends = () => {
   const homeSlice = useSelector((state: RootState) => state.HomeSlice);
@@ -40,48 +41,55 @@ const WeeklySpends = () => {
   }, [homeSlice?.dateRange]);
 
   const usePreviousData = async () => {
-    dispatch(enableLoading());
+    try {
+      dispatch(enableLoading());
 
-    const response = await copyPreviousBudget({
-      fromDate: homeSlice?.dateRange?.fromDate,
-      toDate: homeSlice?.dateRange?.toDate,
-      useLoading: true,
-      type: "WEEKLY",
-    });
-
-    if (response?.fetchedSuccess) {
-      setDateRangeToCopy({
-        fromDate: response?.fromDate,
-        toDate: response?.toDate,
-      });
-      toast.show(
-        `Budget Copied from ${formatDateTimeTimezone(
-          response?.fromDate,
-          "MMM DD"
-        )} - ${formatDateTimeTimezone(response?.toDate, "MMM DD")}`,
-        {
-          duration: 2000,
-        }
-      );
-      await insertBudgetToDB({
+      const response = await copyPreviousBudget({
         fromDate: homeSlice?.dateRange?.fromDate,
         toDate: homeSlice?.dateRange?.toDate,
-        budgetList: response?.budgetList,
+        useLoading: true,
+        type: "WEEKLY",
       });
-      dispatch(triggerHomeApi());
-    }
 
-    dispatch(disableLoading());
+      if (response?.fetchedSuccess) {
+        setDateRangeToCopy({
+          fromDate: response?.fromDate,
+          toDate: response?.toDate,
+        });
+        toast.show(
+          `Budget Copied from ${formatDateTimeTimezone(
+            response?.fromDate,
+            "MMM DD"
+          )} - ${formatDateTimeTimezone(response?.toDate, "MMM DD")}`,
+          {
+            duration: 2000,
+          }
+        );
+        await insertBudgetToDB({
+          fromDate: homeSlice?.dateRange?.fromDate,
+          toDate: homeSlice?.dateRange?.toDate,
+          budgetList: response?.budgetList,
+        });
+        await fetchHomeDataV2();
 
-    if (response?.error === true) {
-      setDateRangeToCopy({
-        fromDate: new Date(),
-        toDate: new Date(),
-      });
-      setShowAddBudget(true);
-      toast.show(response?.message, {
-        duration: 3000,
-      });
+        dispatch(triggerHomeApi());
+      }
+
+      dispatch(disableLoading());
+
+      if (response?.error === true) {
+        setDateRangeToCopy({
+          fromDate: new Date(),
+          toDate: new Date(),
+        });
+        setShowAddBudget(true);
+        toast.show(response?.message, {
+          duration: 3000,
+        });
+      }
+    } catch (error) {
+    } finally {
+      dispatch(disableLoading());
     }
   };
   return (

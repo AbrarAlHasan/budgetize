@@ -1,4 +1,5 @@
 import {
+  Dimensions,
   Pressable,
   StyleSheet,
   Text,
@@ -14,6 +15,7 @@ import CustomButton from "@/components/CustomButton";
 import { commonStyles } from "@/stylings/CustomStyles";
 import { router, useLocalSearchParams } from "expo-router";
 import { supabase } from "@/lib/supabase";
+import SafeAreaWrapper from "@/components/SafeAreaWrapper";
 const keyBoardValues = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0"];
 const AddTransaction = () => {
   const colorScheme = useColorScheme();
@@ -66,8 +68,8 @@ const AddTransaction = () => {
       .update(payload)
       .eq("id", routeParams?.budgetId);
 
-    if(response?.error ===null){
-      router.back()
+    if (response?.error === null) {
+      router.back();
     }
   };
 
@@ -109,41 +111,46 @@ const AddTransaction = () => {
           ]}
         >{`₹${amount}`}</Text>
       </View>
-      <View style={[styles.keypadContainer]}>
-        {["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0"].map((key) => (
-          <TouchableOpacity
-            key={key}
-            style={styles.key}
-            onPress={() => handlePress(key)}
-          >
-            <Text
-              style={[
-                styles.keyText,
-                { color: Colors[colorScheme ?? "light"].darkText },
-              ]}
-            >
-              {key}
-            </Text>
-          </TouchableOpacity>
-        ))}
-        <TouchableOpacity style={styles.key} onPress={handleBackspace}>
-          <Text
-            style={[
-              styles.keyText,
-              { color: Colors[colorScheme ?? "light"].darkText },
-            ]}
-          >
-            ⌫
-          </Text>
-        </TouchableOpacity>
+      <View>
+        <View style={{ flexDirection: "row" }}>
+          <View style={[styles.keypadContainer, {}]}>
+            {["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "⌫"].map(
+              (key) => (
+                <TouchableOpacity
+                  key={key}
+                  style={styles.key}
+                  onPress={() => {
+                    if (key === "⌫") {
+                      handleBackspace();
+                    } else {
+                      handlePress(key);
+                    }
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.keyText,
+                      { color: Colors[colorScheme ?? "light"].darkText },
+                    ]}
+                  >
+                    {key}
+                  </Text>
+                </TouchableOpacity>
+              )
+            )}
+          </View>
+        </View>
+
+        <View>
+          <CustomButton
+            label="Continue"
+            colorType="primary"
+            onPress={() => {
+              onConfirm();
+            }}
+          />
+        </View>
       </View>
-      <CustomButton
-        label="Continue"
-        colorType="primary"
-        onPress={() => {
-          onConfirm();
-        }}
-      />
     </SafeAreaView>
   );
 };
@@ -168,14 +175,16 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     justifyContent: "center",
     width: "100%",
-    flex: 1,
   },
   key: {
     width: "30%",
-    aspectRatio: 1,
+    // aspectRatio: 1,
+    height: Dimensions.get("window").width * 0.2,
     justifyContent: "center",
     alignItems: "center",
     margin: 5,
+    // backgroundColor: "blue",
+    // flex: 1,
   },
   keyText: {
     fontSize: 24,

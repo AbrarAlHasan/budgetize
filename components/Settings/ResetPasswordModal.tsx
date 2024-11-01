@@ -21,6 +21,10 @@ import {
 import { useDispatch } from "react-redux";
 import { initiateLogin } from "@/api/authentication.action";
 import { router, useFocusEffect } from "expo-router";
+import {
+  disableLoading,
+  enableLoading,
+} from "@/redux/reducers/slice/globalSlice";
 
 interface IResetPasswordModal {
   bottomSheetModalRef: React.RefObject<BottomSheetModalMethods>;
@@ -80,6 +84,7 @@ const ResetPasswordModal = ({
   const onConfirmPassword = async () => {
     try {
       Keyboard.dismiss();
+      dispatch(enableLoading());
       if (validate() && (await checkCurrentPasswordIsCorrect())) {
         const passwordChangeResponse = await supabase.auth.updateUser({
           password: newPassword,
@@ -109,6 +114,7 @@ const ResetPasswordModal = ({
             bottomSheetModalRef.current?.close();
             router.replace("/(tabs)/");
           }
+          dispatch(disableLoading());
           return;
         }
 
@@ -121,6 +127,7 @@ const ResetPasswordModal = ({
     } finally {
       setConfirmNewPassword("");
       setNewPassword("");
+      dispatch(disableLoading());
     }
   };
 

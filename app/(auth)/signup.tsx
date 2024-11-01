@@ -19,11 +19,17 @@ import AppLogo from "../../assets/images/icon.png";
 import { useToast } from "react-native-toast-notifications";
 import { supabase } from "@/lib/supabase";
 import { router } from "expo-router";
+import { useDispatch } from "react-redux";
+import {
+  disableLoading,
+  enableLoading,
+} from "@/redux/reducers/slice/globalSlice";
 
 const Signup = () => {
   const { top } = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const toast = useToast();
+  const dispatch = useDispatch();
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -71,6 +77,7 @@ const Signup = () => {
     // return;
 
     if (validate()) {
+      dispatch(enableLoading());
       const payload = {
         name: name,
         email: email,
@@ -93,9 +100,12 @@ const Signup = () => {
           }
         );
         router.replace("/(auth)/login");
+        dispatch(disableLoading());
 
         return;
       }
+      dispatch(disableLoading());
+
       toast.show(response?.error?.details, { type: "danger" });
     }
   };

@@ -27,6 +27,10 @@ import { Colors } from "@/constants/Colors";
 import * as Linking from "expo-linking";
 import ResetPasswordModal from "@/components/Settings/ResetPasswordModal";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
+import {
+  disableLoading,
+  enableLoading,
+} from "@/redux/reducers/slice/globalSlice";
 
 const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -54,6 +58,7 @@ const Login = () => {
 
   const onSignInClicked = async () => {
     try {
+      dispatch(enableLoading());
       if (validate()) {
         setIsLoading(true);
         Keyboard.dismiss();
@@ -95,6 +100,7 @@ const Login = () => {
       console.log(error);
     } finally {
       setIsLoading(false);
+      dispatch(disableLoading());
     }
   };
 

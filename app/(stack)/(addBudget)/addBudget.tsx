@@ -33,6 +33,7 @@ import {
   disableLoading,
   enableLoading,
 } from "@/redux/reducers/slice/globalSlice";
+import { fetchHomeDataV2 } from "@/api/home.action";
 
 const AddBudget = () => {
   const colorScheme = useColorScheme();
@@ -56,8 +57,10 @@ const AddBudget = () => {
     }, [homeSlice.dateRange.fromDate])
   );
 
-  const getCategoryList = async () => {
-    dispatch(enableLoading());
+  const getCategoryList = async (setLoading = true) => {
+    if (setLoading) {
+      dispatch(enableLoading());
+    }
 
     const weeklyDateRange = getCurrentWeekRange(homeSlice.dateRange.fromDate);
     const monthlyDateRange = getCurrentMonthRange(homeSlice.dateRange.fromDate);
@@ -74,7 +77,9 @@ const AddBudget = () => {
     ]);
     setWeeklyCategoryList(weeklyResponse);
     setMonthlyCategoryList(monthlyResponse);
-    dispatch(disableLoading());
+    if (setLoading) {
+      dispatch(disableLoading());
+    }
   };
 
   const generateBudgetPayload = ({
@@ -129,13 +134,11 @@ const AddBudget = () => {
       categoryDetails: selectedCategory,
     });
 
-
     const response = await supabase.from("budget").insert(payload);
+
+    await fetchHomeDataV2();
+    await getCategoryList(false);
     dispatch(disableLoading());
-
-    getCategoryList();
-    dispatch(triggerHomeApi());
-
   };
 
   return (
@@ -153,15 +156,61 @@ const AddBudget = () => {
           style={[
             commonStyles.alignJustifyCenter,
             {
-              paddingVertical: 10,
+              padding: 10,
               backgroundColor: Colors[colorScheme ?? "light"].lightText,
               marginVertical: 10,
+              flexDirection: "row",
+              justifyContent: "space-between",
             },
           ]}
         >
           <Text style={[textStyles.bolder]}>Weekly Category List</Text>
+          <ChipText
+            chipText="Add New Category"
+            onPress={() => {
+              router.navigate({
+                pathname: "/(stack)/addCategory",
+                params: { type: "WEEKLY" },
+              });
+            }}
+            chipTextStyle={{
+              color: Colors[colorScheme ?? "light"].darkOrange,
+            }}
+            chipViewStyle={{
+              backgroundColor: Colors[colorScheme ?? "light"].lightOrange,
+            }}
+          />
         </View>
         <View style={{ gap: 20 }}>
+          {weeklyCategoryList?.length === 0 && (
+            <View style={{ marginVertical: 20, alignItems: "center" }}>
+              <Text
+                style={[
+                  textStyles.mdBold,
+                  { marginVertical: 20, textAlign: "center" },
+                ]}
+              >
+                There are No Categories to Add budget. Please Add Category by
+                Clicking below
+              </Text>
+              <ChipText
+                chipText="Add New Category"
+                onPress={() => {
+                  router.navigate({
+                    pathname: "/(stack)/addCategory",
+                    params: { type: "WEEKLY" },
+                  });
+                }}
+                chipTextStyle={{
+                  color: Colors[colorScheme ?? "light"].darkOrange,
+                }}
+                chipViewStyle={{
+                  backgroundColor: Colors[colorScheme ?? "light"].lightOrange,
+                }}
+              />
+            </View>
+          )}
+
           {weeklyCategoryList?.map((data) => {
             return (
               <CategoryList
@@ -177,15 +226,60 @@ const AddBudget = () => {
           style={[
             commonStyles.alignJustifyCenter,
             {
-              paddingVertical: 10,
+              padding: 10,
               backgroundColor: Colors[colorScheme ?? "light"].lightText,
               marginVertical: 10,
+              flexDirection: "row",
+              justifyContent: "space-between",
             },
           ]}
         >
           <Text style={[textStyles.bolder]}>Monthly Category List</Text>
+          <ChipText
+            chipText="Add New Category"
+            onPress={() => {
+              router.navigate({
+                pathname: "/(stack)/addCategory",
+                params: { type: "MONTHLY" },
+              });
+            }}
+            chipTextStyle={{
+              color: Colors[colorScheme ?? "light"].darkOrange,
+            }}
+            chipViewStyle={{
+              backgroundColor: Colors[colorScheme ?? "light"].lightOrange,
+            }}
+          />
         </View>
         <View style={{ gap: 20 }}>
+          {monthlyCategoryList?.length === 0 && (
+            <View style={{ marginVertical: 20, alignItems: "center" }}>
+              <Text
+                style={[
+                  textStyles.mdBold,
+                  { marginVertical: 20, textAlign: "center" },
+                ]}
+              >
+                There are No Categories to Add budget. Please Add Category by
+                Clicking below
+              </Text>
+              <ChipText
+                chipText="Add New Category"
+                onPress={() => {
+                  router.navigate({
+                    pathname: "/(stack)/addCategory",
+                    params: { type: "WEEKLY" },
+                  });
+                }}
+                chipTextStyle={{
+                  color: Colors[colorScheme ?? "light"].darkOrange,
+                }}
+                chipViewStyle={{
+                  backgroundColor: Colors[colorScheme ?? "light"].lightOrange,
+                }}
+              />
+            </View>
+          )}
           {monthlyCategoryList?.map((data) => {
             return (
               <CategoryList

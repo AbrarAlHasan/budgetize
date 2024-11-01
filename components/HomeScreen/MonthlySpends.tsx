@@ -19,6 +19,7 @@ import { useToast } from "react-native-toast-notifications";
 import { router } from "expo-router";
 import { Colors } from "@/constants/Colors";
 import { triggerHomeApi } from "@/redux/reducers/slice/homeSlice";
+import { fetchHomeDataV2 } from "@/api/home.action";
 
 const MonthlySpends = () => {
   const homeSlice = useSelector((state: RootState) => state.HomeSlice);
@@ -68,7 +69,7 @@ const MonthlySpends = () => {
         toDate: homeSlice?.dateRange?.toDate,
         budgetList: response?.budgetList,
       });
-      dispatch(triggerHomeApi());
+      await fetchHomeDataV2();
     }
     dispatch(disableLoading());
 

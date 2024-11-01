@@ -1,14 +1,17 @@
 import { supabase } from "@/lib/supabase";
+import { disableLoading, enableLoading } from "@/redux/reducers/slice/globalSlice";
 import {
+  setMonthlyCategoryBudget,
   setTotalMonthlyBudget,
   setTotalMonthlyBudgetLeft,
   setTotalWeeklyBudget,
   setTotalWeeklyBudgetLeft,
+  setWeeklyCategoryBudget,
 } from "@/redux/reducers/slice/homeSlice";
 import { store } from "@/redux/store";
 import { ICategoryBudget, ITransactionV2 } from "@/types/HomeScreenTypes";
 import { groupData } from "@/utils/CommonUtlis";
-import { formatDateTimeTimezone } from "@/utils/DateCalculator";
+import { formatDateTimeTimezone, getCurrentMonthRange } from "@/utils/DateCalculator";
 
 export const getCurrentWeekBudget = async ({
   fromDate,
@@ -304,4 +307,25 @@ export const getCategoryBasedOnDate = async ({
   } catch (error) {
     return { response: null, error: error };
   }
+};
+
+export const fetchHomeDataV2 = async () => {
+  const [weeklyResponse, monthlyResponse] = await Promise.all([
+    getCurrentWeekBudgetV2({
+      fromDate: store.getState().HomeSlice.dateRange.fromDate,
+      toDate: store.getState().HomeSlice.dateRange.toDate,
+    }),
+    getCurrentMonthBudgetV2(
+      getCurrentMonthRange(store.getState().HomeSlice.dateRange.fromDate)
+    ),
+  ]);
+
+  if (monthlyResponse?.error === null) {
+    store.dispatch(setMonthlyCategoryBudget(monthlyResponse?.response));
+  }
+
+  if (weeklyResponse?.error === null) {
+    store.dispatch(setWeeklyCategoryBudget(weeklyResponse?.response));
+  }
+  store.dispatch(disableLoading());
 };
