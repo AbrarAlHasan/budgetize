@@ -50,8 +50,8 @@ const DateRangePicker = ({
         headerTextColor: Colors[colorScheme ?? "light"].lightText,
         selectedDateTextColor: Colors[colorScheme ?? "light"].lightText,
       }}
-      startDate={startDate}
-      endDate={endDate}
+      startDate={new Date(startDate)}
+      endDate={new Date(endDate)}
       onKeyPressCustom={(data: any) => {
         const weekRange = getCurrentWeekRange(data.startDate);
 

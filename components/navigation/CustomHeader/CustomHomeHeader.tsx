@@ -6,7 +6,7 @@ import {
   useColorScheme,
   View,
 } from "react-native";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -35,6 +35,13 @@ const CustomHomeHeader = ({
 
   const homeSlice = useSelector((state: RootState) => state.HomeSlice);
   const dispatch = useDispatch();
+  const [showSelectDateRangeLabel, setShowSelectDateRangeLabel] =
+    useState(true);
+  useEffect(() => {
+    setTimeout(() => {
+      setShowSelectDateRangeLabel(false);
+    }, 5000);
+  }, []);
 
   return (
     <View
@@ -77,6 +84,7 @@ const CustomHomeHeader = ({
         onPress={() => {
           dispatch(setIsDateRangeVisible(true));
         }}
+        style={{ alignItems: "center" }}
       >
         <Text
           style={[
@@ -90,6 +98,16 @@ const CustomHomeHeader = ({
             "MMM DD"
           )} - ${formatDateTimeTimezone(homeSlice.dateRange.toDate, "MMM DD")}`}
         </Text>
+        {showSelectDateRangeLabel && (
+          <Text
+            style={[
+              textStyles.xxs,
+              { color: Colors[colorScheme ?? "light"].primary },
+            ]}
+          >
+            Select Date Range
+          </Text>
+        )}
       </Pressable>
       {!onlyDateRange && (
         <Pressable

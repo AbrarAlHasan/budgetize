@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { Provider, useSelector } from "react-redux";
-import { ToastProvider } from "react-native-toast-notifications";
+import { Toast, ToastProvider } from "react-native-toast-notifications";
 import BackgroundScheduler from "@/components/BackgroundScheduler";
 import { Colors } from "@/constants/Colors";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -78,13 +78,13 @@ export default function Layout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <Provider store={store}>
         <ToastProvider>
-          {/* <LoadingWrapper> */}
-          <SafeAreaProvider>
-            <MoneyManager />
-          </SafeAreaProvider>
-          {/* </LoadingWrapper> */}
+          <LoadingWrapper>
+            <SafeAreaProvider>
+              <MoneyManager />
+            </SafeAreaProvider>
+          </LoadingWrapper>
+          <BackgroundScheduler />
         </ToastProvider>
-        <BackgroundScheduler />
       </Provider>
     </GestureHandlerRootView>
   );

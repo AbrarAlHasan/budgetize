@@ -128,14 +128,14 @@ const AddBudget = () => {
     const payload = generateBudgetPayload({
       categoryDetails: selectedCategory,
     });
-    console.log(payload);
+
 
     const response = await supabase.from("budget").insert(payload);
     dispatch(disableLoading());
 
     getCategoryList();
     dispatch(triggerHomeApi());
-    console.log("Budget Added Response", response);
+
   };
 
   return (
@@ -165,7 +165,7 @@ const AddBudget = () => {
           {weeklyCategoryList?.map((data) => {
             return (
               <CategoryList
-                key={data?.budgetDetails?.id}
+                key={data?.category_id}
                 data={data}
                 addNewBudget={addNewBudget}
               />
@@ -219,54 +219,53 @@ export const CategoryList = ({
   }) => void;
 }) => {
   const colorScheme = useColorScheme();
-  const included = data["budgetDetails"] ? true : false;
+
   return (
-    <>
-      <Pressable
-        key={data?.category_id}
+    <Pressable
+      key={data?.category_id}
+      style={[
+        commonStyles.alignJustifyCenter,
+        { flexDirection: "row", flex: 1 },
+      ]}
+    >
+      <View
         style={[
           commonStyles.alignJustifyCenter,
-          { flexDirection: "row", flex: 1 },
+          {
+            backgroundColor: data?.background_color || Colors.dark.primary,
+            borderRadius: 100,
+            aspectRatio: 1,
+            height: 40,
+          },
         ]}
       >
-        <View
-          style={[
-            commonStyles.alignJustifyCenter,
-            {
-              backgroundColor: data?.background_color || Colors.dark.primary,
-              borderRadius: 100,
-              aspectRatio: 1,
-              height: 40,
-            },
-          ]}
-        >
-          <Text style={[textStyles.xl, { paddingLeft: 3, paddingTop: 2 }]}>
-            {data?.icon}
+        <Text style={[textStyles.xl, { paddingLeft: 3, paddingTop: 2 }]}>
+          {data?.icon}
+        </Text>
+      </View>
+      <View
+        style={{
+          flex: 1,
+          marginLeft: 20,
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <View style={{ gap: 10, maxWidth: "80%" }}>
+          <Text
+            style={[
+              textStyles.bolder,
+              textStyles.sm,
+              {
+                color: Colors[colorScheme ?? "light"].darkText,
+              },
+            ]}
+          >
+            {data?.category_name}
           </Text>
-        </View>
-        <View
-          style={{
-            flex: 1,
-            marginLeft: 20,
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
-          <View style={{ gap: 10, maxWidth: "80%" }}>
-            <Text
-              style={[
-                textStyles.bolder,
-                textStyles.sm,
-                {
-                  color: Colors[colorScheme ?? "light"].darkText,
-                },
-              ]}
-            >
-              {data?.category_name}
-            </Text>
 
-            {/* {data?.isModified ? (
+          {/* {data?.isModified ? (
               <ChipText
                 chipText={"Modified"}
                 chipViewStyle={{
@@ -293,51 +292,50 @@ export const CategoryList = ({
                 }}
               />
             )} */}
-          </View>
-          {data?.budgetDetails && (
-            <Pressable
-              onPress={() =>
-                router.navigate({
-                  pathname: "/addTransaction",
-                  params: {
-                    type: "BUDGET",
-                    budgetId: data?.budgetDetails?.id,
-                    budgetAmount: data?.budgetDetails?.amount,
-                  },
-                })
-              }
-              style={{ flexDirection: "row", gap: 3, alignSelf: "center" }}
-            >
-              <Text style={[textStyles.bolder]}>
-                {formatPrice().format(data?.budgetDetails?.amount || 0)}
-              </Text>
-              <Feather
-                name="edit-3"
-                size={18}
-                color={Colors[colorScheme ?? "light"].darkText}
-              />
-            </Pressable>
-          )}
-
-          {!data?.budgetDetails && (
-            <ChipText
-              chipText="Add"
-              chipViewStyle={{
-                backgroundColor: Colors[colorScheme ?? "light"].lightOrange,
-              }}
-              chipTextStyle={{
-                color: Colors[colorScheme ?? "light"].darkOrange,
-              }}
-              onPress={() =>
-                addNewBudget({
-                  categoryId: data?.category_id,
-                  type: data?.type,
-                })
-              }
-            />
-          )}
         </View>
-      </Pressable>
-    </>
+        {data?.budgetDetails && (
+          <Pressable
+            onPress={() =>
+              router.navigate({
+                pathname: "/addTransaction",
+                params: {
+                  type: "BUDGET",
+                  budgetId: data?.budgetDetails?.id,
+                  budgetAmount: data?.budgetDetails?.amount,
+                },
+              })
+            }
+            style={{ flexDirection: "row", gap: 3, alignSelf: "center" }}
+          >
+            <Text style={[textStyles.bolder]}>
+              {formatPrice().format(data?.budgetDetails?.amount || 0)}
+            </Text>
+            <Feather
+              name="edit-3"
+              size={18}
+              color={Colors[colorScheme ?? "light"].darkText}
+            />
+          </Pressable>
+        )}
+
+        {!data?.budgetDetails && (
+          <ChipText
+            chipText="Add"
+            chipViewStyle={{
+              backgroundColor: Colors[colorScheme ?? "light"].lightOrange,
+            }}
+            chipTextStyle={{
+              color: Colors[colorScheme ?? "light"].darkOrange,
+            }}
+            onPress={() =>
+              addNewBudget({
+                categoryId: data?.category_id,
+                type: data?.type,
+              })
+            }
+          />
+        )}
+      </View>
+    </Pressable>
   );
 };

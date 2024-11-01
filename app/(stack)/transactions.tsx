@@ -44,12 +44,20 @@ const Transactions = () => {
   const [totalAmountSpent, setTotalAmountSpent] = useState(0);
 
   useEffect(() => {
-    const selectedBudget = homeSlice.weeklyCategoryBudget?.filter(
-      (data) => data?.category_id === Number(category_id)
-    )[0];
+    let selectedBudget;
+    if (type === "WEEKLY") {
+      selectedBudget = homeSlice.weeklyCategoryBudget?.filter(
+        (data) => data?.category_id === Number(category_id)
+      )[0];
+    }
+
+    if (type === "MONTHLY") {
+      selectedBudget = homeSlice.monthlyCategoryBudget?.filter(
+        (data) => data?.category_id === Number(category_id)
+      )[0];
+    }
     setBudgetDetails(selectedBudget);
     setCategoryDetails(selectedBudget?.category);
-    console.log(selectedBudget);
   }, [category_id]);
 
   return (

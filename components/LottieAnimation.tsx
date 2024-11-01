@@ -1,11 +1,14 @@
 import { Platform, StyleSheet, Text, View } from "react-native";
-import React from "react";
+import React, { LegacyRef, useEffect, useRef } from "react";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 import LottieView from "lottie-react-native";
 
 const LottieAnimation = ({ src, style }: any) => {
   const animationSource = Platform.OS === "web" ? src : requireAnimation(src);
-
+  const loadingRef = useRef<LottieView | undefined>();
+  useEffect(() => {
+    loadingRef.current?.play(25, 72);
+  }, []);
   return (
     <>
       {Platform.OS === "web" ? (
@@ -21,6 +24,7 @@ const LottieAnimation = ({ src, style }: any) => {
         />
       ) : (
         <LottieView
+          ref={loadingRef}
           autoPlay
           style={{
             width: 300,

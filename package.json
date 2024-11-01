@@ -10,7 +10,11 @@
     "web": "expo start --web",
     "test": "jest --watchAll",
     "lint": "expo lint",
-    "postinstall": "patch-package"
+    "postinstall": "patch-package",
+    "start-supabase": "supabase start",
+    "stop-supabase": "supabase stop",
+    "link-supabase": "supabase link --project-ref",
+    "patch-date-picker": "npx patch-package react-native-neat-date-picker"
   },
   "jest": {
     "preset": "jest-expo"

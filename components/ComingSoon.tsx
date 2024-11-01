@@ -51,6 +51,7 @@ const ComingSoon = ({
         />
       ) : (
         <LottieView
+          speed={2}
           autoPlay
           style={{
             width: 400,

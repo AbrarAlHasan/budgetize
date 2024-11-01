@@ -1,5 +1,5 @@
 diff --git a/node_modules/react-native-neat-date-picker/src/components/Content.tsx b/node_modules/react-native-neat-date-picker/src/components/Content.tsx
-index fb163e5..02265dc 100644
+index fb163e5..5bed2f4 100644
 --- a/node_modules/react-native-neat-date-picker/src/components/Content.tsx
 +++ b/node_modules/react-native-neat-date-picker/src/components/Content.tsx
 @@ -17,7 +17,7 @@ const Content = ({
@@ -7,11 +7,19 @@ index fb163e5..02265dc 100644
    daysArray, btnDisabled,
    displayTime, setDisplayTime,
 -  output, setOutput
-+  output, setOutput,onKeyPressCustom
++  output, setOutput,onKeyPressCustom,onShortcutPress
  }: any) => {
    const [showChangeYearModal, setShowChangeYearModal] = useState(chooseYearFirst || false)
  
-@@ -84,6 +84,7 @@ const Content = ({
+@@ -38,6 +38,7 @@ const Content = ({
+     : getTranslation('en').weekDays
+ 
+   return (
++    <>
+     <View style={[styles.container, { backgroundColor }]}>
+       <View style={[styles.header, { backgroundColor: headerColor }]}>
+ 
+@@ -84,9 +85,11 @@ const Content = ({
                selectedDateTextColor,
                selectedDateBackgroundColor
              }}
@@ -19,8 +27,35 @@ index fb163e5..02265dc 100644
            />
          ))}
        </View>
++    
+       <View style={styles.footer}>
+         <View style={styles.btn_box}>
+           <TouchableOpacity style={styles.btn} onPress={onCancelPress}>
+@@ -112,6 +115,22 @@ const Content = ({
+         }}
+       />
+     </View>
++    <View style={[styles.container, { marginTop:18,backgroundColor,flexDirection:'row',justifyContent:'space-around',paddingVertical:10 }]}>
++
++    <TouchableOpacity style={{borderColor:weekDaysColor,borderWidth:1,padding:10,borderRadius:10,backgroundColor}} onPress={()=>onShortcutPress('LAST_WEEK')}>
++      <Text style={{fontWeight:500}}>Last Week</Text>
++    </TouchableOpacity>
++
++    <TouchableOpacity style={{borderColor:weekDaysColor,borderWidth:1,padding:10,borderRadius:10,backgroundColor}} onPress={()=>onShortcutPress('THIS_WEEK')}>
++      <Text style={{fontWeight:500}}>This Week</Text>
++    </TouchableOpacity>
++
++    <TouchableOpacity style={{borderColor:weekDaysColor,borderWidth:1,padding:10,borderRadius:10,backgroundColor}} onPress={()=>onShortcutPress('NEXT_WEEK')}>
++      <Text style={{fontWeight:500}}>Next Week</Text>
++    </TouchableOpacity>
++    </View>
++    </>
++
+   )
+ }
+ 
 diff --git a/node_modules/react-native-neat-date-picker/src/components/Key.tsx b/node_modules/react-native-neat-date-picker/src/components/Key.tsx
-index e8422a0..0da1384 100644
+index e8422a0..329a04d 100644
 --- a/node_modules/react-native-neat-date-picker/src/components/Key.tsx
 +++ b/node_modules/react-native-neat-date-picker/src/components/Key.tsx
 @@ -27,9 +27,10 @@ type KeyProps = {
@@ -55,11 +90,27 @@ index e8422a0..0da1384 100644
              }
          }
      }
+@@ -88,13 +92,13 @@ const Key: FC<KeyProps> = ({ colorOptions, Day, mode, output, setOutput }: KeyPr
+          * As you can see, I delete an unnecessary extra conditional.
+          */
+         if (!output.endDate) {
+-            return timeOfThisKey === output.startDate?.getTime()
++            return timeOfThisKey === output?.startDate?.getTime()
+                 ? selectedColors
+                 : notSelectedColors
+         }
+ 
+         const startDate = output.startDate as Date
+-        const isThisDayInSelectedRange = timeOfThisKey >= startDate.getTime() && timeOfThisKey <= output.endDate.getTime()
++        const isThisDayInSelectedRange = timeOfThisKey >= startDate?.getTime() && timeOfThisKey <= output.endDate?.getTime()
+         return isThisDayInSelectedRange ? selectedColors : notSelectedColors
+     }
+ 
 diff --git a/node_modules/react-native-neat-date-picker/src/components/NeatDatePicker.d.tsx b/node_modules/react-native-neat-date-picker/src/components/NeatDatePicker.d.tsx
-index ee30d92..a5a6203 100644
+index ee30d92..a7727f3 100644
 --- a/node_modules/react-native-neat-date-picker/src/components/NeatDatePicker.d.tsx
 +++ b/node_modules/react-native-neat-date-picker/src/components/NeatDatePicker.d.tsx
-@@ -142,6 +142,37 @@ export type NeatDatePickerProps = {
+@@ -142,6 +142,42 @@ export type NeatDatePickerProps = {
     * @required
     */
    onConfirm: (arg: Object) => void;
@@ -93,15 +144,20 @@ index ee30d92..a5a6203 100644
 +   *
 +   * @required
 +   */
-+  onKeyPressCustom: (arg: Object) => void;
++  onKeyPressCustom?: (arg: Object) => void;
++
++  /**
++   * Sets the Date range according to the range we select
++   */
++  onShortcutPress:(arg:string)=>void;
    /**
     * Set this prop to a date if you need to set an initial starting date when opening the date picker the first time. Only works with 'range' mode.
     */
 diff --git a/node_modules/react-native-neat-date-picker/src/components/NeatDatePicker.tsx b/node_modules/react-native-neat-date-picker/src/components/NeatDatePicker.tsx
-index a71450e..ce724e1 100644
+index a71450e..35abc78 100644
 --- a/node_modules/react-native-neat-date-picker/src/components/NeatDatePicker.tsx
 +++ b/node_modules/react-native-neat-date-picker/src/components/NeatDatePicker.tsx
-@@ -18,18 +18,20 @@ I18nManager.allowRTL(false)
+@@ -18,26 +18,31 @@ I18nManager.allowRTL(false)
  const winY = Dimensions.get('screen').height
  
  const NeatDatePicker = ({
@@ -118,14 +174,17 @@ index a71450e..ce724e1 100644
      chooseYearFirst,
 -    withoutModal
 +    withoutModal,
-+    onKeyPressCustom
++    onKeyPressCustom,
++    onShortcutPress
  }: NeatDatePickerProps) => {
      
 +    
      // displayTime defines which month is going to be shown onto the screen
      // For 'single' mode, displayTime is also the initial selected date when opening DatePicker at the first time.
-     const [displayTime, setDisplayTime] = useState(initialDate ?? new Date())
-@@ -38,6 +40,8 @@ const NeatDatePicker = ({
+-    const [displayTime, setDisplayTime] = useState(initialDate ?? new Date())
++    const [displayTime, setDisplayTime] = useState(initialDate ?? startDate ?? new Date())
+     const year = displayTime.getFullYear()
+     const month = displayTime.getMonth()// 0-base
      const date = displayTime.getDate()
      const TODAY = new Date(year, month, date)
  
@@ -134,24 +193,34 @@ index a71450e..ce724e1 100644
      // output decides which date should be active.
      const [output, setOutput] = useState<Output>(
          mode === 'single'
-@@ -48,6 +52,11 @@ const NeatDatePicker = ({
+@@ -48,6 +53,12 @@ const NeatDatePicker = ({
      // If user presses cancel, reset 'output' state to this 'originalOutput'
      const [originalOutput, setOriginalOutput] = useState(output)
  
 +
 +    useEffect(()=>{
 +        setOutput({...output,startDate:startDate || null,endDate:endDate||null})
++        setDisplayTime(initialDate ?? startDate ?? new Date())
 +    },[startDate,endDate])
 +
      const minTime = minDate?.getTime()
      const maxTime = maxDate?.getTime()
  
-@@ -195,17 +204,13 @@ const NeatDatePicker = ({
+@@ -167,7 +178,7 @@ const NeatDatePicker = ({
+                 colorOptions, chooseYearFirst,
+                 daysArray, btnDisabled,
+                 displayTime, setDisplayTime,
+-                output, setOutput
++                output, setOutput,onShortcutPress
+             }}
+         />
+     )
+@@ -195,17 +206,13 @@ const NeatDatePicker = ({
                      colorOptions, chooseYearFirst,
                      daysArray, btnDisabled,
                      displayTime, setDisplayTime,
 -                    output, setOutput
-+                    output, setOutput,onKeyPressCustom
++                    output, setOutput,onKeyPressCustom,onShortcutPress
                  }}
              />
          </Modal>
@@ -165,3 +234,12 @@ index a71450e..ce724e1 100644
  
  export default NeatDatePicker
  
+@@ -216,6 +223,7 @@ const styles = StyleSheet.create({
+         height: winY,
+         alignItems: 'center',
+         padding: 0,
+-        margin: 0
++        margin: 0,
++        
+     }
+ })

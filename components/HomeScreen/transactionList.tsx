@@ -23,7 +23,6 @@ const TransactionList = ({
   const [transactionData, setTransactionData] = useState<any>();
   const [sortedDateList, setSortedDateList] = useState<any>([]);
   useEffect(() => {
-    console.log(transactions);
     const groupedData = groupData(transactions, "date");
     setTransactionData(groupedData);
 

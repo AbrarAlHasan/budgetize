@@ -34,15 +34,25 @@ export const getCurrentMonthRange = (customDate?: Date) => {
   };
 };
 
-export const formatDateTimeTimezone = (date: Date | null, format?: string) => {
+export const formatDateTimeTimezone = (
+  date: Date | null | undefined,
+  format?: string
+) => {
   return moment(date || new Date()).format(format || "YYYY-MM-DD");
 };
 
-export const diffInDays = (fromDate: Date, toDate: Date) => {
+export const diffInDays = (
+  fromDate: Date,
+  toDate: Date,
+  asAbsoluteNumber?: boolean
+) => {
   const from = moment(fromDate);
   const to = moment(toDate);
   const currentDate = moment(); // Current date
-
+  if (asAbsoluteNumber) {
+    const daysLeft = to.diff(from, "days");
+    return daysLeft;
+  }
   // Check if the current date is within the range
   if (currentDate.isBetween(from, to, null, "[]")) {
     // '[]' includes the boundaries
@@ -50,4 +60,25 @@ export const diffInDays = (fromDate: Date, toDate: Date) => {
     const daysLeft = to.diff(currentDate, "days");
     return `${daysLeft} Days Left`;
   }
+};
+
+export const getPrevNthDay = ({ date, days }: { date: Date; days: number }) => {
+  return moment(date || new Date()).subtract(days, "days");
+};
+
+export const diffBetweenDates = ({
+  fromDate,
+  toDate,
+  type,
+}: {
+  fromDate: Date;
+  toDate: Date;
+  type: "day" | "week" | "month";
+}) => {
+  const from = moment(fromDate);
+  const to = moment(toDate);
+  const currentDate = moment(); // Current date
+
+  const daysLeft = to.diff(from, type);
+  return daysLeft;
 };
