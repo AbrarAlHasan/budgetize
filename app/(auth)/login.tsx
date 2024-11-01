@@ -113,21 +113,27 @@ const Login = () => {
   };
 
   const onForgotPasswordClick = async () => {
-    if (validateForgetPassword()) {
-      const response = await supabase.functions.invoke("forgot-password", {
-        body: { email: email },
-      });
-
-      if (response?.data?.error === true) {
-        toast.show(response?.data?.message ?? "Something Went Wrong", {
-          type: "danger",
+    try {
+      dispatch(enableLoading());
+      if (validateForgetPassword()) {
+        const response = await supabase.functions.invoke("forgot-password", {
+          body: { email: email },
         });
-        return;
+
+        if (response?.data?.error === true) {
+          toast.show(response?.data?.message ?? "Something Went Wrong", {
+            type: "danger",
+          });
+          return;
+        }
+        if (response?.data?.error === false) {
+          toast.show(response?.data?.message, { type: "success" });
+          return;
+        }
       }
-      if (response?.data?.error === false) {
-        toast.show(response?.data?.message, { type: "success" });
-        return;
-      }
+    } catch (error) {
+    } finally {
+      dispatch(disableLoading());
     }
   };
 
