@@ -14,43 +14,63 @@ const defaultCategoryList = [
   {
     category_name: "Breakfast",
     type: "WEEKLY",
+    icon: "🍞",
+    background_color: "#BDB76B",
   },
   {
     category_name: "Lunch",
     type: "WEEKLY",
+    icon: "🍚",
+    background_color: "#000000",
   },
   {
     category_name: "Dinner",
     type: "WEEKLY",
+    icon: "🍱",
+    background_color: "#993366",
   },
   {
     category_name: "Snacks",
     type: "WEEKLY",
+    icon: "🍿",
+    background_color: "#000080",
   },
   {
     category_name: "Petrol / Diesel",
     type: "WEEKLY",
+    icon: "⛽️",
+    background_color: "#FFFF00",
   },
 
   {
     category_name: "Travel",
     type: "MONTHLY",
+    icon: "🚗",
+    background_color: "#008000",
   },
   {
     category_name: "Rent",
     type: "MONTHLY",
+    icon: "🏠",
+    background_color: "#660066",
   },
   {
     category_name: "Electricity Bill",
     type: "MONTHLY",
+    icon: "⚡️",
+    background_color: "#000080",
   },
   {
     category_name: "Recharge",
     type: "MONTHLY",
+    icon: "📞",
+    background_color: "#BDB76B",
   },
   {
     category_name: "Shopping",
     type: "MONTHLY",
+    icon: "🛍️",
+    background_color: "#FF0000",
   },
 ];
 
@@ -66,7 +86,7 @@ const supabaseClient = createClient(
 // CONNECT TO DATA BASE
 const databaseUrl =
   Deno.env.get("DB_URL") ??
-  "postgresql://postgres.vujcvquohckehaltpjxw:PicEw3CUQMDqNuVx@aws-0-ap-south-1.pooler.supabase.com:6543/postgres";
+  "postgresql://postgres.vujcvquohckehaltpjxw:BXxDzsOaWJ9HBeX2@aws-0-ap-south-1.pooler.supabase.com:6543/postgres";
 const pool = new postgres.Pool(databaseUrl, 3, true);
 
 //GENERATE RANDOM PASSWORD
@@ -124,8 +144,9 @@ Deno.serve(async (req) => {
         const newUserPayload = {
           name: data?.name,
           email: data?.email,
-          auth_user_id: userCreatedResponse?.data?.id,
+          auth_user_id: userCreatedResponse?.data?.user?.id,
         };
+        console.log("NEW USER PAYLOAD FOR USERS TABLE", newUserPayload);
         const newUser = await supabaseClient
           .from("users")
           .insert(newUserPayload);
@@ -133,23 +154,31 @@ Deno.serve(async (req) => {
         const userDetailsAfterCreation = await supabaseClient
           .from("users")
           .select()
-          .eq("email", request?.email?.trim())
+          .eq("email", newUserPayload?.email?.trim())
           .limit(1)
           .maybeSingle();
-
+        console.log(
+          "RE_FETCHED USER DETAILS FROM DB",
+          userDetailsAfterCreation
+        );
         if (userDetailsAfterCreation?.data != null) {
           const categoryPayload = defaultCategoryList?.map((data) => {
-            return { ...data, user_id: userDetailsAfterCreation?.user_id };
+            return {
+              ...data,
+              user_id: userDetailsAfterCreation?.data?.user_id,
+            };
           });
-
+          console.log("CATEGORY PAYLOAD", categoryPayload);
           await supabaseClient.from("category").insert(categoryPayload);
         }
-
+        console.log(
+          `The Temporary Password for ${authDetails?.email} is ${randomPassword}`
+        );
         await transport.sendMail({
           from: "abraralhasanprogrammer@gmail.com",
           to: authDetails?.email,
           subject: "WELCOME TO MONEY MANAGER - PASSWORD",
-          text: `The Temporary Password is ${randomPassword}. You can login with this Password and change it in settings`,
+          text: `The Temporary Password is ${randomPassword} . You can login with this Password and change it in settings`,
         });
       }
     });

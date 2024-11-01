@@ -77,6 +77,7 @@ const AddBudget = () => {
     ]);
     setWeeklyCategoryList(weeklyResponse);
     setMonthlyCategoryList(monthlyResponse);
+    console.log("TriggeRED");
     if (setLoading) {
       dispatch(disableLoading());
     }
@@ -138,6 +139,7 @@ const AddBudget = () => {
 
     await fetchHomeDataV2();
     await getCategoryList(false);
+    console.log("completedALL");
     dispatch(disableLoading());
   };
 
