@@ -34,15 +34,16 @@ import FloatingButton from "@/components/FloatingButton";
 import { router, useFocusEffect } from "expo-router";
 import DottedButton from "@/components/DottedButton";
 import { useToast } from "react-native-toast-notifications";
+import { fetchHomeDataV2 } from "@/api/home.action";
 
 export default function HomeScreen() {
   const colorScheme = useColorScheme();
 
   const toast = useToast();
-  
-  // useEffect(() => {
-  //   toast.show("Hello");
-  // }, []);
+
+  useEffect(() => {
+    fetchHomeDataV2(true);
+  }, []);
 
   return (
     <>

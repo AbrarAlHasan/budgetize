@@ -82,6 +82,7 @@ export default function Startup() {
           return;
         }
       }
+
       const response = await checkActiveSessionAction();
       dispatch(setDateRange(getCurrentWeekRange()));
 

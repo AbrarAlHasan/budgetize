@@ -3,14 +3,21 @@ import { Stack } from "expo-router";
 
 export default function StackLayout() {
   return (
-    <Stack>
+    <Stack screenOptions={{ animation: "none" }}>
       <Stack.Screen
         name="addCategory"
-        options={{ headerShown: false, presentation: "fullScreenModal" }}
+        options={{
+          headerShown: false,
+          presentation: "fullScreenModal",
+          animation: "default",
+        }}
       />
       <Stack.Screen
         name="addTransaction"
-        options={{ headerShown: false, animation: "none" }}
+        options={{
+          headerShown: false,
+          animation: "none",
+        }}
       />
       <Stack.Screen
         name="transactions"

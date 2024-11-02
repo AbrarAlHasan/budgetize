@@ -106,7 +106,14 @@ const MoneyManager = () => {
         navigationBarColor: Colors[colorScheme ?? "light"].background,
       }}
     >
-      <Stack.Screen name="index" options={{ headerShown: false }} />
+      <Stack.Screen
+        name="index"
+        options={{ headerShown: false, animation: "fade" }}
+      />
+      <Stack.Screen
+        name="updateApp"
+        options={{ headerShown: false, animation: "fade" }}
+      />
       {!isAuthenticated ? (
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       ) : (

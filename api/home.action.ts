@@ -1,5 +1,8 @@
 import { supabase } from "@/lib/supabase";
-import { disableLoading, enableLoading } from "@/redux/reducers/slice/globalSlice";
+import {
+  disableLoading,
+  enableLoading,
+} from "@/redux/reducers/slice/globalSlice";
 import {
   setMonthlyCategoryBudget,
   setTotalMonthlyBudget,
@@ -11,7 +14,10 @@ import {
 import { store } from "@/redux/store";
 import { ICategoryBudget, ITransactionV2 } from "@/types/HomeScreenTypes";
 import { groupData } from "@/utils/CommonUtlis";
-import { formatDateTimeTimezone, getCurrentMonthRange } from "@/utils/DateCalculator";
+import {
+  formatDateTimeTimezone,
+  getCurrentMonthRange,
+} from "@/utils/DateCalculator";
 
 export const getCurrentWeekBudget = async ({
   fromDate,
@@ -309,23 +315,32 @@ export const getCategoryBasedOnDate = async ({
   }
 };
 
-export const fetchHomeDataV2 = async () => {
-  const [weeklyResponse, monthlyResponse] = await Promise.all([
-    getCurrentWeekBudgetV2({
-      fromDate: store.getState().HomeSlice.dateRange.fromDate,
-      toDate: store.getState().HomeSlice.dateRange.toDate,
-    }),
-    getCurrentMonthBudgetV2(
-      getCurrentMonthRange(store.getState().HomeSlice.dateRange.fromDate)
-    ),
-  ]);
+export const fetchHomeDataV2 = async (setLoading = false) => {
+  try {
+    if (setLoading) {
+      store.dispatch(enableLoading());
+    }
+    const [weeklyResponse, monthlyResponse] = await Promise.all([
+      getCurrentWeekBudgetV2({
+        fromDate: store.getState().HomeSlice.dateRange.fromDate,
+        toDate: store.getState().HomeSlice.dateRange.toDate,
+      }),
+      getCurrentMonthBudgetV2(
+        getCurrentMonthRange(store.getState().HomeSlice.dateRange.fromDate)
+      ),
+    ]);
 
-  if (monthlyResponse?.error === null) {
-    store.dispatch(setMonthlyCategoryBudget(monthlyResponse?.response));
-  }
+    if (monthlyResponse?.error === null) {
+      store.dispatch(setMonthlyCategoryBudget(monthlyResponse?.response));
+    }
 
-  if (weeklyResponse?.error === null) {
-    store.dispatch(setWeeklyCategoryBudget(weeklyResponse?.response));
+    if (weeklyResponse?.error === null) {
+      store.dispatch(setWeeklyCategoryBudget(weeklyResponse?.response));
+    }
+  } catch (error) {
+  } finally {
+    if (setLoading) {
+      store.dispatch(disableLoading());
+    }
   }
-  store.dispatch(disableLoading());
 };

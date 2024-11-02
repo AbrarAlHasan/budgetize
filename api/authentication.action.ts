@@ -5,7 +5,11 @@ import {
   setUserDetails,
 } from "@/redux/reducers/slice/authSlice";
 import { store } from "@/redux/store";
+import { compareVersions } from "@/utils/CommonUtlis";
+import { nativeApplicationVersion } from "expo-application";
 import { router } from "expo-router";
+import { Platform } from "react-native";
+import flagsmith from "react-native-flagsmith";
 
 export const initiateLogin = async (email: string, password: string) => {
   try {
@@ -60,4 +64,25 @@ export const initiateLogout = async () => {
     store.dispatch(logout());
     router.replace("/(auth)/");
   } catch (error) {}
+};
+
+export const checkForUpdate = () => {
+  const parsedVersion = JSON.parse(flagsmith.getValue("version"));
+  let version;
+
+  if (Platform.OS === "android") {
+    version = parsedVersion?.android;
+  }
+  if (Platform.OS === "ios") {
+    version = parsedVersion?.ios;
+  }
+
+  if (version && nativeApplicationVersion) {
+    const value = compareVersions(version?.version, nativeApplicationVersion);
+    if (value) {
+      router.replace({ pathname: "/updateApp", params: version });
+      return true;
+    }
+  }
+  return false;
 };
