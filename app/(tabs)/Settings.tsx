@@ -78,12 +78,14 @@ const Settings = () => {
         value={name}
         onChangeText={setName}
         placeholder="Name"
+        disabled={true}
       />
       <CustomTextInput
         label="Email"
         value={email}
         onChangeText={setEmail}
         placeholder="Email"
+        disabled={true}
       />
       <CustomSettingsButton
         label="Change Password"

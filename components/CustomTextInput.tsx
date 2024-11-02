@@ -17,6 +17,7 @@ interface ICustomTextInput {
   value: string | undefined;
   showLabel?: boolean;
   onFocus?: () => void;
+  disabled?: boolean;
 }
 
 const CustomTextInput = ({
@@ -27,6 +28,7 @@ const CustomTextInput = ({
   value,
   showLabel = true,
   onFocus = () => {},
+  disabled = false,
 }: ICustomTextInput) => {
   const colorScheme = useColorScheme();
 
@@ -55,6 +57,7 @@ const CustomTextInput = ({
         autoCapitalize="none"
         placeholderTextColor={Colors[colorScheme ?? "light"].darkText}
         onFocus={onFocus}
+        editable={!disabled}
       />
     </View>
   );
