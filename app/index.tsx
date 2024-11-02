@@ -45,6 +45,7 @@ export default function Startup() {
     fetchInitialData();
   }, []);
 
+  
   return (
     <>
       <SafeAreaView
