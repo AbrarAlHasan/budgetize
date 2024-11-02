@@ -2,9 +2,9 @@
   "expo": {
     "name": "moneyManager",
     "slug": "moneyManager",
-    "version": "1.0.1",
+    "version": "0.31",
     "orientation": "portrait",
-    "icon": "./assets/images/ic_launcher.png",
+    "icon": "./assets/images/ic_launcher_latest.png",
     "scheme": "myapp",
     "userInterfaceStyle": "light",
     "splash": {
@@ -17,7 +17,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/ic_launcher.png",
+        "foregroundImage": "./assets/images/ic_launcher_latest.png",
         "backgroundColor": "#ffffff"
       },
       "package": "com.abrarhasanprogrammer.moneyManager"

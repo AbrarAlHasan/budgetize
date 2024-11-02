@@ -1,9 +1,21 @@
-import { StyleSheet, Text, useColorScheme, View } from "react-native";
+import {
+  StyleSheet,
+  Text,
+  useColorScheme,
+  View,
+  ViewStyle,
+} from "react-native";
 import React, { ReactElement } from "react";
 import { Colors } from "@/constants/Colors";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-const SafeAreaWrapper = ({ children }: { children: ReactElement }) => {
+const SafeAreaWrapper = ({
+  children,
+  style,
+}: {
+  children: ReactElement;
+  style: ViewStyle;
+}) => {
   const colorScheme = useColorScheme();
   const { top, bottom } = useSafeAreaInsets();
 
@@ -14,6 +26,7 @@ const SafeAreaWrapper = ({ children }: { children: ReactElement }) => {
         paddingTop: top,
         backgroundColor: Colors[colorScheme ?? "light"].background,
         paddingBottom: bottom,
+        ...style,
       }}
     >
       {children}

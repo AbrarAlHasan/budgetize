@@ -33,6 +33,7 @@
     "@supabase/supabase-js": "^2.45.3",
     "date-fns": "^4.1.0",
     "expo": "~51.0.28",
+    "expo-application": "^5.9.1",
     "expo-blur": "~13.0.2",
     "expo-checkbox": "~3.0.0",
     "expo-constants": "~16.0.2",
@@ -51,6 +52,7 @@
     "react-dom": "18.2.0",
     "react-native": "0.74.5",
     "react-native-emoji-modal": "^0.2.4",
+    "react-native-flagsmith": "^7.0.1",
     "react-native-gesture-handler": "~2.16.1",
     "react-native-neat-date-picker": "^1.4.12",
     "react-native-reanimated": "~3.10.1",
@@ -60,7 +62,8 @@
     "react-native-url-polyfill": "^2.0.0",
     "react-native-web": "~0.19.10",
     "react-redux": "^9.1.2",
-    "redux-persist": "^6.0.0"
+    "redux-persist": "^6.0.0",
+    "expo-device": "~6.0.2"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",

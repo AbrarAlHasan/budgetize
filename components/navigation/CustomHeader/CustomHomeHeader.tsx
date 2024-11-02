@@ -24,7 +24,6 @@ import { router } from "expo-router";
 import { initiateLogout } from "@/api/authentication.action";
 import { AntDesign } from "@expo/vector-icons";
 import AppLogo from "../../../assets/images/ic_launcher.png";
-import LottieAnimation from "@/components/LottieAnimation";
 
 const CustomHomeHeader = ({
   onlyDateRange,
