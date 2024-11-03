@@ -35,11 +35,14 @@ import { router, useFocusEffect } from "expo-router";
 import DottedButton from "@/components/DottedButton";
 import { useToast } from "react-native-toast-notifications";
 import { fetchHomeDataV2 } from "@/api/home.action";
+import log, { rootLog } from "@/utils/Logger";
 
 export default function HomeScreen() {
   const colorScheme = useColorScheme();
 
   const toast = useToast();
+
+  log.error("Check", { authConfig: store.getState().AuthSlice });
 
   useEffect(() => {
     fetchHomeDataV2(true);

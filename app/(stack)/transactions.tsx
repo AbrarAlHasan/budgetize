@@ -62,6 +62,8 @@ const Transactions = () => {
     setCategoryDetails(selectedBudget?.category);
   }, [category_id]);
 
+  console.log(budgetDetails?.transaction);
+
   return (
     <SafeAreaView
       style={{
