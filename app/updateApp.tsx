@@ -54,10 +54,15 @@ const UpdateApp = () => {
                 textAlign: "center",
                 letterSpacing: 2,
                 color: Colors[colorScheme ?? "light"].darkRed,
+                marginTop: 20,
               },
             ]}
           >
-            {nativeApplicationVersion + " -> " + routeParams?.version}
+            {"v-" +
+              nativeApplicationVersion +
+              " -> " +
+              "v-" +
+              routeParams?.version}
           </Text>
           {Platform.OS === "web" ? (
             <DotLottieReact

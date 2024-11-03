@@ -98,7 +98,7 @@ const WeeklySpends = () => {
         label="Weekly"
         leftOverDays={6}
         budgeted={homeSlice.totalWeeklyBudget}
-        left={homeSlice.totalWeeklyBudget - homeSlice.totalWeeklyBudgetLeft}
+        left={homeSlice.totalWeeklyBudgetLeft}
         fromDate={getCurrentWeekRange(homeSlice.dateRange.fromDate).fromDate}
         toDate={getCurrentWeekRange(homeSlice.dateRange.toDate).toDate}
       />

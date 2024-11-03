@@ -91,7 +91,7 @@ const MonthlySpends = () => {
         label="Monthly"
         leftOverDays={28}
         budgeted={homeSlice.totalMonthlyBudget}
-        left={homeSlice.totalMonthlyBudget - homeSlice.totalMonthlyBudgetLeft}
+        left={homeSlice.totalMonthlyBudgetLeft}
         fromDate={getCurrentMonthRange().fromDate}
         toDate={getCurrentMonthRange().toDate}
       />
