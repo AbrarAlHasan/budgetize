@@ -28,6 +28,7 @@ import { formatPrice } from "@/utils/PriceFormatter";
 import TransactionList from "@/components/HomeScreen/transactionList";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import FloatingButton from "@/components/FloatingButton";
 
 const Transactions = () => {
   const { category_id, type } = useLocalSearchParams();
@@ -218,6 +219,14 @@ const Transactions = () => {
         <TransactionList
           key={"Transaction"}
           transactions={budgetDetails?.transaction}
+        />
+        <FloatingButton
+          onPress={() => {
+            router.navigate({
+              pathname: "/(stack)/addTransaction",
+              params: { budgetId: budgetDetails?.id },
+            });
+          }}
         />
       </View>
     </SafeAreaView>

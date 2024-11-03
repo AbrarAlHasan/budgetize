@@ -44,9 +44,14 @@ import {
   getCurrentMonthBudgetV2,
   getCurrentWeekBudgetV2,
 } from "@/api/home.action";
+import {
+  disableLoading,
+  enableLoading,
+} from "@/redux/reducers/slice/globalSlice";
 
 const ConfirmTransaction = () => {
-  const { amount }: { amount: string } = useLocalSearchParams();
+  const { amount, budgetId }: { amount: string; budgetId?: string } =
+    useLocalSearchParams();
 
   const { top } = useSafeAreaInsets();
   const colorScheme = useColorScheme();
@@ -65,7 +70,7 @@ const ConfirmTransaction = () => {
   // );
 
   useEffect(() => {
-    fetchCategoryList(spentDate);
+    fetchCategoryList(spentDate, budgetId);
   }, []);
 
   const [weeklyCategoryList, setWeeklyCategoryList] =
@@ -75,7 +80,8 @@ const ConfirmTransaction = () => {
 
   const toast = useToast();
 
-  const fetchCategoryList = async (date: Date) => {
+  const fetchCategoryList = async (date: Date, budgetId?: string) => {
+    dispatch(enableLoading());
     const currentWeek = getCurrentWeekRange(date);
     const currentMonth = getCurrentMonthRange(date);
     const [weeklyCategoryResponse, monthlyCategoryResponse] =
@@ -95,6 +101,11 @@ const ConfirmTransaction = () => {
       setWeeklyCategoryList(
         weeklyCategoryResponse?.value?.response as ICategoryBudget[]
       );
+
+      budgetId &&
+        weeklyCategoryResponse?.value?.response?.map((data) => {
+          if (data?.id == parseInt(budgetId)) setSelectedCategory(data);
+        });
     }
     if (
       monthlyCategoryResponse?.status === "fulfilled" &&
@@ -103,7 +114,14 @@ const ConfirmTransaction = () => {
       setMonthlyCategoryList(
         monthlyCategoryResponse?.value?.response as ICategoryBudget[]
       );
+
+      budgetId &&
+        monthlyCategoryResponse?.value?.response?.map((data) => {
+          if (data?.id == parseInt(budgetId)) setSelectedCategory(data);
+        });
     }
+
+    dispatch(disableLoading());
   };
 
   const confirmDateRange = (date: any) => {

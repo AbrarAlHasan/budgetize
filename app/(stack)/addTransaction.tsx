@@ -16,10 +16,18 @@ import { commonStyles } from "@/stylings/CustomStyles";
 import { router, useLocalSearchParams } from "expo-router";
 import { supabase } from "@/lib/supabase";
 import SafeAreaWrapper from "@/components/SafeAreaWrapper";
+import { useDispatch } from "react-redux";
+import {
+  disableLoading,
+  enableLoading,
+} from "@/redux/reducers/slice/globalSlice";
+import { fetchHomeDataV2 } from "@/api/home.action";
+import FloatingButton from "@/components/FloatingButton";
 const keyBoardValues = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0"];
 const AddTransaction = () => {
   const colorScheme = useColorScheme();
   const routeParams = useLocalSearchParams();
+  const dispatch = useDispatch();
 
   const [amount, setAmount] = useState("0");
 
@@ -54,22 +62,27 @@ const AddTransaction = () => {
     }
     router.navigate({
       pathname: "/(stack)/confirmTransaction",
-      params: { amount },
+      params: { amount, budgetId: routeParams?.budgetId },
     });
   };
 
   const updateBudget = async () => {
-    const payload = {
-      amount: parseInt(amount),
-    };
-
-    const response = await supabase
-      .from("budget")
-      .update(payload)
-      .eq("id", routeParams?.budgetId);
-
-    if (response?.error === null) {
-      router.back();
+    try {
+      dispatch(enableLoading());
+      const payload = {
+        amount: parseInt(amount),
+      };
+      const response = await supabase
+        .from("budget")
+        .update(payload)
+        .eq("id", routeParams?.budgetId);
+      await fetchHomeDataV2();
+      if (response?.error === null) {
+        router.back();
+      }
+    } catch (error) {
+    } finally {
+      dispatch(disableLoading());
     }
   };
 

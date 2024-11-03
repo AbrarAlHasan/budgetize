@@ -28,7 +28,7 @@ import ChipText from "@/components/ChipText";
 import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
 import Feather from "@expo/vector-icons/Feather";
 import { triggerHomeApi } from "@/redux/reducers/slice/homeSlice";
-import { router, useFocusEffect } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import {
   disableLoading,
   enableLoading,
@@ -77,7 +77,7 @@ const AddBudget = () => {
     ]);
     setWeeklyCategoryList(weeklyResponse);
     setMonthlyCategoryList(monthlyResponse);
-    console.log("TriggeRED");
+
     if (setLoading) {
       dispatch(disableLoading());
     }
@@ -139,7 +139,7 @@ const AddBudget = () => {
 
     await fetchHomeDataV2();
     await getCategoryList(false);
-    console.log("completedALL");
+
     dispatch(disableLoading());
   };
 
