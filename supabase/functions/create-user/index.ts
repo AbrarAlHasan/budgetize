@@ -174,11 +174,84 @@ Deno.serve(async (req) => {
         console.log(
           `The Temporary Password for ${authDetails?.email} is ${randomPassword}`
         );
+        const htmlContent = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Temporary Password</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      color: #333;
+      background-color: #f9f9f9;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      width: 100%;
+      max-width: 600px;
+      margin: 30px auto;
+      padding: 20px;
+      background-color: #ffffff;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+    .header {
+      background-color: #17B169;
+      padding: 15px;
+      border-radius: 8px 8px 0 0;
+      text-align: center;
+    }
+    .header h1 {
+      color: #ffffff;
+      font-size: 24px;
+      margin: 0;
+    }
+    .content {
+      padding: 20px;
+      text-align: center;
+    }
+    .temp-password {
+      font-size: 24px;
+      font-weight: bold;
+      color: #17B169;
+      background-color: #f2f9f4;
+      padding: 10px;
+      border-radius: 5px;
+      margin: 20px 0;
+    }
+    .footer {
+      font-size: 14px;
+      color: #888;
+      text-align: center;
+      padding: 10px 0;
+      border-top: 1px solid #e6e6e6;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Your Temporary Password</h1>
+    </div>
+    <div class="content">
+      <p>Hello,</p>
+      <p>Here’s your temporary password to access the Money Manager app:</p>
+      <div class="temp-password">${randomPassword}</div>
+      <p>Please use it to log in and remember to update your password after logging in.</p>
+    </div>
+    <div class="footer">
+      <p>Thank you for using Money Manager!</p>
+    </div>
+  </div>
+</body>
+</html>`;
         await transport.sendMail({
           from: "abraralhasanprogrammer@gmail.com",
           to: authDetails?.email,
-          subject: "WELCOME TO MONEY MANAGER - PASSWORD",
-          text: `The Temporary Password is ${randomPassword} . You can login with this Password and change it in settings`,
+          subject: "Here's Your Temporary Password - Log in to Money Manager",
+          html: htmlContent,
         });
       }
     });

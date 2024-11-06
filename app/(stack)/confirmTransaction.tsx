@@ -132,26 +132,35 @@ const ConfirmTransaction = () => {
   };
 
   const addTransaction = async () => {
-    if (!selectedCategory) {
-      toast.show("Please Select a Category", { type: "danger" });
-      return;
-    }
-    const payload = {
-      category_id: selectedCategory?.category_id,
-      description: description,
-      date: formatDateTimeTimezone(spentDate, "YYYY-MM-DD"),
-      amount: parseFloat(amount),
-      user_id: store.getState().AuthSlice.userDetails?.user_id,
-      category_type: selectedCategory?.category_type,
-    };
-    console.log(payload);
+    try {
+      if (!selectedCategory) {
+        toast.show("Please Select a Category", { type: "danger" });
+        return;
+      }
+      dispatch(enableLoading());
+      const payload = {
+        category_id: selectedCategory?.category_id,
+        description: description,
+        date: formatDateTimeTimezone(spentDate, "YYYY-MM-DD"),
+        amount: parseFloat(amount),
+        user_id: store.getState().AuthSlice.userDetails?.user_id,
+        category_type: selectedCategory?.category_type,
+      };
+      console.log(payload);
 
-    const { data, error } = await supabase.from("transactions").insert(payload);
-    if (error === null) {
-      await fetchHomeDataV2();
-      router.replace("/(tabs)/");
+      const { data, error } = await supabase
+        .from("transactions")
+        .insert(payload);
+      if (error === null) {
+        await fetchHomeDataV2(false);
+        router.replace("/(tabs)/");
+      }
+
+      console.log(error);
+    } catch (error) {
+    } finally {
+      dispatch(disableLoading());
     }
-    console.log(error);
   };
 
   return (

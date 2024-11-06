@@ -2,14 +2,14 @@
   "expo": {
     "name": "moneyManager",
     "slug": "moneyManager",
-    "version": "0.36",
+    "version": "0.37",
     "orientation": "portrait",
     "icon": "./assets/images/ic_launcher_latest.png",
     "scheme": "myapp",
     "userInterfaceStyle": "light",
     "splash": {
       "image": "./assets/images/splash_icon.png",
-      "resizeMode": "",
+      "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
     "ios": {
@@ -35,6 +35,12 @@
       "eas": {
         "projectId": "8504b6b9-245d-405e-a4cb-d0d2e2e5031f"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/8504b6b9-245d-405e-a4cb-d0d2e2e5031f"
     }
   }
 }
