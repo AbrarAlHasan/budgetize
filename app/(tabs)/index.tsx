@@ -42,7 +42,7 @@ export default function HomeScreen() {
 
   const toast = useToast();
 
-  log.error("Check", { authConfig: store.getState().AuthSlice });
+
 
   useEffect(() => {
     fetchHomeDataV2(true);

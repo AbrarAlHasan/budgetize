@@ -18,7 +18,7 @@ const LoadingWrapper = ({
   renderOnlyLoading,
 }: {
   children?: ReactElement;
-  renderOnlyLoading: boolean;
+  renderOnlyLoading?: boolean;
 }) => {
   const { height, width } = useWindowDimensions();
 

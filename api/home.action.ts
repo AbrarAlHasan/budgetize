@@ -130,7 +130,7 @@ export const getCurrentWeekBudgetV2 = async ({
         .gte("date", formatDateTimeTimezone(fromDate))
         .lte("date", formatDateTimeTimezone(toDate)),
     ]);
-    console.log({ budgetResponse, transactionResponse });
+
     const budget: any = {
       error: false,
       response: [],
@@ -206,6 +206,7 @@ export const getCurrentMonthBudgetV2 = async ({
       error: false,
       response: [],
     };
+
     let budgetForManipulating: Array<ICategoryBudget> = [];
     let transactionsForManipulating: Array<ITransactionV2> = [];
     let unBudgetedTransactions: Array<ITransactionV2> = [];

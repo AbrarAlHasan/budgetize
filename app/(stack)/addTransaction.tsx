@@ -36,7 +36,7 @@ const AddTransaction = () => {
     if (routeParams?.type === "BUDGET") {
       setAmount(routeParams?.budgetAmount as string);
     }
-    log.info(routeParams);
+
     if (routeParams?.type === "EDIT_TRANSACTION") {
       setAmount(routeParams?.amount as string);
     }

@@ -41,7 +41,7 @@ export const copyPreviousBudget: any = async ({
     .eq("user_id", store.getState().AuthSlice.userDetails?.user_id)
     .eq("category_type", type)
     .lte("from_date", formatDateTimeTimezone(previousDateRange?.fromDate));
-  console.log(checkIfOneBudgetIsAvailable);
+
   if (
     checkIfOneBudgetIsAvailable?.data?.length === 0 ||
     !checkIfOneBudgetIsAvailable?.data

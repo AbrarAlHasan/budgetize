@@ -18,8 +18,8 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import * as Linking from "expo-linking";
 import { LinkingOptions } from "@react-navigation/native";
 import LoadingWrapper from "@/components/LoadingWrapper";
-import flagsmith from "react-native-flagsmith";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+
+
 
 const prefix = Linking.createURL("/");
 

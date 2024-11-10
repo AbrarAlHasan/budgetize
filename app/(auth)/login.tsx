@@ -65,7 +65,7 @@ const Login = () => {
         const { data: authDetails, error }: { data: any; error: any } =
           await initiateLogin(email, password);
 
-        console.log(authDetails);
+
         if (error === null) {
           const { data, error } = await supabase
             .from("users")
@@ -73,7 +73,7 @@ const Login = () => {
             .eq("email", email?.toLowerCase())
             .limit(1)
             .maybeSingle();
-          console.log(data, error);
+
           if (!data?.initial_password_changed) {
             bottomSheetModalRef.current?.present();
             return;

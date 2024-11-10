@@ -64,7 +64,7 @@ const Signup = () => {
 
   const onCreateUser = async () => {
     // const edgeResponse = await supabase.functions.invoke("create-user");
-    // console.log({ edgeResponse });
+
     // return;
 
     // const response = await supabase.auth.admin.createUser({
@@ -73,7 +73,7 @@ const Signup = () => {
     //   email_confirm: true,
     //   user_metadata: { name: "Abrar" },
     // });
-    // console.log({ response });
+
     // return;
 
     if (validate()) {

@@ -6,7 +6,7 @@ import {
   useColorScheme,
   View,
 } from "react-native";
-import React from "react";
+import React, { useEffect } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AppLogo from "../../assets/images/icon.png";
 import { commonStyles, textStyles } from "@/stylings/CustomStyles";
@@ -15,6 +15,7 @@ import { router } from "expo-router";
 import { Colors } from "@/constants/Colors";
 import LottieView from "lottie-react-native";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
+import { supabase } from "@/lib/supabase";
 
 const Onboarding = () => {
   const colorScheme = useColorScheme();

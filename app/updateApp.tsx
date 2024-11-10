@@ -18,7 +18,7 @@ import { nativeApplicationVersion } from "expo-application";
 
 const UpdateApp = () => {
   const routeParams = useLocalSearchParams();
-  console.log(routeParams);
+
   const colorScheme = useColorScheme();
 
   const updateApplication = async () => {

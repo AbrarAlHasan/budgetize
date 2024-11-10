@@ -70,7 +70,7 @@ const ConfirmTransaction = () => {
   // );
 
   useEffect(() => {
-    log.info(routeParams);
+
     if (routeParams?.type === "EDIT_TRANSACTION") {
       setSpentDate(new Date(routeParams?.date as string));
       fetchCategoryList(
@@ -156,7 +156,7 @@ const ConfirmTransaction = () => {
         user_id: store.getState().AuthSlice.userDetails?.user_id,
         category_type: selectedCategory?.category_type,
       };
-      console.log(payload);
+
       if (routeParams?.type === "EDIT_TRANSACTION") {
         const { data, error } = await supabase
           .from("transactions")

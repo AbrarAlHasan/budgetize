@@ -20,9 +20,11 @@ import { router } from "expo-router";
 const TransactionList = ({
   transactions,
   onEdit,
+  onDelete,
 }: {
   transactions?: Array<ITransactionV2> | undefined;
   onEdit: (transactionDetails: ITransactionV2) => void;
+  onDelete: (transactionDetails: ITransactionV2) => void;
 }) => {
   const colorScheme = useColorScheme();
   const [transactionData, setTransactionData] = useState<any>();
@@ -184,10 +186,7 @@ const TransactionList = ({
                           {formatPrice().format(data?.amount)}
                         </Text>
                         {showUpdateAction == data?.id && (
-                          <Pressable
-                            onPress={() => {
-                              onEdit(data);
-                            }}
+                          <View
                             style={{
                               flexDirection: "row",
                               gap: 10,
@@ -195,28 +194,41 @@ const TransactionList = ({
                               marginTop: 10,
                             }}
                           >
-                            <Text
-                              style={[
-                                textStyles.bolder,
-                                {
-                                  color:
-                                    Colors[colorScheme ?? "light"].darkOrange,
-                                },
-                              ]}
+                            <Pressable
+                              onPress={() => {
+                                onEdit(data);
+                              }}
                             >
-                              Edit
-                            </Text>
-                            <Text
-                              style={[
-                                textStyles.bolder,
-                                {
-                                  color: Colors[colorScheme ?? "light"].darkRed,
-                                },
-                              ]}
+                              <Text
+                                style={[
+                                  textStyles.bolder,
+                                  {
+                                    color:
+                                      Colors[colorScheme ?? "light"].darkOrange,
+                                  },
+                                ]}
+                              >
+                                Edit
+                              </Text>
+                            </Pressable>
+                            <Pressable
+                              onPress={() => {
+                                onDelete(data);
+                              }}
                             >
-                              Delete
-                            </Text>
-                          </Pressable>
+                              <Text
+                                style={[
+                                  textStyles.bolder,
+                                  {
+                                    color:
+                                      Colors[colorScheme ?? "light"].darkRed,
+                                  },
+                                ]}
+                              >
+                                Delete
+                              </Text>
+                            </Pressable>
+                          </View>
                         )}
                       </View>
                     </View>
