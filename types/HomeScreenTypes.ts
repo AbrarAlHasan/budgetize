@@ -59,7 +59,7 @@ export interface ICategoryV2 {
 
 export interface ITransactionV2 {
   id: number;
-  created_at: Date;
+  created_at?: Date;
   amount: number;
   description: string;
   date: Date;

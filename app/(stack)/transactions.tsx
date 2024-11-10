@@ -21,6 +21,7 @@ import {
   ICategoryBudget,
   ICategoryV2,
   IDateRange,
+  ITransactionV2,
 } from "@/types/HomeScreenTypes";
 import { textStyles } from "@/stylings/CustomStyles";
 import { Colors } from "@/constants/Colors";
@@ -62,7 +63,20 @@ const Transactions = () => {
     setCategoryDetails(selectedBudget?.category);
   }, [category_id]);
 
-  console.log(budgetDetails?.transaction);
+  const onEdit = (transactionDetail: ITransactionV2) => {
+    const navigationPayload = {
+      type: "EDIT_TRANSACTION",
+      ...transactionDetail,
+      date: transactionDetail?.date.toString(),
+      created_at: transactionDetail?.created_at?.toString(),
+      budgetId: budgetDetails?.id,
+    };
+
+    router.push({
+      pathname: "/addTransaction",
+      params: navigationPayload,
+    });
+  };
 
   return (
     <SafeAreaView
@@ -221,6 +235,7 @@ const Transactions = () => {
         <TransactionList
           key={"Transaction"}
           transactions={budgetDetails?.transaction}
+          onEdit={onEdit}
         />
         <FloatingButton
           onPress={() => {

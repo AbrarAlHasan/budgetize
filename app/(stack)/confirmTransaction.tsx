@@ -48,10 +48,10 @@ import {
   disableLoading,
   enableLoading,
 } from "@/redux/reducers/slice/globalSlice";
+import log from "@/utils/Logger";
 
 const ConfirmTransaction = () => {
-  const { amount, budgetId }: { amount: string; budgetId?: string } =
-    useLocalSearchParams();
+  const routeParams = useLocalSearchParams();
 
   const { top } = useSafeAreaInsets();
   const colorScheme = useColorScheme();
@@ -70,7 +70,17 @@ const ConfirmTransaction = () => {
   // );
 
   useEffect(() => {
-    fetchCategoryList(spentDate, budgetId);
+    log.info(routeParams);
+    if (routeParams?.type === "EDIT_TRANSACTION") {
+      setSpentDate(new Date(routeParams?.date as string));
+      fetchCategoryList(
+        new Date(routeParams?.date as string),
+        routeParams?.budgetId as string
+      );
+      setDescription(routeParams?.description as string);
+    } else {
+      fetchCategoryList(spentDate, routeParams?.budgetId as string);
+    }
   }, []);
 
   const [weeklyCategoryList, setWeeklyCategoryList] =
@@ -138,15 +148,27 @@ const ConfirmTransaction = () => {
         return;
       }
       dispatch(enableLoading());
-      const payload = {
+      const payload: any = {
         category_id: selectedCategory?.category_id,
         description: description,
         date: formatDateTimeTimezone(spentDate, "YYYY-MM-DD"),
-        amount: parseFloat(amount),
+        amount: parseFloat(routeParams?.amount as string),
         user_id: store.getState().AuthSlice.userDetails?.user_id,
         category_type: selectedCategory?.category_type,
       };
       console.log(payload);
+      if (routeParams?.type === "EDIT_TRANSACTION") {
+        const { data, error } = await supabase
+          .from("transactions")
+          .update(payload)
+          .eq("id", routeParams?.id);
+        console.log(error, data);
+        if (error === null) {
+          await fetchHomeDataV2(false);
+          router.replace("/(tabs)/");
+        }
+        return;
+      }
 
       const { data, error } = await supabase
         .from("transactions")
@@ -200,12 +222,16 @@ const ConfirmTransaction = () => {
               { color: Colors[colorScheme ?? "light"].darkText },
             ]}
           >
-            {formatPrice().format(parseFloat(amount ?? 0))}
+            {formatPrice().format(
+              parseFloat((routeParams?.amount as string) ?? 0)
+            )}
           </Text>
         </View>
         <View style={{ position: "absolute", right: 10 }}>
           <CustomButton
-            label="Spend"
+            label={
+              routeParams?.type === "EDIT_TRANSACTION" ? "Update" : "Spend"
+            }
             colorType="primary"
             onPress={addTransaction}
             customStyle={{
@@ -390,13 +416,15 @@ const ConfirmTransaction = () => {
           })}
         </View>
       </ScrollView>
-
-      <DateRangePicker
-        isVisible={isDateRangeVisible}
-        onCancel={() => setIsDateRangeVisible(false)}
-        mode="single"
-        onConfirm={confirmDateRange}
-      />
+      {isDateRangeVisible && (
+        <DateRangePicker
+          isVisible={isDateRangeVisible}
+          onCancel={() => setIsDateRangeVisible(false)}
+          mode="single"
+          onConfirm={confirmDateRange}
+          dateRange={{ startDate: new Date(spentDate) }}
+        />
+      )}
     </View>
   );
 };

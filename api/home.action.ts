@@ -130,6 +130,7 @@ export const getCurrentWeekBudgetV2 = async ({
         .gte("date", formatDateTimeTimezone(fromDate))
         .lte("date", formatDateTimeTimezone(toDate)),
     ]);
+    console.log({ budgetResponse, transactionResponse });
     const budget: any = {
       error: false,
       response: [],

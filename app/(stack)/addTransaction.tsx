@@ -23,6 +23,7 @@ import {
 } from "@/redux/reducers/slice/globalSlice";
 import { fetchHomeDataV2 } from "@/api/home.action";
 import FloatingButton from "@/components/FloatingButton";
+import log from "@/utils/Logger";
 const keyBoardValues = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0"];
 const AddTransaction = () => {
   const colorScheme = useColorScheme();
@@ -34,6 +35,10 @@ const AddTransaction = () => {
   useEffect(() => {
     if (routeParams?.type === "BUDGET") {
       setAmount(routeParams?.budgetAmount as string);
+    }
+    log.info(routeParams);
+    if (routeParams?.type === "EDIT_TRANSACTION") {
+      setAmount(routeParams?.amount as string);
     }
   }, []);
 
@@ -58,6 +63,14 @@ const AddTransaction = () => {
   const onConfirm = () => {
     if (routeParams?.type === "BUDGET") {
       updateBudget();
+      return;
+    }
+
+    if (routeParams?.type === "EDIT_TRANSACTION") {
+      router.navigate({
+        pathname: "/(stack)/confirmTransaction",
+        params: { ...routeParams, amount },
+      });
       return;
     }
     router.navigate({

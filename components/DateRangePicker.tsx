@@ -14,6 +14,7 @@ interface IDateRangePicker {
   mode: Mode;
   onCancel: () => void;
   onConfirm?: any;
+  dateRange?: { startDate?: Date; endDate?: Date };
 }
 
 const DateRangePicker = ({
@@ -21,6 +22,7 @@ const DateRangePicker = ({
   mode,
   onCancel,
   onConfirm,
+  dateRange,
 }: IDateRangePicker) => {
   const colorScheme = useColorScheme();
 
@@ -30,9 +32,17 @@ const DateRangePicker = ({
   const [endDate, setEndDate] = useState(homeSlice?.dateRange?.toDate);
 
   useEffect(() => {
-    setStartDate(homeSlice?.dateRange?.fromDate);
-    setEndDate(homeSlice?.dateRange?.toDate);
-  }, []);
+    if (dateRange?.startDate) {
+      setStartDate(dateRange?.startDate);
+    } else {
+      setStartDate(homeSlice?.dateRange?.fromDate);
+    }
+    if (dateRange?.endDate) {
+      setEndDate(dateRange?.endDate);
+    } else {
+      setEndDate(homeSlice?.dateRange?.toDate);
+    }
+  }, [isVisible]);
   return (
     <DatePicker
       isVisible={isVisible}
@@ -50,11 +60,11 @@ const DateRangePicker = ({
         headerTextColor: Colors[colorScheme ?? "light"].lightText,
         selectedDateTextColor: Colors[colorScheme ?? "light"].lightText,
       }}
+      initialDate={new Date(startDate)}
       startDate={new Date(startDate)}
       endDate={new Date(endDate)}
       onKeyPressCustom={(data: any) => {
         const weekRange = getCurrentWeekRange(data.startDate);
-
         setStartDate(weekRange.fromDate);
         setEndDate(weekRange.toDate);
       }}

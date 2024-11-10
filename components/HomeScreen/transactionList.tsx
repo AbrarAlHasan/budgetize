@@ -15,11 +15,14 @@ import { Colors } from "@/constants/Colors";
 import { formatPrice } from "@/utils/PriceFormatter";
 import log from "@/utils/Logger";
 import ChipText from "../ChipText";
+import { router } from "expo-router";
 
 const TransactionList = ({
   transactions,
+  onEdit,
 }: {
   transactions?: Array<ITransactionV2> | undefined;
+  onEdit: (transactionDetails: ITransactionV2) => void;
 }) => {
   const colorScheme = useColorScheme();
   const [transactionData, setTransactionData] = useState<any>();
@@ -28,27 +31,30 @@ const TransactionList = ({
   const groupTransactions = (
     transactions: Array<ITransactionV2> | undefined
   ) => {
-    const groupedTransactions = transactions?.reduce((acc, transaction) => {
-      const date = transaction.date;
+    const groupedTransactions = transactions?.reduce(
+      (acc: any, transaction) => {
+        const date = new Date(transaction.date).toISOString().split("T")[0];
 
-      // Check if the date already exists in the accumulator
-      if (!acc[date]) {
-        // Initialize the date with an empty array and total amount of 0
-        acc[date] = {
-          date: date,
-          totalAmount: 0,
-          transactions: [],
-        };
-      }
+        // Check if the date already exists in the accumulator
+        if (!acc[date]) {
+          // Initialize the date with an empty array and total amount of 0
+          acc[date] = {
+            date: date,
+            totalAmount: 0,
+            transactions: [],
+          };
+        }
 
-      // Add the transaction amount to the total
-      acc[date].totalAmount += transaction.amount;
+        // Add the transaction amount to the total
+        acc[date].totalAmount += transaction.amount;
 
-      // Add the transaction to the list for this date
-      acc[date].transactions.push(transaction);
+        // Add the transaction to the list for this date
+        acc[date].transactions.push(transaction);
 
-      return acc;
-    }, {});
+        return acc;
+      },
+      {}
+    );
     return groupedTransactions;
   };
 
@@ -58,12 +64,12 @@ const TransactionList = ({
     setTransactionData(groupedData);
 
     const sortedDates = Object?.keys(groupedData ?? {}).sort((dateA, dateB) => {
-      return new Date(dateB) - new Date(dateA); // Sorting in descending order
+      return Date.parse(dateB) - Date.parse(dateA); // Sorting in descending order
     });
     setSortedDateList(sortedDates);
   }, [transactions]);
 
-  const [showUpdateAction, setShowUpdateAction] = useState<string | null>(null);
+  const [showUpdateAction, setShowUpdateAction] = useState<number | null>(null);
 
   return (
     <ScrollView style={{ flex: 1, paddingTop: 20 }}>
@@ -115,7 +121,7 @@ const TransactionList = ({
             </View>
 
             {transactionData[item]?.transactions?.map(
-              (data: ITransaction, index: number) => {
+              (data: ITransactionV2, index: number) => {
                 return (
                   <Pressable
                     key={data?.id}
@@ -178,7 +184,10 @@ const TransactionList = ({
                           {formatPrice().format(data?.amount)}
                         </Text>
                         {showUpdateAction == data?.id && (
-                          <View
+                          <Pressable
+                            onPress={() => {
+                              onEdit(data);
+                            }}
                             style={{
                               flexDirection: "row",
                               gap: 10,
@@ -207,7 +216,7 @@ const TransactionList = ({
                             >
                               Delete
                             </Text>
-                          </View>
+                          </Pressable>
                         )}
                       </View>
                     </View>
