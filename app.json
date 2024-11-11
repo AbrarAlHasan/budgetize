@@ -4,11 +4,11 @@
     "slug": "moneyManager",
     "version": "0.39",
     "orientation": "portrait",
-    "icon": "./assets/images/ic_launcher_latest.png",
+    "icon": "./assets/Icons/playstore.png",
     "scheme": "myapp",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/images/splash_icon.png",
+      "image": "./assets/Icons/appstore.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -17,7 +17,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/ic_launcher_latest.png",
+        "foregroundImage": "./assets/Icons/playstore.png",
         "backgroundColor": "#ffffff"
       },
       "package": "com.abrarhasanprogrammer.moneyManager"
