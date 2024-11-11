@@ -14,14 +14,20 @@ export const getVersionDetails = async () => {
     return true;
   }
   if (Platform.OS === "android") {
-    version = data?.android_version;
+    version = {
+      version: data?.android_version,
+      downloadLink: data?.android_update_link,
+    };
   }
   if (Platform.OS === "ios") {
-    version = data?.ios_version;
+    version = {
+      version: data?.ios_version,
+      downloadLink: data?.ios_update_link,
+    };
   }
 
   if (version && nativeApplicationVersion) {
-    const value = compareVersions(version, nativeApplicationVersion);
+    const value = compareVersions(version?.version, nativeApplicationVersion);
     if (value) {
       router.replace({ pathname: "/updateApp", params: version });
       return false;
