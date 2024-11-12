@@ -65,75 +65,58 @@ const Transactions = () => {
     dispatch(disableLoading());
   };
   return (
-    <SafeAreaWrapper style={{ paddingBottom: 0 }}>
+    <SafeAreaWrapper style={{ paddingBottom: 0, paddingHorizontal: 20 }}>
       <>
-        <View style={{ padding: 10 }}>
+        <View
+          style={{
+            flexDirection: "row",
+            justifyContent: "space-between",
+            paddingTop: 20,
+          }}
+        >
           <ThemedText style={header.headerText} type="defaultSemiBold">
             Transactions
           </ThemedText>
-        </View>
-        <View
-          style={{
-            backgroundColor: Colors[colorScheme ?? "light"].background,
-            flex: 1,
-            paddingHorizontal: 10,
-          }}
-        >
-          <Pressable
-            onPress={() => {
-              setIsDateSelectorOpen(true);
+          <View
+            style={{
+              backgroundColor: Colors[colorScheme ?? "light"].background,
             }}
-            style={[
-              {
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 10,
-                justifyContent: "center",
-                marginBottom: 20,
-                position: "relative",
-              },
-            ]}
           >
-            <Text
+            <Pressable
+              onPress={() => {
+                setIsDateSelectorOpen(true);
+              }}
               style={[
-                textStyles.semiBold,
-                textStyles.md,
-                { color: Colors[colorScheme ?? "light"].primary },
-              ]}
-            >
-              {formatDateTimeTimezone(
-                selectedDateRange?.fromDate,
-                "DD MMM YYYY"
-              ) +
-                " - " +
-                formatDateTimeTimezone(
-                  selectedDateRange?.toDate,
-                  "DD MMM YYYY"
-                )}
-            </Text>
-
-            <Text
-              style={[
-                textStyles.xxs,
-                textStyles.mdBold,
                 {
-                  color: Colors[colorScheme ?? "light"].darkText,
-                  position: "absolute",
-                  bottom: -13,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 10,
+                  justifyContent: "center",
+                  marginBottom: 20,
+                  position: "relative",
                 },
               ]}
             >
-              Select Date Range
-            </Text>
-          </Pressable>
-          <BorderLine />
-          
-          <TransactionList
-            transactions={transactionList}
-            showCategoryDetails={true}
-            containerStyle={{ paddingTop: 0 }}
-          />
+              <Text
+                style={[
+                  textStyles.semiBold,
+                  textStyles.md,
+                  { color: Colors[colorScheme ?? "light"].primary },
+                ]}
+              >
+                {formatDateTimeTimezone(
+                  selectedDateRange?.fromDate,
+                  "MMMM YYYY"
+                )}
+              </Text>
+            </Pressable>
+          </View>
         </View>
+        <TransactionList
+          transactions={transactionList}
+          showCategoryDetails={true}
+          containerStyle={{ paddingTop: 0 }}
+        />
 
         {isDateSelectorOpen && (
           <DateRangePicker
