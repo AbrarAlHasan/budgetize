@@ -127,6 +127,7 @@ const Transactions = () => {
             </Text>
           </Pressable>
           <BorderLine />
+          
           <TransactionList
             transactions={transactionList}
             showCategoryDetails={true}
