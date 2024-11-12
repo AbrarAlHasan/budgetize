@@ -64,9 +64,14 @@ const DateRangePicker = ({
       startDate={new Date(startDate)}
       endDate={new Date(endDate)}
       onKeyPressCustom={(data: any) => {
-        const weekRange = getCurrentWeekRange(data.startDate);
-        setStartDate(weekRange.fromDate);
-        setEndDate(weekRange.toDate);
+        if (mode === "single") {
+          setStartDate(data.date);
+          setEndDate(data.date);
+        } else {
+          const weekRange = getCurrentWeekRange(data.startDate);
+          setStartDate(weekRange.fromDate);
+          setEndDate(weekRange.toDate);
+        }
       }}
       modalStyles={{ top: -50 }}
       onShortcutPress={(data) => {
