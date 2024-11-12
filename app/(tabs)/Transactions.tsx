@@ -31,6 +31,7 @@ import TransactionList from "@/components/HomeScreen/transactionList";
 import { useFocusEffect } from "expo-router";
 import SafeAreaWrapper from "@/components/SafeAreaWrapper";
 import { ThemedText } from "@/components/ThemedText";
+import BorderLine from "@/components/BorderLine";
 
 const Transactions = () => {
   const colorScheme = useColorScheme();
@@ -125,7 +126,7 @@ const Transactions = () => {
               Select Date Range
             </Text>
           </Pressable>
-
+          <BorderLine />
           <TransactionList
             transactions={transactionList}
             showCategoryDetails={true}
