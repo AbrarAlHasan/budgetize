@@ -1,5 +1,5 @@
 diff --git a/node_modules/react-native-neat-date-picker/src/components/Content.tsx b/node_modules/react-native-neat-date-picker/src/components/Content.tsx
-index fb163e5..5bed2f4 100644
+index fb163e5..57d0c1e 100644
 --- a/node_modules/react-native-neat-date-picker/src/components/Content.tsx
 +++ b/node_modules/react-native-neat-date-picker/src/components/Content.tsx
 @@ -17,7 +17,7 @@ const Content = ({
@@ -7,7 +7,7 @@ index fb163e5..5bed2f4 100644
    daysArray, btnDisabled,
    displayTime, setDisplayTime,
 -  output, setOutput
-+  output, setOutput,onKeyPressCustom,onShortcutPress
++  output, setOutput,onKeyPressCustom,onShortcutPress,enableShortcut
  }: any) => {
    const [showChangeYearModal, setShowChangeYearModal] = useState(chooseYearFirst || false)
  
@@ -31,10 +31,12 @@ index fb163e5..5bed2f4 100644
        <View style={styles.footer}>
          <View style={styles.btn_box}>
            <TouchableOpacity style={styles.btn} onPress={onCancelPress}>
-@@ -112,6 +115,22 @@ const Content = ({
+@@ -112,6 +115,26 @@ const Content = ({
          }}
        />
      </View>
++
++    {enableShortcut && 
 +    <View style={[styles.container, { marginTop:18,backgroundColor,flexDirection:'row',justifyContent:'space-around',paddingVertical:10 }]}>
 +
 +    <TouchableOpacity style={{borderColor:weekDaysColor,borderWidth:1,padding:10,borderRadius:10,backgroundColor}} onPress={()=>onShortcutPress('LAST_WEEK')}>
@@ -49,13 +51,15 @@ index fb163e5..5bed2f4 100644
 +      <Text style={{fontWeight:500}}>Next Week</Text>
 +    </TouchableOpacity>
 +    </View>
++    }
++
 +    </>
 +
    )
  }
  
 diff --git a/node_modules/react-native-neat-date-picker/src/components/Key.tsx b/node_modules/react-native-neat-date-picker/src/components/Key.tsx
-index e8422a0..650a4f1 100644
+index e8422a0..329a04d 100644
 --- a/node_modules/react-native-neat-date-picker/src/components/Key.tsx
 +++ b/node_modules/react-native-neat-date-picker/src/components/Key.tsx
 @@ -27,9 +27,10 @@ type KeyProps = {
@@ -74,7 +78,7 @@ index e8422a0..650a4f1 100644
  
          if (singleMode) {
              const newOutPut = { ...output, date: newDate }
-+            // onKeyPressCustom(newOutPut)
++            onKeyPressCustom(newOutPut)
              setOutput(newOutPut)
              return
          }
@@ -107,10 +111,10 @@ index e8422a0..650a4f1 100644
      }
  
 diff --git a/node_modules/react-native-neat-date-picker/src/components/NeatDatePicker.d.tsx b/node_modules/react-native-neat-date-picker/src/components/NeatDatePicker.d.tsx
-index ee30d92..a7727f3 100644
+index ee30d92..fe93b29 100644
 --- a/node_modules/react-native-neat-date-picker/src/components/NeatDatePicker.d.tsx
 +++ b/node_modules/react-native-neat-date-picker/src/components/NeatDatePicker.d.tsx
-@@ -142,6 +142,42 @@ export type NeatDatePickerProps = {
+@@ -142,6 +142,46 @@ export type NeatDatePickerProps = {
     * @required
     */
    onConfirm: (arg: Object) => void;
@@ -146,6 +150,10 @@ index ee30d92..a7727f3 100644
 +   */
 +  onKeyPressCustom?: (arg: Object) => void;
 +
++
++
++  enableShortcut?:boolean;
++
 +  /**
 +   * Sets the Date range according to the range we select
 +   */
@@ -154,10 +162,10 @@ index ee30d92..a7727f3 100644
     * Set this prop to a date if you need to set an initial starting date when opening the date picker the first time. Only works with 'range' mode.
     */
 diff --git a/node_modules/react-native-neat-date-picker/src/components/NeatDatePicker.tsx b/node_modules/react-native-neat-date-picker/src/components/NeatDatePicker.tsx
-index a71450e..072012b 100644
+index a71450e..0a619b8 100644
 --- a/node_modules/react-native-neat-date-picker/src/components/NeatDatePicker.tsx
 +++ b/node_modules/react-native-neat-date-picker/src/components/NeatDatePicker.tsx
-@@ -18,26 +18,33 @@ I18nManager.allowRTL(false)
+@@ -18,26 +18,34 @@ I18nManager.allowRTL(false)
  const winY = Dimensions.get('screen').height
  
  const NeatDatePicker = ({
@@ -175,7 +183,8 @@ index a71450e..072012b 100644
 -    withoutModal
 +    withoutModal,
 +    onKeyPressCustom,
-+    onShortcutPress
++    onShortcutPress,
++    enableShortcut
  }: NeatDatePickerProps) => {
      
 +    
@@ -195,7 +204,7 @@ index a71450e..072012b 100644
      // output decides which date should be active.
      const [output, setOutput] = useState<Output>(
          mode === 'single'
-@@ -48,6 +55,12 @@ const NeatDatePicker = ({
+@@ -48,6 +56,12 @@ const NeatDatePicker = ({
      // If user presses cancel, reset 'output' state to this 'originalOutput'
      const [originalOutput, setOriginalOutput] = useState(output)
  
@@ -208,7 +217,7 @@ index a71450e..072012b 100644
      const minTime = minDate?.getTime()
      const maxTime = maxDate?.getTime()
  
-@@ -167,7 +180,7 @@ const NeatDatePicker = ({
+@@ -167,7 +181,7 @@ const NeatDatePicker = ({
                  colorOptions, chooseYearFirst,
                  daysArray, btnDisabled,
                  displayTime, setDisplayTime,
@@ -217,12 +226,12 @@ index a71450e..072012b 100644
              }}
          />
      )
-@@ -195,17 +208,13 @@ const NeatDatePicker = ({
+@@ -195,17 +209,13 @@ const NeatDatePicker = ({
                      colorOptions, chooseYearFirst,
                      daysArray, btnDisabled,
                      displayTime, setDisplayTime,
 -                    output, setOutput
-+                    output, setOutput,onKeyPressCustom,onShortcutPress
++                    output, setOutput,onKeyPressCustom,onShortcutPress,enableShortcut
                  }}
              />
          </Modal>
@@ -236,7 +245,7 @@ index a71450e..072012b 100644
  
  export default NeatDatePicker
  
-@@ -216,6 +225,7 @@ const styles = StyleSheet.create({
+@@ -216,6 +226,7 @@ const styles = StyleSheet.create({
          height: winY,
          alignItems: 'center',
          padding: 0,

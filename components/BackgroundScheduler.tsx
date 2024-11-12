@@ -58,6 +58,7 @@ const BackgroundScheduler = () => {
           onCancel={onCancel}
           mode="range"
           onConfirm={onConfirm}
+          enableShortcut={true}
         />
       )}
     </>

@@ -2,7 +2,7 @@
   "expo": {
     "name": "moneyManager",
     "slug": "moneyManager",
-    "version": "0.39",
+    "version": "0.40",
     "orientation": "portrait",
     "icon": "./assets/Icons/playstore.png",
     "scheme": "myapp",

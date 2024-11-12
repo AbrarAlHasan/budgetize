@@ -65,7 +65,7 @@ export default function TabsLayout() {
             />
           ),
           header: () => <CustomTransactionsHeader />,
-          headerShown: true,
+          headerShown: false,
         }}
       />
       <Tabs.Screen

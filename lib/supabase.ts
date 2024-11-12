@@ -9,9 +9,10 @@ const supabaseAnonKey =
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    storage: AsyncStorage,
-    // ...(Platform.OS !== "web" ? { storage: AsyncStorage } : {}),
+    // storage: AsyncStorage,
+    ...(Platform.OS !== "web" ? { storage: AsyncStorage } : {}),
     autoRefreshToken: true,
+    // persistSession: Platform.OS !== "web",
     persistSession: true,
     detectSessionInUrl: false,
   },

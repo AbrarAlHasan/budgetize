@@ -24,7 +24,7 @@ const supabaseClient = createClient(
 // CONNECT TO DATA BASE
 const databaseUrl =
   Deno.env.get("DB_URL") ??
-  "postgresql://postgres.vujcvquohckehaltpjxw:PicEw3CUQMDqNuVx@aws-0-ap-south-1.pooler.supabase.com:6543/postgres";
+  "postgresql://postgres.vujcvquohckehaltpjxw:BXxDzsOaWJ9HBeX2@aws-0-ap-south-1.pooler.supabase.com:6543/postgres";
 const pool = new postgres.Pool(databaseUrl, 3, true);
 
 //GENERATE RANDOM PASSWORD
@@ -52,9 +52,11 @@ const transport = nodemailer.createTransport({
 });
 
 Deno.serve(async (req) => {
+  console.log("ENTERED REQUEST");
+
   const request = await req.json();
   const connection = await pool.connect();
-
+  console.log("CONNECTION SUCCESS");
   const userDetails = await supabaseClient
     .from("users")
     .select()
@@ -76,7 +78,7 @@ Deno.serve(async (req) => {
       headers: { "Content-Type": "application/json" },
     });
   }
-
+  console.log("USER DETAILS", userDetails);
   const randomPassword = generateRandomPassword();
 
   const authDetails = {
@@ -87,7 +89,9 @@ Deno.serve(async (req) => {
   const deletedUser = await supabaseClient.auth.admin.deleteUser(
     userDetails?.data?.auth_user_id
   );
-
+  console.log(
+    `GENERATED PASSWORD FOR ${request?.email?.trim()} is ${randomPassword}`
+  );
   console.log("DELETED USER", deletedUser);
 
   if (deletedUser?.error == null) {

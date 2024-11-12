@@ -14,7 +14,7 @@ const SafeAreaWrapper = ({
   style,
 }: {
   children: ReactElement;
-  style: ViewStyle;
+  style?: ViewStyle;
 }) => {
   const colorScheme = useColorScheme();
   const { top, bottom } = useSafeAreaInsets();

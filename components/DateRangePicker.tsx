@@ -4,7 +4,10 @@ import React, { useEffect, useState } from "react";
 import DatePicker from "react-native-neat-date-picker";
 import { Mode } from "react-native-neat-date-picker/src/components/Key";
 import { Colors } from "@/constants/Colors";
-import { getCurrentWeekRange } from "@/utils/DateCalculator";
+import {
+  getCurrentMonthRange,
+  getCurrentWeekRange,
+} from "@/utils/DateCalculator";
 import { useSelector } from "react-redux";
 import { RootState } from "@/redux/store";
 import moment from "moment";
@@ -14,7 +17,9 @@ interface IDateRangePicker {
   mode: Mode;
   onCancel: () => void;
   onConfirm?: any;
-  dateRange?: { startDate?: Date; endDate?: Date };
+  dateRange?: { fromDate?: Date; toDate?: Date };
+  onKeyPressType?: "MONTH" | "WEEK" | null;
+  enableShortcut?: boolean;
 }
 
 const DateRangePicker = ({
@@ -23,6 +28,8 @@ const DateRangePicker = ({
   onCancel,
   onConfirm,
   dateRange,
+  onKeyPressType = "WEEK",
+  enableShortcut = false,
 }: IDateRangePicker) => {
   const colorScheme = useColorScheme();
 
@@ -32,13 +39,13 @@ const DateRangePicker = ({
   const [endDate, setEndDate] = useState(homeSlice?.dateRange?.toDate);
 
   useEffect(() => {
-    if (dateRange?.startDate) {
-      setStartDate(dateRange?.startDate);
+    if (dateRange?.fromDate) {
+      setStartDate(dateRange?.fromDate);
     } else {
       setStartDate(homeSlice?.dateRange?.fromDate);
     }
-    if (dateRange?.endDate) {
-      setEndDate(dateRange?.endDate);
+    if (dateRange?.toDate) {
+      setEndDate(dateRange?.toDate);
     } else {
       setEndDate(homeSlice?.dateRange?.toDate);
     }
@@ -49,6 +56,7 @@ const DateRangePicker = ({
       mode={mode}
       onCancel={onCancel}
       onConfirm={onConfirm}
+      enableShortcut={enableShortcut}
       colorOptions={{
         headerColor: Colors[colorScheme ?? "light"].primary,
         weekDaysColor: Colors[colorScheme ?? "light"].primary,
@@ -67,10 +75,19 @@ const DateRangePicker = ({
         if (mode === "single") {
           setStartDate(data.date);
           setEndDate(data.date);
-        } else {
-          const weekRange = getCurrentWeekRange(data.startDate);
-          setStartDate(weekRange.fromDate);
-          setEndDate(weekRange.toDate);
+          return;
+        }
+
+        if (onKeyPressType === "WEEK") {
+          const range = getCurrentWeekRange(data.startDate);
+          setStartDate(range.fromDate);
+          setEndDate(range.toDate);
+        }
+
+        if (onKeyPressType === "MONTH") {
+          const range = getCurrentMonthRange(data.startDate);
+          setStartDate(range.fromDate);
+          setEndDate(range.toDate);
         }
       }}
       modalStyles={{ top: -50 }}

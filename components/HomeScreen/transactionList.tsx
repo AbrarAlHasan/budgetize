@@ -5,30 +5,65 @@ import {
   Text,
   useColorScheme,
   View,
+  ViewStyle,
 } from "react-native";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { ITransaction, ITransactionV2 } from "@/types/HomeScreenTypes";
 import { groupData } from "@/utils/CommonUtlis";
 import { formatDateTimeTimezone } from "@/utils/DateCalculator";
-import { textStyles } from "@/stylings/CustomStyles";
+import { commonStyles, textStyles } from "@/stylings/CustomStyles";
 import { Colors } from "@/constants/Colors";
 import { formatPrice } from "@/utils/PriceFormatter";
 import log from "@/utils/Logger";
 import ChipText from "../ChipText";
 import { router } from "expo-router";
+import { ITransactionList } from "@/types/TransactionScreenTypes";
+import Animated, {
+  FadeIn,
+  FadeOut,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+  SlideInLeft,
+  SlideOutLeft,
+} from "react-native-reanimated";
 
-const TransactionList = ({
+type TransactionType<T extends boolean> = T extends true
+  ? ITransactionList
+  : ITransactionV2;
+
+interface TransactionListProps<T extends boolean> {
+  transactions?: Array<TransactionType<T>>;
+  onEdit?: (transactionDetails: ITransactionV2) => void;
+  onDelete?: (transactionDetails: ITransactionV2) => void;
+  showCategoryDetails: T;
+  containerStyle?: ViewStyle;
+}
+
+const TransactionList = <T extends boolean>({
   transactions,
   onEdit,
   onDelete,
-}: {
-  transactions?: Array<ITransactionV2> | undefined;
-  onEdit: (transactionDetails: ITransactionV2) => void;
-  onDelete: (transactionDetails: ITransactionV2) => void;
-}) => {
+  showCategoryDetails,
+  containerStyle,
+}: TransactionListProps<T>) => {
   const colorScheme = useColorScheme();
   const [transactionData, setTransactionData] = useState<any>();
   const [sortedDateList, setSortedDateList] = useState<any>([]);
+
+  const scrollY = useSharedValue(0);
+  const fadeAnim = useSharedValue(0);
+
+  const scrollHandler = useAnimatedScrollHandler((event) => {
+    scrollY.value = event.contentOffset.y;
+  });
+
+  const fadeStyle = useAnimatedStyle(() => {
+    return {
+      opacity: withTiming(scrollY.value > 300 ? 1 : 0, { duration: 500 }),
+    };
+  });
 
   const groupTransactions = (
     transactions: Array<ITransactionV2> | undefined
@@ -74,10 +109,16 @@ const TransactionList = ({
   const [showUpdateAction, setShowUpdateAction] = useState<number | null>(null);
 
   return (
-    <ScrollView style={{ flex: 1, paddingTop: 20 }}>
+    <ScrollView
+      showsVerticalScrollIndicator={false}
+      style={{ flex: 1, paddingTop: 20, ...containerStyle }}
+    >
       {sortedDateList?.map((item: any, index: number) => {
         return (
-          <View key={index} style={{ paddingVertical: 14 }}>
+          <Animated.View
+            entering={SlideInLeft.duration(200 * (index + 1))}
+            key={index}
+          >
             <View
               style={{
                 flexDirection: "row",
@@ -123,29 +164,22 @@ const TransactionList = ({
             </View>
 
             {transactionData[item]?.transactions?.map(
-              (data: ITransactionV2, index: number) => {
+              (data: TransactionType<T>, index: number) => {
                 return (
-                  <Pressable
-                    key={data?.id}
-                    onPress={() => {
-                      setShowUpdateAction((prevState) =>
-                        prevState ? null : data?.id
-                      );
-                    }}
-                  >
-                    <View
-                      key={index}
-                      style={{
-                        paddingHorizontal: 20,
-                        paddingVertical: 10,
-                        flexDirection: "row",
-                        alignItems: "center",
-                        gap: 10,
+                  <Animated.View>
+                    <Pressable
+                      key={data?.id}
+                      onPress={() => {
+                        setShowUpdateAction((prevState) =>
+                          prevState ? null : data?.id
+                        );
                       }}
                     >
                       <View
+                        key={index}
                         style={{
-                          flex: 1,
+                          paddingHorizontal: 20,
+                          paddingVertical: 10,
                           flexDirection: "row",
                           alignItems: "center",
                           gap: 10,
@@ -153,90 +187,145 @@ const TransactionList = ({
                       >
                         <View
                           style={{
-                            width: 10,
-                            aspectRatio: 1,
-                            backgroundColor:
-                              Colors[colorScheme ?? "light"].primary,
-                            borderRadius: 100,
+                            flex: 1,
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 12,
                           }}
-                        />
-                        <Text
-                          style={[
-                            textStyles.semiBold,
-                            textStyles.sm,
-                            {
-                              flex: 1,
-                              color: data?.description
-                                ? Colors[colorScheme ?? "light"].darkText
-                                : Colors[colorScheme ?? "light"].lightGray,
-                            },
-                          ]}
                         >
-                          {data?.description || "No Description"}
-                        </Text>
-                      </View>
-                      <View>
-                        <Text
-                          style={[
-                            textStyles.bolder,
-                            textStyles.md,
-                            { color: Colors[colorScheme ?? "light"].gray },
-                          ]}
-                        >
-                          {formatPrice().format(data?.amount)}
-                        </Text>
-                        {showUpdateAction == data?.id && (
-                          <View
-                            style={{
-                              flexDirection: "row",
-                              gap: 10,
-                              alignSelf: "flex-end",
-                              marginTop: 10,
-                            }}
-                          >
-                            <Pressable
-                              onPress={() => {
-                                onEdit(data);
-                              }}
+                          {showCategoryDetails && "category" in data ? (
+                            <View
+                              style={[
+                                commonStyles.alignJustifyCenter,
+                                {
+                                  backgroundColor:
+                                    data?.category?.background_color ||
+                                    Colors.dark.primary,
+                                  borderRadius: 100,
+                                  aspectRatio: 1,
+                                  height: 32,
+                                },
+                              ]}
                             >
                               <Text
                                 style={[
-                                  textStyles.bolder,
-                                  {
-                                    color:
-                                      Colors[colorScheme ?? "light"].darkOrange,
-                                  },
+                                  textStyles.sm,
+                                  { paddingLeft: 3, paddingTop: 2 },
                                 ]}
                               >
-                                Edit
+                                {data?.category?.icon}
                               </Text>
-                            </Pressable>
-                            <Pressable
-                              onPress={() => {
-                                onDelete(data);
+                            </View>
+                          ) : (
+                            <View
+                              style={{
+                                width: 10,
+                                aspectRatio: 1,
+                                backgroundColor:
+                                  Colors[colorScheme ?? "light"].primary,
+                                borderRadius: 100,
                               }}
+                            />
+                          )}
+                          <View style={{ flex: 1 }}>
+                            <Text
+                              style={[
+                                textStyles.semiBold,
+                                textStyles.sm,
+                                {
+                                  color: data?.description
+                                    ? Colors[colorScheme ?? "light"].darkText
+                                    : Colors[colorScheme ?? "light"].lightGray,
+                                },
+                              ]}
                             >
+                              {data?.description || "No Description"}
+                            </Text>
+                            {"category" in data && (
                               <Text
                                 style={[
-                                  textStyles.bolder,
+                                  textStyles.xs,
                                   {
-                                    color:
-                                      Colors[colorScheme ?? "light"].darkRed,
+                                    color: Colors[colorScheme ?? "light"].gray,
                                   },
                                 ]}
                               >
-                                Delete
+                                {data?.category?.category_name}
                               </Text>
-                            </Pressable>
+                            )}
                           </View>
-                        )}
+                        </View>
+                        <View>
+                          <Text
+                            style={[
+                              textStyles.bolder,
+                              textStyles.md,
+                              { color: Colors[colorScheme ?? "light"].gray },
+                            ]}
+                          >
+                            {formatPrice().format(data?.amount)}
+                          </Text>
+                          {onEdit &&
+                            onDelete &&
+                            showUpdateAction == data?.id && (
+                              <View
+                                style={{
+                                  flexDirection: "row",
+                                  gap: 10,
+                                  alignSelf: "flex-end",
+                                  marginTop: 10,
+                                }}
+                              >
+                                {onEdit && (
+                                  <Pressable
+                                    onPress={() => {
+                                      onEdit(data);
+                                    }}
+                                  >
+                                    <Text
+                                      style={[
+                                        textStyles.bolder,
+                                        {
+                                          color:
+                                            Colors[colorScheme ?? "light"]
+                                              .darkOrange,
+                                        },
+                                      ]}
+                                    >
+                                      Edit
+                                    </Text>
+                                  </Pressable>
+                                )}
+                                {onDelete && (
+                                  <Pressable
+                                    onPress={() => {
+                                      onDelete(data);
+                                    }}
+                                  >
+                                    <Text
+                                      style={[
+                                        textStyles.bolder,
+                                        {
+                                          color:
+                                            Colors[colorScheme ?? "light"]
+                                              .darkRed,
+                                        },
+                                      ]}
+                                    >
+                                      Delete
+                                    </Text>
+                                  </Pressable>
+                                )}
+                              </View>
+                            )}
+                        </View>
                       </View>
-                    </View>
-                  </Pressable>
+                    </Pressable>
+                  </Animated.View>
                 );
               }
             )}
-          </View>
+          </Animated.View>
         );
       })}
     </ScrollView>
@@ -245,4 +334,14 @@ const TransactionList = ({
 
 export default TransactionList;
 
-const styles = StyleSheet.create({});
+const styles = StyleSheet.create({
+  fadeView: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 50, // Adjust the height as needed
+    backgroundColor: "rgba(0, 0, 0, 0.5)", // Adjust the color and opacity as needed,
+    paddingVertical: 14,
+  },
+});

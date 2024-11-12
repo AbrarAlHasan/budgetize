@@ -70,7 +70,6 @@ const ConfirmTransaction = () => {
   // );
 
   useEffect(() => {
-
     if (routeParams?.type === "EDIT_TRANSACTION") {
       setSpentDate(new Date(routeParams?.date as string));
       fetchCategoryList(
@@ -422,7 +421,7 @@ const ConfirmTransaction = () => {
           onCancel={() => setIsDateRangeVisible(false)}
           mode="single"
           onConfirm={confirmDateRange}
-          dateRange={{ startDate: new Date(spentDate) }}
+          dateRange={{ fromDate: new Date(spentDate) }}
         />
       )}
     </View>

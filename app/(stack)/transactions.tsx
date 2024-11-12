@@ -271,6 +271,7 @@ const Transactions = () => {
           transactions={budgetDetails?.transaction}
           onEdit={onEdit}
           onDelete={onDelete}
+          showCategoryDetails={false}
         />
         <FloatingButton
           onPress={() => {
