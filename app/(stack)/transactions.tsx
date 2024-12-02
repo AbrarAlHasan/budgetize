@@ -98,9 +98,9 @@ const Transactions = () => {
       dispatch(enableLoading());
       const { data, error } = await supabase
         .from("transactions")
-        .delete()
+        .update({ user_deleted: true })
         .eq("id", transactionDetails?.id);
-      console.log(data, error);
+
       if (error === null) {
         await fetchHomeDataV2();
         fetchInitialData();

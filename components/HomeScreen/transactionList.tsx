@@ -28,6 +28,7 @@ import Animated, {
   SlideInLeft,
   SlideOutLeft,
 } from "react-native-reanimated";
+import BorderLine from "../BorderLine";
 
 type TransactionType<T extends boolean> = T extends true
   ? ITransactionList
@@ -166,9 +167,14 @@ const TransactionList = <T extends boolean>({
             {transactionData[item]?.transactions?.map(
               (data: TransactionType<T>, index: number) => {
                 return (
-                  <Animated.View>
+                  <Animated.View
+                    key={data?.id}
+                    style={{
+                      position: "relative",
+                      justifyContent: "center",
+                    }}
+                  >
                     <Pressable
-                      key={data?.id}
                       onPress={() => {
                         setShowUpdateAction((prevState) =>
                           prevState ? null : data?.id

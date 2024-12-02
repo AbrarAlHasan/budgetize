@@ -46,6 +46,7 @@ export default function Startup() {
   };
 
   useEffect(() => {
+  // Sentry.captureException(new Error('First error')) 
     dispatch(disableLoading());
     dispatch(
       setCheckingAuthentication({

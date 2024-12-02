@@ -66,6 +66,7 @@ export interface ITransactionV2 {
   user_id: string;
   category_id: number;
   category_type: "WEEKLY" | "MONTHLY";
+  user_deleted: boolean;
 }
 
 export interface IAddBudgetCategory extends ICategoryV2 {
