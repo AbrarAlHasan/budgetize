@@ -27,18 +27,7 @@
       "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
-    "plugins": [
-      "expo-router",
-      "expo-font",
-      [
-        "@sentry/react-native/expo",
-        {
-          "url": "https://sentry.suzukibusinesscloud-dev.com/",
-          "project": "salesapp",
-          "organization": "sentry"
-        }
-      ]
-    ],
+    "plugins": ["expo-router", "expo-font"],
     "experiments": {
       "typedRoutes": true
     },

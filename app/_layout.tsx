@@ -18,14 +18,6 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import * as Linking from "expo-linking";
 import { LinkingOptions } from "@react-navigation/native";
 import LoadingWrapper from "@/components/LoadingWrapper";
-import * as Sentry from '@sentry/react-native';
-
-Sentry.init({
-  dsn: 'http://f9e16d12337223086176f04bef789846@sentry.suzukibusinesscloud-dev.com/12',
-
-  // uncomment the line below to enable Spotlight (https://spotlightjs.com)
-  // enableSpotlight: __DEV__,
-});
 
 
 
