@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "213663698619",
+    "project_id": "budgetize-46bd7",
+    "storage_bucket": "budgetize-46bd7.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:213663698619:android:d1cba475d3d8c9a49ea39e",
+        "android_client_info": {
+          "package_name": "com.budgetize.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC3UEdw99hAINe1U_ZcYMp64xCJgTTM9i8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

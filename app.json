@@ -14,7 +14,8 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.budgetize.app"
+      "bundleIdentifier": "com.budgetize.app",
+      "googleServicesFile": "./GoogleService-Info.plist"
     },
     "android": {
       "adaptiveIcon": {
@@ -22,6 +23,7 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.budgetize.app",
+      "googleServicesFile": "./google-services.json",
       "versionCode": 4
     },
     "web": {
@@ -31,7 +33,18 @@
     },
     "plugins": [
       "expo-router",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static"
+          }
+        }
+      ],
+      "@react-native-firebase/crashlytics",
+      "@react-native-firebase/app",
+      "@react-native-firebase/perf"
     ],
     "experiments": {
       "typedRoutes": true
@@ -45,6 +58,7 @@
     "updates": {
       "url": "https://u.expo.dev/8504b6b9-245d-405e-a4cb-d0d2e2e5031f"
     },
-    "owner": "abrarhasanprogrammer"
+    "owner": "abrarhasanprogrammer",
+    "newArchEnabled": false
   }
 }
