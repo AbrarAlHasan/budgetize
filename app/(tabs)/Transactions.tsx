@@ -74,7 +74,13 @@ const Transactions = () => {
             paddingTop: 20,
           }}
         >
-          <ThemedText style={header.headerText} type="defaultSemiBold">
+          <ThemedText
+            style={[
+              header.headerText,
+              { color: Colors[colorScheme ?? "light"].darkText },
+            ]}
+            type="defaultSemiBold"
+          >
             Transactions
           </ThemedText>
           <View

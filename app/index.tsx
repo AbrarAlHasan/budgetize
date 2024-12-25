@@ -59,7 +59,12 @@ export default function Startup() {
   return (
     <>
       <SafeAreaView
-        style={{ alignItems: "center", justifyContent: "center", flex: 1 }}
+        style={{
+          alignItems: "center",
+          justifyContent: "center",
+          flex: 1,
+          backgroundColor: Colors[colorScheme ?? "light"].background,
+        }}
       >
         {Platform.OS === "web" ? (
           <DotLottieReact

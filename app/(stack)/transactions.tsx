@@ -73,7 +73,6 @@ const Transactions = () => {
         (data) => data?.category_id === Number(category_id)
       )[0];
     }
-    console.log("SELECTED BUDGET", selectedBudget);
     setBudgetDetails(selectedBudget);
     setCategoryDetails(selectedBudget?.category);
   };

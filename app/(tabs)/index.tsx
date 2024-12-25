@@ -42,9 +42,8 @@ export default function HomeScreen() {
 
   const toast = useToast();
 
-
-
   useEffect(() => {
+    console.log(store.getState().AuthSlice.userDetails);
     fetchHomeDataV2(true);
   }, []);
 

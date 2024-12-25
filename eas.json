@@ -19,9 +19,14 @@
     },
     "production": {
       "android": {
-        "buildType": "app-bundle"
+        "buildType": "app-bundle",
+        "autoIncrement": "versionCode"
       },
-      "channel": "production"
+      "channel": "production",
+      "env": {
+        "EXPO_PUBLIC_ANDROID_GOOGLE_CLIENT_ID": "992503429521-8f4j0urmjkmngpvlohs5p0a83indsefk.apps.googleusercontent.com",
+        "EXPO_PUBLIC_IOS_GOOGLE_CLIENT_ID": "992503429521-t5lvig90604vitb0tbk9es2bsm6puvrv.apps.googleusercontent.com"
+      }
     }
   },
   "submit": {

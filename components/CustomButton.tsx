@@ -18,6 +18,7 @@ interface ICustomButton {
   label: string;
   onPress: () => void;
   customStyle?: ViewStyle;
+  children?: React.ReactNode;
 }
 
 const CustomButton = ({
@@ -27,6 +28,7 @@ const CustomButton = ({
   label = "Button",
   onPress,
   customStyle,
+  children,
 }: ICustomButton) => {
   const colorscheme = useColorScheme();
   let backgroundColor = Colors[colorscheme ?? "light"].primary;
@@ -61,11 +63,15 @@ const CustomButton = ({
           },
         ]}
       >
-        <Text
-          style={[textStyles.semiBold, textStyles.md, { color: textColor }]}
-        >
-          {label}
-        </Text>
+        {children ? (
+          children
+        ) : (
+          <Text
+            style={[textStyles.semiBold, textStyles.md, { color: textColor }]}
+          >
+            {label}
+          </Text>
+        )}
       </View>
     </Pressable>
   );

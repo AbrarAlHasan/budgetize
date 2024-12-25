@@ -61,18 +61,6 @@ const Settings = () => {
         position: "relative",
       }}
     >
-      <Text
-        style={[
-          textStyles.sm,
-          textStyles.mdBold,
-          {
-            color: Colors[colorScheme ?? "light"].darkText,
-            marginVertical: 24,
-          },
-        ]}
-      >
-        Account Settings
-      </Text>
       <CustomTextInput
         label="Name"
         value={name}

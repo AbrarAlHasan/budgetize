@@ -166,7 +166,14 @@ const AddBudget = () => {
             },
           ]}
         >
-          <Text style={[textStyles.bolder]}>Weekly Category List</Text>
+          <Text
+            style={[
+              textStyles.bolder,
+              { color: Colors[colorScheme ?? "light"].darkText },
+            ]}
+          >
+            Weekly Category List
+          </Text>
           <ChipText
             chipText="Add New Category"
             onPress={() => {
@@ -189,7 +196,11 @@ const AddBudget = () => {
               <Text
                 style={[
                   textStyles.mdBold,
-                  { marginVertical: 20, textAlign: "center" },
+                  {
+                    marginVertical: 20,
+                    textAlign: "center",
+                    color: Colors[colorScheme ?? "light"].darkText,
+                  },
                 ]}
               >
                 There are No Categories to Add budget. Please Add Category by
@@ -236,7 +247,14 @@ const AddBudget = () => {
             },
           ]}
         >
-          <Text style={[textStyles.bolder]}>Monthly Category List</Text>
+          <Text
+            style={[
+              textStyles.bolder,
+              { color: Colors[colorScheme ?? "light"].darkText },
+            ]}
+          >
+            Monthly Category List
+          </Text>
           <ChipText
             chipText="Add New Category"
             onPress={() => {
@@ -259,7 +277,11 @@ const AddBudget = () => {
               <Text
                 style={[
                   textStyles.mdBold,
-                  { marginVertical: 20, textAlign: "center" },
+                  {
+                    marginVertical: 20,
+                    textAlign: "center",
+                    color: Colors[colorScheme ?? "light"].darkText,
+                  },
                 ]}
               >
                 There are No Categories to Add budget. Please Add Category by
@@ -403,7 +425,12 @@ export const CategoryList = ({
             }
             style={{ flexDirection: "row", gap: 3, alignSelf: "center" }}
           >
-            <Text style={[textStyles.bolder]}>
+            <Text
+              style={[
+                textStyles.bolder,
+                { color: Colors[colorScheme ?? "light"].darkText },
+              ]}
+            >
               {formatPrice().format(data?.budgetDetails?.amount || 0)}
             </Text>
             <Feather

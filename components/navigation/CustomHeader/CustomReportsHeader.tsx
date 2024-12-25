@@ -18,7 +18,13 @@ const CustomReportsHeader = () => {
         { backgroundColor: Colors[colorScheme ?? "light"].background },
       ]}
     >
-      <ThemedText style={header.headerText} type="defaultSemiBold">
+      <ThemedText
+        style={[
+          header.headerText,
+          { color: Colors[colorScheme ?? "light"].darkText },
+        ]}
+        type="defaultSemiBold"
+      >
         Reports
       </ThemedText>
     </SafeAreaView>

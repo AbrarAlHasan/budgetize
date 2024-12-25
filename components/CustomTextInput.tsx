@@ -52,6 +52,7 @@ const CustomTextInput = ({
           backgroundColor: Colors[colorScheme ?? "light"].lightGray,
           padding: 18,
           borderRadius: 14,
+          color: Colors[colorScheme ?? "light"].darkText,
         }}
         placeholder={placeholder}
         autoCapitalize="none"

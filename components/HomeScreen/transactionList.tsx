@@ -27,6 +27,8 @@ import Animated, {
   withTiming,
   SlideInLeft,
   SlideOutLeft,
+  SlideInUp,
+  SlideOutDown,
 } from "react-native-reanimated";
 import BorderLine from "../BorderLine";
 
@@ -117,7 +119,7 @@ const TransactionList = <T extends boolean>({
       {sortedDateList?.map((item: any, index: number) => {
         return (
           <Animated.View
-            entering={SlideInLeft.duration(200 * (index + 1))}
+            entering={FadeIn.duration(500 * (index + 1))}
             key={index}
           >
             <View

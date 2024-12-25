@@ -1,46 +1,50 @@
 {
   "expo": {
-    "name": "moneyManager",
-    "slug": "moneyManager",
-    "version": "0.42",
+    "name": "Budgetize",
+    "slug": "budgetize",
+    "version": "0.43",
     "orientation": "portrait",
     "icon": "./assets/Icons/playstore.png",
-    "scheme": "myapp",
-    "userInterfaceStyle": "light",
+    "scheme": "com.budgetize.app",
+    "userInterfaceStyle": "automatic",
     "splash": {
       "image": "./assets/Icons/appstore.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.budgetize.app"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/Icons/playstore.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.abrarhasanprogrammer.moneyManager"
+      "package": "com.budgetize.app",
+      "versionCode": 4
     },
     "web": {
       "bundler": "metro",
       "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
-    "plugins": ["expo-router", "expo-font"],
+    "plugins": [
+      "expo-router",
+      "expo-font"
+    ],
     "experiments": {
       "typedRoutes": true
     },
     "extra": {
       "eas": {
-        "projectId": "8504b6b9-245d-405e-a4cb-d0d2e2e5031f"
+        "projectId": "2b25d1c5-c3e0-4c9a-b902-31bd8c8f2dae"
       }
     },
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
+    "runtimeVersion": "0.43.1",
     "updates": {
       "url": "https://u.expo.dev/8504b6b9-245d-405e-a4cb-d0d2e2e5031f"
-    }
+    },
+    "owner": "abrarhasanprogrammer"
   }
 }

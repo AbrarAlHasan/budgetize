@@ -6,16 +6,16 @@ import CustomTransactionsHeader from "@/components/navigation/CustomHeader/Custo
 import { TabBarIcon } from "@/components/navigation/TabBarIcon";
 import { Colors } from "@/constants/Colors";
 import { Tabs } from "expo-router";
-import { useColorScheme } from "react-native";
+import { Appearance, useColorScheme } from "react-native";
 
 export default function TabsLayout() {
   const colorScheme = useColorScheme();
-
   return (
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: Colors[colorScheme ?? "light"].primary,
         headerShown: false,
+        tabBarInactiveTintColor: Colors[colorScheme ?? "light"].gray,
         tabBarVisibilityAnimationConfig: {
           show: { animation: "spring", config: { delay: 1000 } },
           hide: { animation: "spring" },
@@ -40,7 +40,7 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="reports"
+        name="Reports"
         options={{
           title: "Reports",
           tabBarIcon: ({ color, focused }) => (
@@ -55,7 +55,7 @@ export default function TabsLayout() {
       />
 
       <Tabs.Screen
-        name="transactions"
+        name="Transactions"
         options={{
           title: "Transactions",
           tabBarIcon: ({ color, focused }) => (
@@ -69,7 +69,7 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="settings"
+        name="Settings"
         options={{
           title: "Settings",
           tabBarIcon: ({ color, focused }) => (

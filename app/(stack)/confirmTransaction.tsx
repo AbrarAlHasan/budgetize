@@ -265,8 +265,9 @@ const ConfirmTransaction = () => {
         <TextInput
           value={description}
           placeholder="What did you Spend For"
-          style={{ flex: 1 }}
+          style={{ flex: 1, color: Colors[colorScheme ?? "light"].darkText }}
           onChangeText={setDescription}
+          placeholderTextColor={Colors[colorScheme ?? "light"].darkText}
         />
       </View>
       <View

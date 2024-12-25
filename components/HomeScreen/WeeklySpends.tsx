@@ -104,7 +104,15 @@ const WeeklySpends = () => {
       />
       {homeSlice?.weeklyCategoryBudget?.length === 0 && !showAddBudget && (
         <View style={{ marginVertical: 20, alignItems: "center" }}>
-          <Text style={[textStyles.mdBold, { marginVertical: 20 }]}>
+          <Text
+            style={[
+              textStyles.mdBold,
+              {
+                marginVertical: 20,
+                color: Colors[colorScheme ?? "light"].darkText,
+              },
+            ]}
+          >
             There is No Budget Configured
           </Text>
           <ChipText
@@ -117,7 +125,15 @@ const WeeklySpends = () => {
       )}
       {homeSlice?.weeklyCategoryBudget?.length === 0 && showAddBudget && (
         <View style={{ marginVertical: 20, alignItems: "center" }}>
-          <Text style={[textStyles.mdBold, { marginVertical: 20 }]}>
+          <Text
+            style={[
+              textStyles.mdBold,
+              {
+                marginVertical: 20,
+                color: Colors[colorScheme ?? "light"].darkText,
+              },
+            ]}
+          >
             There is No Budget Configured
           </Text>
           <ChipText

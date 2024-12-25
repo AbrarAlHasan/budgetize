@@ -8,6 +8,7 @@ import {
   useColorScheme,
   Platform,
   AppRegistry,
+  Appearance,
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { Provider, useSelector } from "react-redux";
@@ -19,63 +20,9 @@ import * as Linking from "expo-linking";
 import { LinkingOptions } from "@react-navigation/native";
 import LoadingWrapper from "@/components/LoadingWrapper";
 
-
-
 const prefix = Linking.createURL("/");
 
 export default function Layout() {
-  // const [isLoading, setIsLoading] = useState(true);
-
-  // if (isLoading) {
-  //   return (
-  //     <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-  //       <ActivityIndicator size="large" />
-  //     </View>
-  //   );
-  // }
-
-  const parseSupabaseUrl = (url: string) => {
-    let parsedUrl = url;
-    if (url.includes("#")) {
-      parsedUrl = url.replace("#", "?");
-    }
-
-    return parsedUrl;
-  };
-
-  const getInitialURL = async () => {
-    const url = await Linking.getInitialURL();
-
-    if (url !== null) {
-      return parseSupabaseUrl(url);
-    }
-
-    return url;
-  };
-
-  const subscribe = (listener: (url: string) => void) => {
-    const onReceiveURL = ({ url }: { url: string }) => {
-      console.log("SUBSCRIBE", url);
-      listener(url);
-    };
-    const subscription = Linking.addEventListener("url", onReceiveURL);
-
-    return () => {
-      subscription.remove();
-    };
-  };
-
-  const linking: LinkingOptions<any> = {
-    prefixes: [prefix],
-    config: {
-      screens: {
-        ResetPasswordScreen: "/ResetPassword",
-      },
-    },
-    getInitialURL,
-    subscribe,
-  };
-
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <Provider store={store}>
@@ -98,6 +45,10 @@ const MoneyManager = () => {
   );
 
   const colorScheme = useColorScheme();
+
+  useEffect(() => {
+    Appearance.setColorScheme("dark");
+  }, []);
 
   return (
     <Stack
