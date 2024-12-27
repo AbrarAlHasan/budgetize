@@ -28,6 +28,7 @@ export default function StackLayout() {
         options={{ headerShown: false }}
       />
       <Stack.Screen name="(addBudget)" options={{ headerShown: false }} />
+      <Stack.Screen name="uploadTransaction" options={{ headerShown: false }} />
     </Stack>
   );
 }

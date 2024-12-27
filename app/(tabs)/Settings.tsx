@@ -19,6 +19,7 @@ import { initiateLogout } from "@/api/authentication.action";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 import BottomSheet from "@/components/BottomSheet";
 import ResetPasswordModal from "@/components/Settings/ResetPasswordModal";
+import { router } from "expo-router";
 interface ICustomSettingsButton {
   leftIcon?: any;
   label?: string;
@@ -76,16 +77,16 @@ const Settings = () => {
         disabled={true}
       />
       <CustomSettingsButton
-        label="Change Password"
-        rightIcon={() => (
+        label="Upload Transaction"
+        leftIcon={() => (
           <AntDesign
-            name="right"
+            name="filetext1"
             size={18}
-            color={Colors[colorScheme ?? "light"].gray}
+            color={Colors[colorScheme ?? "light"].primary}
           />
         )}
         onPress={() => {
-          handlePresentModalPress();
+          router.push("/uploadTransaction");
         }}
       />
 
