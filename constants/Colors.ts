@@ -20,6 +20,8 @@ export const Colors = {
     darkRed: "#FF0000",
     lightOrange: "#FFDBBB",
     darkOrange: "#C76E00",
+    lightBlue: "#7a95ff",
+    darkBlue: "#001aff",
   },
   dark: {
     lightText: "#11181C",
@@ -34,5 +36,7 @@ export const Colors = {
     darkRed: "#ff623e",
     lightOrange: "#C76E00",
     darkOrange: "#FFDBBB",
+    lightBlue: "#0e165b",
+    darkBlue: "#0319dc",
   },
 };

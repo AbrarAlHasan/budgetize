@@ -7,8 +7,13 @@ import {
   useColorScheme,
   View,
 } from "react-native";
-import React, { useEffect, useState } from "react";
-import { router, useLocalSearchParams } from "expo-router";
+import React, { useCallback, useEffect, useState } from "react";
+import {
+  router,
+  useFocusEffect,
+  useLocalSearchParams,
+  useNavigation,
+} from "expo-router";
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -49,9 +54,14 @@ import {
   enableLoading,
 } from "@/redux/reducers/slice/globalSlice";
 import log from "@/utils/Logger";
+import { Image } from "expo-image";
+import BudgetImage from "@/assets/images/budget.png";
+import ChipText from "@/components/ChipText";
 
 const ConfirmTransaction = () => {
   const routeParams = useLocalSearchParams();
+
+  console.log(routeParams);
 
   const { top } = useSafeAreaInsets();
   const colorScheme = useColorScheme();
@@ -69,18 +79,22 @@ const ConfirmTransaction = () => {
   //   (state: RootState) => state.HomeSlice
   // );
 
-  useEffect(() => {
-    if (routeParams?.type === "EDIT_TRANSACTION") {
-      setSpentDate(new Date(routeParams?.date as string));
-      fetchCategoryList(
-        new Date(routeParams?.date as string),
-        routeParams?.budgetId as string
-      );
-      setDescription(routeParams?.description as string);
-    } else {
-      fetchCategoryList(spentDate, routeParams?.budgetId as string);
-    }
-  }, []);
+  // useEffect(() => {}, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (routeParams?.type === "EDIT_TRANSACTION") {
+        setSpentDate(new Date(routeParams?.date as string));
+        fetchCategoryList(
+          new Date(routeParams?.date as string),
+          routeParams?.budgetId as string
+        );
+        setDescription(routeParams?.description as string);
+      } else {
+        fetchCategoryList(spentDate, routeParams?.budgetId as string);
+      }
+    }, [])
+  );
 
   const [weeklyCategoryList, setWeeklyCategoryList] =
     useState<ICategoryBudget[]>();
@@ -88,6 +102,7 @@ const ConfirmTransaction = () => {
     useState<ICategoryBudget[]>();
 
   const toast = useToast();
+  const navigation = useNavigation();
 
   const fetchCategoryList = async (date: Date, budgetId?: string) => {
     dispatch(enableLoading());
@@ -110,11 +125,25 @@ const ConfirmTransaction = () => {
       setWeeklyCategoryList(
         weeklyCategoryResponse?.value?.response as ICategoryBudget[]
       );
-
+      // Transaction Table has budget Id allocated to it
       budgetId &&
         weeklyCategoryResponse?.value?.response?.map((data) => {
           if (data?.id == parseInt(budgetId)) setSelectedCategory(data);
         });
+
+      if (
+        routeParams?.type === "EDIT_TRANSACTION" &&
+        routeParams?.from === "IMPORTED_TRANSACTION"
+      ) {
+        // Processed Transaction from the Files Dosn't have budget Id along with it so checking it through the Catergory ID
+        routeParams?.category_id &&
+          weeklyCategoryResponse?.value?.response?.map((data) => {
+            if (
+              data?.category_id == parseInt(routeParams?.category_id as string)
+            )
+              setSelectedCategory(data);
+          });
+      }
     }
     if (
       monthlyCategoryResponse?.status === "fulfilled" &&
@@ -156,6 +185,37 @@ const ConfirmTransaction = () => {
         category_type: selectedCategory?.category_type,
       };
 
+      if (
+        routeParams?.type === "EDIT_TRANSACTION" &&
+        routeParams?.from === "IMPORTED_TRANSACTION"
+      ) {
+        const { data, error } = await supabase
+          .from("processed_transactions")
+          .update(payload)
+          .eq("id", routeParams?.id);
+        console.log(error, data);
+        if (error === null) {
+          const routerStates = [...navigation.getState()?.routes];
+          const updatedRouteStateToNavigateBackToVerification = [];
+          for (let i = 0; i < routerStates.length; i++) {
+            updatedRouteStateToNavigateBackToVerification.push(routerStates[i]);
+            if (routerStates[i].name === "verifyTransactions") {
+              break;
+            }
+          }
+
+          navigation.reset({
+            index: updatedRouteStateToNavigateBackToVerification.length - 1,
+            routes: updatedRouteStateToNavigateBackToVerification.map(
+              (route) => ({
+                ...route,
+                state: undefined,
+              })
+            ),
+          });
+        }
+        return;
+      }
       if (routeParams?.type === "EDIT_TRANSACTION") {
         const { data, error } = await supabase
           .from("transactions")
@@ -322,12 +382,14 @@ const ConfirmTransaction = () => {
         </Pressable>
       </View>
       <BorderLine />
-      <ScrollView bounces={false}>
+      <ScrollView bounces={false} style={{ flex: 1, marginBottom: 32 }}>
         <View
           style={[
             {
               backgroundColor: Colors[colorScheme ?? "light"].lightText,
               padding: 10,
+              flexDirection: "row",
+              justifyContent: "space-between",
             },
           ]}
         >
@@ -344,8 +406,60 @@ const ConfirmTransaction = () => {
           >
             Weekly Categories
           </Text>
+          <ChipText
+            chipText="Add New Category"
+            onPress={() => {
+              router.navigate({
+                pathname: "/(stack)/addBudget",
+                params: { dateRange: spentDate.toString() },
+              });
+            }}
+            chipTextStyle={{
+              color: Colors[colorScheme ?? "light"].darkOrange,
+            }}
+            chipViewStyle={{
+              backgroundColor: Colors[colorScheme ?? "light"].lightOrange,
+            }}
+          />
         </View>
         <View>
+          {weeklyCategoryList?.length == 0 && (
+            <View style={{ alignItems: "center", padding: 20 }}>
+              <Image
+                source={BudgetImage}
+                style={{ width: "80%", height: 300 }}
+              />
+              <Text
+                style={[
+                  textStyles.sm,
+                  {
+                    color: Colors[colorScheme ?? "light"].darkText,
+                    textAlign: "center",
+                  },
+                ]}
+              >
+                There is No Budget configured for the Particular week. Please{" "}
+                <Text
+                  style={[
+                    textStyles.sm,
+                    {
+                      color: Colors[colorScheme ?? "light"].primary,
+                    },
+                  ]}
+                  onPress={() => {
+                    router.push({
+                      pathname: "/addBudget",
+                      params: { dateRange: spentDate.toString() },
+                    });
+                  }}
+                >
+                  {` Click `}
+                </Text>
+                here to Add Budget
+              </Text>
+            </View>
+          )}
+
           {weeklyCategoryList?.map((data) => {
             return (
               <View
@@ -374,6 +488,8 @@ const ConfirmTransaction = () => {
             {
               backgroundColor: Colors[colorScheme ?? "light"].lightText,
               padding: 10,
+              flexDirection: "row",
+              justifyContent: "space-between",
             },
           ]}
         >
@@ -390,6 +506,21 @@ const ConfirmTransaction = () => {
           >
             Monthly Categories
           </Text>
+          <ChipText
+            chipText="Add New Category"
+            onPress={() => {
+              router.navigate({
+                pathname: "/(stack)/addBudget",
+                params: { dateRange: spentDate.toString() },
+              });
+            }}
+            chipTextStyle={{
+              color: Colors[colorScheme ?? "light"].darkOrange,
+            }}
+            chipViewStyle={{
+              backgroundColor: Colors[colorScheme ?? "light"].lightOrange,
+            }}
+          />
         </View>
         <View>
           {monthlyCategoryList?.map((data) => {

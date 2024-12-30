@@ -33,6 +33,7 @@ import {
   setCheckingAuthentication,
   setUserDetails,
 } from "@/redux/reducers/slice/authSlice";
+import { updateLastUsed } from "@/api/authentication.action";
 
 const Onboarding = () => {
   const colorScheme = useColorScheme();
@@ -113,6 +114,7 @@ const Onboarding = () => {
             checkingAuthentication: false,
           })
         );
+        updateLastUsed(authResult?.user?.id);
         router.replace("/(tabs)/");
       }
     } catch (error) {

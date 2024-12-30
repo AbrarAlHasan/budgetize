@@ -42,6 +42,8 @@ interface TransactionListProps<T extends boolean> {
   onDelete?: (transactionDetails: ITransactionV2) => void;
   showCategoryDetails: T;
   containerStyle?: ViewStyle;
+  openEditDeleteSheet: () => void;
+  setSelectedTransaction: (transaction: ITransactionV2) => void;
 }
 
 const TransactionList = <T extends boolean>({
@@ -50,6 +52,8 @@ const TransactionList = <T extends boolean>({
   onDelete,
   showCategoryDetails,
   containerStyle,
+  openEditDeleteSheet,
+  setSelectedTransaction,
 }: TransactionListProps<T>) => {
   const colorScheme = useColorScheme();
   const [transactionData, setTransactionData] = useState<any>();
@@ -119,7 +123,7 @@ const TransactionList = <T extends boolean>({
       {sortedDateList?.map((item: any, index: number) => {
         return (
           <Animated.View
-            entering={FadeIn.duration(500 * (index + 1))}
+            entering={FadeIn.duration(100 * (index + 1))}
             key={index}
           >
             <View
@@ -142,18 +146,7 @@ const TransactionList = <T extends boolean>({
               >
                 {formatDateTimeTimezone(item, "DD MMMM")}
               </Text>
-              {/* <Text
-                style={[
-                  textStyles.bolder,
-                  textStyles.md,
-                  {
-                    paddingVertical: 5,
-                    color: Colors[colorScheme ?? "light"].darkText,
-                  },
-                ]}
-              >
-                {formatPrice().format(transactionData[item]?.totalAmount)}
-              </Text> */}
+
               <ChipText
                 chipText={formatPrice().format(
                   transactionData[item]?.totalAmount
@@ -178,9 +171,8 @@ const TransactionList = <T extends boolean>({
                   >
                     <Pressable
                       onPress={() => {
-                        setShowUpdateAction((prevState) =>
-                          prevState ? null : data?.id
-                        );
+                        openEditDeleteSheet();
+                        setSelectedTransaction(data);
                       }}
                     >
                       <View
@@ -273,7 +265,7 @@ const TransactionList = <T extends boolean>({
                           >
                             {formatPrice().format(data?.amount)}
                           </Text>
-                          {onEdit &&
+                          {/* {onEdit &&
                             onDelete &&
                             showUpdateAction == data?.id && (
                               <View
@@ -325,7 +317,7 @@ const TransactionList = <T extends boolean>({
                                   </Pressable>
                                 )}
                               </View>
-                            )}
+                            )} */}
                         </View>
                       </View>
                     </Pressable>

@@ -5,7 +5,7 @@ import {
   useColorScheme,
   View,
 } from "react-native";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { router, useLocalSearchParams } from "expo-router";
 import {
   fetchHomeDataV2,
@@ -38,6 +38,8 @@ import {
   disableLoading,
   enableLoading,
 } from "@/redux/reducers/slice/globalSlice";
+import EditDeleteBottomSheet from "@/components/EditDeleteBottomSheet";
+import { BottomSheetModal } from "@gorhom/bottom-sheet";
 
 const Transactions = () => {
   const { category_id, type } = useLocalSearchParams();
@@ -54,6 +56,18 @@ const Transactions = () => {
   });
 
   const [totalAmountSpent, setTotalAmountSpent] = useState(0);
+  const [selectedTransaction, setSelectedTransaction] =
+    useState<ITransactionV2>();
+
+  const editBottomSheetModalRef = useRef<BottomSheetModal>(null);
+
+  const handlePresentModalPress = useCallback(() => {
+    editBottomSheetModalRef.current?.present();
+  }, []);
+
+  const handleCloseModalPress = useCallback(() => {
+    editBottomSheetModalRef.current?.close();
+  }, []);
 
   useEffect(() => {
     fetchInitialData();
@@ -77,12 +91,14 @@ const Transactions = () => {
     setCategoryDetails(selectedBudget?.category);
   };
 
-  const onEdit = (transactionDetail: ITransactionV2) => {
+  const onEdit = () => {
+    handleCloseModalPress();
+    if (!selectedTransaction) return;
     const navigationPayload = {
       type: "EDIT_TRANSACTION",
-      ...transactionDetail,
-      date: transactionDetail?.date.toString(),
-      created_at: transactionDetail?.created_at?.toString(),
+      ...selectedTransaction,
+      date: selectedTransaction?.date.toString(),
+      created_at: selectedTransaction?.created_at?.toString(),
       budgetId: budgetDetails?.id,
     };
 
@@ -92,13 +108,14 @@ const Transactions = () => {
     });
   };
 
-  const onDelete = async (transactionDetails: ITransactionV2) => {
+  const onDelete = async () => {
     try {
+      handleCloseModalPress();
       dispatch(enableLoading());
       const { data, error } = await supabase
         .from("transactions")
         .update({ user_deleted: true })
-        .eq("id", transactionDetails?.id);
+        .eq("id", selectedTransaction?.id);
 
       if (error === null) {
         await fetchHomeDataV2();
@@ -271,6 +288,8 @@ const Transactions = () => {
           onEdit={onEdit}
           onDelete={onDelete}
           showCategoryDetails={false}
+          openEditDeleteSheet={handlePresentModalPress}
+          setSelectedTransaction={setSelectedTransaction}
         />
         <FloatingButton
           onPress={() => {
@@ -281,6 +300,13 @@ const Transactions = () => {
           }}
         />
       </View>
+
+      <EditDeleteBottomSheet
+        deleteTransaction={onDelete}
+        editBottomSheetModalRef={editBottomSheetModalRef}
+        editTransaction={onEdit}
+        handleCloseModalPress={handleCloseModalPress}
+      />
     </SafeAreaView>
   );
 };
