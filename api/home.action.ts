@@ -128,7 +128,8 @@ export const getCurrentWeekBudgetV2 = async ({
         .eq("user_id", store.getState().AuthSlice.userDetails?.user_id)
         .eq("category_type", "WEEKLY")
         .gte("date", formatDateTimeTimezone(fromDate))
-        .lte("date", formatDateTimeTimezone(toDate)),
+        .lte("date", formatDateTimeTimezone(toDate))
+        .neq("user_deleted", true),
     ]);
 
     const budget: any = {
@@ -200,7 +201,8 @@ export const getCurrentMonthBudgetV2 = async ({
         .eq("user_id", store.getState().AuthSlice.userDetails?.user_id)
         .eq("category_type", "MONTHLY")
         .gte("date", formatDateTimeTimezone(fromDate))
-        .lte("date", formatDateTimeTimezone(toDate)),
+        .lte("date", formatDateTimeTimezone(toDate))
+        .neq("user_deleted", true),
     ]);
     const budget: any = {
       error: false,

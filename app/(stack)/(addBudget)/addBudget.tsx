@@ -34,37 +34,75 @@ import {
   enableLoading,
 } from "@/redux/reducers/slice/globalSlice";
 import { fetchHomeDataV2 } from "@/api/home.action";
+import { toDate } from "date-fns";
+import { DateRange } from "@/types/GeneralTypes";
+import { useToast } from "react-native-toast-notifications";
 
 const AddBudget = () => {
   const colorScheme = useColorScheme();
   const dispatch = useDispatch();
+  const toast = useToast();
+
+  const routeParams = useLocalSearchParams();
 
   const homeSlice = useSelector((state: RootState) => state.HomeSlice);
+  const [selectDateRangeFrom, setSelectDateRangeFrom] = useState("HOME_SLICE");
   const [weeklyCategoryList, setWeeklyCategoryList] =
     useState<Array<IAddBudgetCategory>>();
   const [monthlyCategoryList, setMonthlyCategoryList] =
     useState<Array<IAddBudgetCategory>>();
 
-  useEffect(() => {
-    getCategoryList();
-  }, [homeSlice.dateRange.fromDate]);
+  const [customDateRange, setCustomDateRange] = useState({
+    weekDateRange: getCurrentWeekRange(homeSlice?.dateRange?.fromDate),
+    monthDateRange: getCurrentMonthRange(homeSlice?.dateRange?.fromDate),
+  });
+
+  useEffect(() => {}, []);
 
   useFocusEffect(
     useCallback(() => {
-      getCategoryList();
+      let weekDateRange = getCurrentWeekRange(homeSlice?.dateRange?.fromDate);
+      let monthDateRange = getCurrentMonthRange(homeSlice?.dateRange?.fromDate);
+      if (routeParams?.dateRange) {
+        setSelectDateRangeFrom("ROUTE");
+        weekDateRange = getCurrentWeekRange(
+          new Date(routeParams?.dateRange as string)
+        );
+        monthDateRange = getCurrentMonthRange(
+          new Date(routeParams?.dateRange as string)
+        );
+        setCustomDateRange({
+          weekDateRange,
+          monthDateRange,
+        });
+      } else {
+        setSelectDateRangeFrom("HOME_SLICE");
+      }
+      getCategoryList(true, { weekDateRange, monthDateRange });
 
       return () => {};
-    }, [homeSlice.dateRange.fromDate])
+    }, [routeParams?.dateRange, homeSlice?.dateRange?.fromDate])
   );
 
-  const getCategoryList = async (setLoading = true) => {
+  const getCategoryList = async (
+    setLoading = true,
+    dateRange?: { weekDateRange: DateRange; monthDateRange: DateRange }
+  ) => {
     if (setLoading) {
       dispatch(enableLoading());
     }
-
-    const weeklyDateRange = getCurrentWeekRange(homeSlice.dateRange.fromDate);
-    const monthlyDateRange = getCurrentMonthRange(homeSlice.dateRange.fromDate);
-
+    let weeklyDateRange = customDateRange?.weekDateRange;
+    let monthlyDateRange = customDateRange?.monthDateRange;
+    if (customDateRange?.weekDateRange) {
+      weeklyDateRange = customDateRange?.weekDateRange;
+    }
+    if (customDateRange?.monthDateRange) {
+      monthlyDateRange = customDateRange?.monthDateRange;
+    }
+    if (!weeklyDateRange || !monthlyDateRange) {
+      toast.show("Error in Handling the Date Range"), { type: "danger" };
+      return;
+    }
     const [weeklyResponse, monthlyResponse] = await Promise.all([
       fetchAddBudgetList({
         type: "WEEKLY",
@@ -96,12 +134,12 @@ const AddBudget = () => {
     };
 
     if (categoryDetails?.type === "WEEKLY") {
-      const dateRange = getCurrentWeekRange(homeSlice.dateRange.fromDate);
+      const dateRange = customDateRange?.weekDateRange;
       payload.from_date = formatDateTimeTimezone(dateRange?.fromDate);
       payload.to_date = formatDateTimeTimezone(dateRange?.toDate);
     }
     if (categoryDetails?.type === "MONTHLY") {
-      const dateRange = getCurrentMonthRange(homeSlice.dateRange.fromDate);
+      const dateRange = customDateRange?.monthDateRange;
       payload.from_date = formatDateTimeTimezone(dateRange?.fromDate);
       payload.to_date = formatDateTimeTimezone(dateRange?.toDate);
     }
@@ -137,7 +175,9 @@ const AddBudget = () => {
 
     const response = await supabase.from("budget").insert(payload);
 
-    await fetchHomeDataV2();
+    if (selectDateRangeFrom !== "ROUTE") {
+      await fetchHomeDataV2();
+    }
     await getCategoryList(false);
 
     dispatch(disableLoading());
@@ -145,7 +185,12 @@ const AddBudget = () => {
 
   return (
     <>
-      <CustomHomeHeader onlyDateRange={true} showBack={true} />
+      <CustomHomeHeader
+        onlyDateRange={true}
+        showBack={true}
+        disableClick={true}
+        customDate={new Date(routeParams?.dateRange as string)}
+      />
       <ScrollView
         style={{
           backgroundColor: Colors[colorScheme ?? "light"].background,

@@ -62,3 +62,12 @@ export const initiateLogout = async () => {
     router.replace("/(auth)/");
   } catch (error) {}
 };
+
+export const updateLastUsed = async (userId: string) => {
+  try {
+    const response = await supabase
+      .from("users")
+      .update({ last_used_at: new Date() })
+      .eq("user_id", userId);
+  } catch (error) {}
+};

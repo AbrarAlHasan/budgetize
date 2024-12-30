@@ -3,6 +3,7 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  TextStyle,
   useColorScheme,
   View,
   ViewStyle,
@@ -12,9 +13,9 @@ import { Colors } from "@/constants/Colors";
 import { commonStyles, textStyles } from "@/stylings/CustomStyles";
 
 interface ICustomButton {
-  colorType: "primary" | "gray" | "custom";
+  colorType: "primary" | "gray" | "custom" | "danger";
   customBackgroundColor?: string;
-  customTextColor?: string;
+  customTextColor?: TextStyle["color"];
   label: string;
   onPress: () => void;
   customStyle?: ViewStyle;
@@ -32,13 +33,17 @@ const CustomButton = ({
 }: ICustomButton) => {
   const colorscheme = useColorScheme();
   let backgroundColor = Colors[colorscheme ?? "light"].primary;
-  let textColor = Colors[colorscheme ?? "light"].lightText;
+  let textColor = Colors[colorscheme ?? "light"]
+    .lightText as TextStyle["color"];
   if (colorType === "primary") {
     backgroundColor = Colors[colorscheme ?? "light"].primary;
     textColor = Colors[colorscheme ?? "light"].lightText;
   } else if (colorType === "gray") {
     backgroundColor = Colors[colorscheme ?? "light"].lightGray;
     textColor = Colors[colorscheme ?? "light"].darkText;
+  } else if (colorType === "danger") {
+    backgroundColor = Colors[colorscheme ?? "light"].darkRed;
+    textColor = Colors[colorscheme ?? "light"].lightText;
   } else if (
     colorType === "custom" &&
     customBackgroundColor &&

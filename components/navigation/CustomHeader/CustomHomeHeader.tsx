@@ -6,7 +6,7 @@ import {
   useColorScheme,
   View,
 } from "react-native";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useLayoutEffect, useState } from "react";
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -19,7 +19,10 @@ import { Colors } from "@/constants/Colors";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/redux/store";
 import { setIsDateRangeVisible } from "@/redux/reducers/slice/homeSlice";
-import { formatDateTimeTimezone } from "@/utils/DateCalculator";
+import {
+  formatDateTimeTimezone,
+  getCurrentWeekRange,
+} from "@/utils/DateCalculator";
 import { router } from "expo-router";
 import { initiateLogout } from "@/api/authentication.action";
 import { AntDesign } from "@expo/vector-icons";
@@ -28,9 +31,13 @@ import AppLogo from "../../../assets/images/ic_launcher.png";
 const CustomHomeHeader = ({
   onlyDateRange,
   showBack,
+  disableClick = false,
+  customDate = null,
 }: {
   onlyDateRange?: boolean;
   showBack?: boolean;
+  disableClick?: boolean;
+  customDate?: Date | null;
 }) => {
   const colorScheme = useColorScheme();
   const { top } = useSafeAreaInsets();
@@ -38,11 +45,21 @@ const CustomHomeHeader = ({
   const homeSlice = useSelector((state: RootState) => state.HomeSlice);
   const dispatch = useDispatch();
   const [showSelectDateRangeLabel, setShowSelectDateRangeLabel] =
-    useState(true);
-  useEffect(() => {
-    setTimeout(() => {
-      setShowSelectDateRangeLabel(false);
-    }, 5000);
+    useState(false);
+
+  const [customDateRange, setCustomDateRange] = useState({
+    fromDate: new Date(),
+    toDate: new Date(),
+  });
+  useLayoutEffect(() => {
+    if (customDate) {
+      setCustomDateRange(getCurrentWeekRange(customDate));
+    } else {
+      setShowSelectDateRangeLabel(true);
+      setTimeout(() => {
+        setShowSelectDateRangeLabel(false);
+      }, 5000);
+    }
   }, []);
 
   return (
@@ -84,22 +101,40 @@ const CustomHomeHeader = ({
       )}
       <Pressable
         onPress={() => {
-          dispatch(setIsDateRangeVisible(true));
+          !disableClick && dispatch(setIsDateRangeVisible(true));
         }}
         style={{ alignItems: "center" }}
       >
-        <Text
-          style={[
-            textStyles.bolder,
-            textStyles.lg,
-            { color: Colors[colorScheme ?? "light"].darkText },
-          ]}
-        >
-          {`${formatDateTimeTimezone(
-            homeSlice.dateRange.fromDate,
-            "MMM DD"
-          )} - ${formatDateTimeTimezone(homeSlice.dateRange.toDate, "MMM DD")}`}
-        </Text>
+        {customDate ? (
+          <Text
+            style={[
+              textStyles.bolder,
+              textStyles.lg,
+              { color: Colors[colorScheme ?? "light"].darkText },
+            ]}
+          >
+            {`${formatDateTimeTimezone(
+              customDateRange.fromDate,
+              "MMM DD"
+            )} - ${formatDateTimeTimezone(customDateRange.toDate, "MMM DD")}`}
+          </Text>
+        ) : (
+          <Text
+            style={[
+              textStyles.bolder,
+              textStyles.lg,
+              { color: Colors[colorScheme ?? "light"].darkText },
+            ]}
+          >
+            {`${formatDateTimeTimezone(
+              homeSlice.dateRange.fromDate,
+              "MMM DD"
+            )} - ${formatDateTimeTimezone(
+              homeSlice.dateRange.toDate,
+              "MMM DD"
+            )}`}
+          </Text>
+        )}
         {showSelectDateRangeLabel && (
           <Text
             style={[

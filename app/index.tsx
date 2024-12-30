@@ -6,7 +6,10 @@ import { RootState, store } from "@/redux/store";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Platform, Text, useColorScheme } from "react-native";
 import { setCheckingAuthentication } from "@/redux/reducers/slice/authSlice";
-import { checkActiveSessionAction } from "@/api/authentication.action";
+import {
+  checkActiveSessionAction,
+  updateLastUsed,
+} from "@/api/authentication.action";
 import { setDateRange } from "@/redux/reducers/slice/homeSlice";
 import { getCurrentWeekRange } from "@/utils/DateCalculator";
 
@@ -17,8 +20,14 @@ import { disableLoading } from "@/redux/reducers/slice/globalSlice";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 import LottieView from "lottie-react-native";
-import { nativeApplicationVersion } from "expo-application";
-import { getVersionDetails } from "@/utils/VersionValidator";
+import SpInAppUpdates, {
+  NeedsUpdateResponse,
+  IAUUpdateKind,
+  StartUpdateOptions,
+} from "sp-react-native-in-app-updates";
+
+
+const inAppUpdates = new SpInAppUpdates(true);
 
 export default function Startup() {
   const router = useRouter();
@@ -29,13 +38,15 @@ export default function Startup() {
 
   const fetchInitialData = async () => {
     try {
-      const isUpdatedVersion = await getVersionDetails();
-
-      if (!isUpdatedVersion) return;
+      // const isUpdateAvaialble = await checkIfUpdateAvailable();
+      // if (isUpdateAvaialble) return;
       const response = await checkActiveSessionAction();
       dispatch(setDateRange(getCurrentWeekRange()));
+      //Update Last Opened TimeStamp
 
       if (response && authSlice?.userDetails !== null) {
+        authSlice?.userDetails?.user_id &&
+          updateLastUsed(authSlice?.userDetails?.user_id);
         router.replace("/(tabs)/");
       } else {
         router.replace("/(auth)/");
@@ -43,6 +54,15 @@ export default function Startup() {
     } catch (error) {
       console.log(error);
     }
+  };
+
+  const checkIfUpdateAvailable = async () => {
+    const versionDetails = await inAppUpdates.checkNeedsUpdate({
+      curVersion: "0.0.8",
+    });
+
+    console.log(versionDetails);
+    return true;
   };
 
   useEffect(() => {
