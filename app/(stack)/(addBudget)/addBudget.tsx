@@ -77,6 +77,10 @@ const AddBudget = () => {
         });
       } else {
         setSelectDateRangeFrom("HOME_SLICE");
+        setCustomDateRange({
+          weekDateRange,
+          monthDateRange,
+        });
       }
       getCategoryList(true, { weekDateRange, monthDateRange });
 
@@ -93,11 +97,11 @@ const AddBudget = () => {
     }
     let weeklyDateRange = customDateRange?.weekDateRange;
     let monthlyDateRange = customDateRange?.monthDateRange;
-    if (customDateRange?.weekDateRange) {
-      weeklyDateRange = customDateRange?.weekDateRange;
+    if (dateRange?.weekDateRange) {
+      weeklyDateRange = dateRange?.weekDateRange;
     }
-    if (customDateRange?.monthDateRange) {
-      monthlyDateRange = customDateRange?.monthDateRange;
+    if (dateRange?.monthDateRange) {
+      monthlyDateRange = dateRange?.monthDateRange;
     }
     if (!weeklyDateRange || !monthlyDateRange) {
       toast.show("Error in Handling the Date Range"), { type: "danger" };
@@ -174,7 +178,7 @@ const AddBudget = () => {
     });
 
     const response = await supabase.from("budget").insert(payload);
-
+    console.log(selectDateRangeFrom);
     if (selectDateRangeFrom !== "ROUTE") {
       await fetchHomeDataV2();
     }
@@ -188,8 +192,8 @@ const AddBudget = () => {
       <CustomHomeHeader
         onlyDateRange={true}
         showBack={true}
-        disableClick={true}
-        customDate={new Date(routeParams?.dateRange as string)}
+        disableClick={selectDateRangeFrom == "ROUTE"}
+        customDate={new Date(customDateRange?.weekDateRange?.fromDate)}
       />
       <ScrollView
         style={{

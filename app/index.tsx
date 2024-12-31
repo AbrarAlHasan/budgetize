@@ -26,7 +26,6 @@ import SpInAppUpdates, {
   StartUpdateOptions,
 } from "sp-react-native-in-app-updates";
 
-
 const inAppUpdates = new SpInAppUpdates(true);
 
 export default function Startup() {

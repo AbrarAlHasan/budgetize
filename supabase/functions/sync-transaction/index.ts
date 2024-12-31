@@ -95,7 +95,6 @@ Deno.serve(async (req) => {
   const transactionForSyncRecheck = await supabaseClient
     .from("processed_transactions")
     .select()
-    .not("category_id", "is", null)
     .eq("user_id", userId)
     .eq("file_name", fileName)
     .eq("synced", false);

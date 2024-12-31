@@ -32,6 +32,8 @@ import { useFocusEffect } from "expo-router";
 import SafeAreaWrapper from "@/components/SafeAreaWrapper";
 import { ThemedText } from "@/components/ThemedText";
 import BorderLine from "@/components/BorderLine";
+import { ITransactionV2 } from "@/types/HomeScreenTypes";
+import { supabase } from "@/lib/supabase";
 
 const Transactions = () => {
   const colorScheme = useColorScheme();
@@ -45,9 +47,11 @@ const Transactions = () => {
     []
   );
 
-  useEffect(() => {
-    fetchTransactionList(getCurrentMonthRange(new Date()));
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      fetchTransactionList(getCurrentMonthRange(new Date()));
+    }, [])
+  );
 
   const confirmDate = (date: any) => {
     const dateRange = getCurrentMonthRange(date?.startDateString);
@@ -62,6 +66,7 @@ const Transactions = () => {
     if (transactionResponse?.error === null) {
       setTransactionList(transactionResponse?.response as any);
     }
+
     dispatch(disableLoading());
   };
   return (
@@ -121,7 +126,6 @@ const Transactions = () => {
         <TransactionList
           transactions={transactionList}
           showCategoryDetails={true}
-          containerStyle={{ paddingTop: 0 }}
         />
 
         {isDateSelectorOpen && (

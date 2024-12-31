@@ -42,8 +42,8 @@ interface TransactionListProps<T extends boolean> {
   onDelete?: (transactionDetails: ITransactionV2) => void;
   showCategoryDetails: T;
   containerStyle?: ViewStyle;
-  openEditDeleteSheet: () => void;
-  setSelectedTransaction: (transaction: ITransactionV2) => void;
+  openEditDeleteSheet?: () => void;
+  setSelectedTransaction?: (transaction: ITransactionV2) => void;
 }
 
 const TransactionList = <T extends boolean>({
@@ -171,8 +171,8 @@ const TransactionList = <T extends boolean>({
                   >
                     <Pressable
                       onPress={() => {
-                        openEditDeleteSheet();
-                        setSelectedTransaction(data);
+                        openEditDeleteSheet && openEditDeleteSheet();
+                        setSelectedTransaction && setSelectedTransaction(data);
                       }}
                     >
                       <View
