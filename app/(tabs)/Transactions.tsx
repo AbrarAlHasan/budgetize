@@ -18,6 +18,8 @@ import {
   formatDateTimeTimezone,
   getCurrentMonthRange,
   getCurrentWeekRange,
+  getNextNthMonth,
+  getPrevNthMonth,
 } from "@/utils/DateCalculator";
 import { DateRange } from "@/types/GeneralTypes";
 import { getTransactionList } from "@/api/transaction.action";
@@ -35,6 +37,7 @@ import BorderLine from "@/components/BorderLine";
 import { ITransactionV2 } from "@/types/HomeScreenTypes";
 import { supabase } from "@/lib/supabase";
 import NoDateImage from "@/assets/images/noData.png";
+import AntDesign from "@expo/vector-icons/AntDesign";
 
 const Transactions = () => {
   const colorScheme = useColorScheme();
@@ -51,6 +54,7 @@ const Transactions = () => {
 
   useFocusEffect(
     useCallback(() => {
+      setSelectedDateRange(getCurrentMonthRange(new Date()));
       fetchTransactionList(getCurrentMonthRange(new Date()));
     }, [])
   );
@@ -93,8 +97,30 @@ const Transactions = () => {
           <View
             style={{
               backgroundColor: Colors[colorScheme ?? "light"].background,
+              flexDirection: "row",
+              gap: 10,
+              justifyContent: "center",
             }}
           >
+            <AntDesign
+              name="caretleft"
+              size={18}
+              color={Colors[colorScheme ?? "light"].primary}
+              style={{ marginTop: 2 }}
+              onPress={() => {
+                const previousMonth = getPrevNthMonth({
+                  date: selectedDateRange.toDate,
+                  months: 1,
+                });
+
+                const monthRange = getCurrentMonthRange(
+                  previousMonth?.toDate()
+                );
+
+                setSelectedDateRange(monthRange);
+                fetchTransactionList(monthRange);
+              }}
+            />
             <Pressable
               onPress={() => {
                 setIsDateSelectorOpen(true);
@@ -103,7 +129,6 @@ const Transactions = () => {
                 {
                   flexDirection: "row",
                   alignItems: "center",
-                  gap: 10,
                   justifyContent: "center",
                   marginBottom: 20,
                   position: "relative",
@@ -123,6 +148,25 @@ const Transactions = () => {
                 )}
               </Text>
             </Pressable>
+            <AntDesign
+              name="caretright"
+              size={18}
+              color={Colors[colorScheme ?? "light"].primary}
+              style={{ marginTop: 2 }}
+              onPress={() => {
+                const previousMonth = getNextNthMonth({
+                  date: selectedDateRange.toDate,
+                  months: 1,
+                });
+
+                const monthRange = getCurrentMonthRange(
+                  previousMonth?.toDate()
+                );
+
+                setSelectedDateRange(monthRange);
+                fetchTransactionList(monthRange);
+              }}
+            />
           </View>
         </View>
         {transactionList?.length === 0 && (

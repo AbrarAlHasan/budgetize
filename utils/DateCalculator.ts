@@ -66,6 +66,26 @@ export const getPrevNthDay = ({ date, days }: { date: Date; days: number }) => {
   return moment(date || new Date()).subtract(days, "days");
 };
 
+export const getPrevNthMonth = ({
+  date,
+  months,
+}: {
+  date: Date;
+  months: number;
+}) => {
+  return moment(date || new Date()).subtract(months, "months");
+};
+
+export const getNextNthMonth = ({
+  date,
+  months,
+}: {
+  date: Date;
+  months: number;
+}) => {
+  return moment(date || new Date()).add(months, "months");
+};
+
 export const diffBetweenDates = ({
   fromDate,
   toDate,

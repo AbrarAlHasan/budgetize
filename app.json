@@ -2,7 +2,7 @@
   "expo": {
     "name": "Budgetize",
     "slug": "budgetize",
-    "version": "0.46",
+    "version": "0.47",
     "orientation": "portrait",
     "icon": "./assets/Icons/playstore.png",
     "scheme": "com.budgetize.app",
@@ -24,7 +24,7 @@
       },
       "package": "com.budgetize.app",
       "googleServicesFile": "./google-services.json",
-      "versionCode": 9
+      "versionCode": 10
     },
     "web": {
       "bundler": "metro",
