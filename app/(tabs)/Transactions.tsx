@@ -1,10 +1,10 @@
 import {
   Image,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   useColorScheme,
+  useWindowDimensions,
   View,
 } from "react-native";
 import React, { useCallback, useEffect, useState } from "react";
@@ -34,10 +34,12 @@ import { ThemedText } from "@/components/ThemedText";
 import BorderLine from "@/components/BorderLine";
 import { ITransactionV2 } from "@/types/HomeScreenTypes";
 import { supabase } from "@/lib/supabase";
+import NoDateImage from "@/assets/images/noData.png";
 
 const Transactions = () => {
   const colorScheme = useColorScheme();
   const dispatch = useDispatch();
+  const { height, width } = useWindowDimensions();
 
   const [selectedDateRange, setSelectedDateRange] = useState(
     getCurrentMonthRange(new Date())
@@ -123,6 +125,28 @@ const Transactions = () => {
             </Pressable>
           </View>
         </View>
+        {transactionList?.length === 0 && (
+          <View
+            style={{
+              width: "100%",
+              height: height * 0.7,
+              justifyContent: "center",
+            }}
+          >
+            <View
+              style={{
+                width: "100%",
+                height: "60%",
+              }}
+            >
+              <Image
+                source={NoDateImage}
+                style={{ width: "100%", height: "100%" }}
+              />
+            </View>
+          </View>
+        )}
+
         <TransactionList
           transactions={transactionList}
           showCategoryDetails={true}
