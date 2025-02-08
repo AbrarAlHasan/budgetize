@@ -40,6 +40,8 @@ import {
 } from "@/redux/reducers/slice/globalSlice";
 import EditDeleteBottomSheet from "@/components/EditDeleteBottomSheet";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
+import { Image } from "expo-image";
+import NoDateImage from "@/assets/images/noData.png";
 
 const Transactions = () => {
   const { category_id, type } = useLocalSearchParams();
@@ -94,7 +96,7 @@ const Transactions = () => {
   const onEdit = () => {
     handleCloseModalPress();
     if (!selectedTransaction) return;
-    const navigationPayload = {
+    const navigationPayload: any = {
       type: "EDIT_TRANSACTION",
       ...selectedTransaction,
       date: selectedTransaction?.date.toString(),
@@ -282,6 +284,30 @@ const Transactions = () => {
             opacity: 0.5,
           }}
         />
+
+        {(budgetDetails?.transaction?.length === 0 ||
+          !budgetDetails?.transaction) && (
+          <View
+            style={{
+              width: "100%",
+              height: "80%",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            <View
+              style={{
+                width: "100%",
+                height: "100%",
+              }}
+            >
+              <Image
+                source={NoDateImage}
+                style={{ width: "100%", height: "100%", resizeMode: "contain" }}
+              />
+            </View>
+          </View>
+        )}
         <TransactionList
           key={"Transaction"}
           transactions={budgetDetails?.transaction}
