@@ -16,6 +16,23 @@ export interface Account {
   is_synced: number; // SQLite boolean (0 or 1)
 }
 
+export type DecryptedAccount = Omit<
+  Account,
+  | 'name'
+  | 'bank_name'
+  | 'credit_limit'
+  | 'billing_start_date'
+  | 'billing_end_date'
+  | 'payment_due_date'
+> & {
+  name: string;
+  bank_name: string | null;
+  credit_limit: number | null;
+  billing_start_date: string | null;
+  billing_end_date: string | null;
+  payment_due_date: string | null;
+};
+
 export type TransactionType = 'expense' | 'income';
 
 export interface Transaction {

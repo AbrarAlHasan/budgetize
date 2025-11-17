@@ -1,5 +1,5 @@
 import { BaseRepository } from './base.repository';
-import { Account, CreateAccountInput, UpdateAccountInput } from '@/db/schema/types';
+import { Account, CreateAccountInput, DecryptedAccount, UpdateAccountInput } from '@/db/schema/types';
 import { encrypt, decrypt, encryptAmount, decryptAmount } from '@/services/encryption';
 import { getDatabase } from '@/db/sqlite/db';
 import * as SQLite from 'expo-sqlite';
@@ -124,14 +124,7 @@ export class AccountRepository extends BaseRepository<Account> {
   /**
    * Decrypt account for display
    */
-  async decryptAccount(account: Account): Promise<Omit<Account, 'name' | 'bank_name' | 'credit_limit' | 'billing_start_date' | 'billing_end_date' | 'payment_due_date'> & {
-    name: string;
-    bank_name: string | null;
-    credit_limit: number | null;
-    billing_start_date: string | null;
-    billing_end_date: string | null;
-    payment_due_date: string | null;
-  }> {
+  async decryptAccount(account: Account): Promise<DecryptedAccount> {
     const name = await decrypt(account.name);
     const bank_name = account.bank_name ? await decrypt(account.bank_name) : null;
     const credit_limit = account.credit_limit ? await decryptAmount(account.credit_limit) : null;
@@ -153,14 +146,7 @@ export class AccountRepository extends BaseRepository<Account> {
   /**
    * Decrypt multiple accounts
    */
-  async decryptAccounts(accounts: Account[]): Promise<Array<Omit<Account, 'name' | 'bank_name' | 'credit_limit' | 'billing_start_date' | 'billing_end_date' | 'payment_due_date'> & {
-    name: string;
-    bank_name: string | null;
-    credit_limit: number | null;
-    billing_start_date: string | null;
-    billing_end_date: string | null;
-    payment_due_date: string | null;
-  }>> {
+  async decryptAccounts(accounts: Account[]): Promise<DecryptedAccount[]> {
     return Promise.all(accounts.map((a) => this.decryptAccount(a)));
   }
 }

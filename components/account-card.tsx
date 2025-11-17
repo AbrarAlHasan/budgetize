@@ -1,16 +1,16 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
-import { Account } from '@/db/schema/types';
+import { DecryptedAccount } from '@/db/schema/types';
 import { Card } from './ui/card';
 import { cn } from '@/utils/cn';
 import { router } from 'expo-router';
 
 interface AccountCardProps {
-  account: Account;
+  account: DecryptedAccount;
 }
 
 export function AccountCard({ account }: AccountCardProps) {
-  const getAccountTypeColor = (type: Account['type']) => {
+  const getAccountTypeColor = (type: DecryptedAccount['type']) => {
     switch (type) {
       case 'debit':
         return 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200';

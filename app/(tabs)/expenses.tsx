@@ -146,7 +146,9 @@ export default function ExpensesScreen() {
           </View>
 
           <TouchableOpacity
-            onPress={() => router.push('/expenses/add')}
+            onPress={() =>
+              router.push({ pathname: '/expenses/add', params: { from: 'Expenses' } })
+            }
             className="mb-6 bg-blue-600 rounded-2xl py-4 items-center flex-row justify-center"
             activeOpacity={0.8}
           >
@@ -176,7 +178,9 @@ export default function ExpensesScreen() {
               No transactions yet
             </Text>
             <TouchableOpacity
-              onPress={() => router.push('/expenses/add')}
+              onPress={() =>
+                router.push({ pathname: '/expenses/add', params: { from: 'Expenses' } })
+              }
               className="bg-blue-600 rounded-2xl px-6 py-3"
               activeOpacity={0.8}
             >

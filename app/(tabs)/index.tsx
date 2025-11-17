@@ -285,7 +285,9 @@ export default function DashboardScreen() {
         {/* Quick Actions */}
         <View className="flex-row gap-3 mb-6">
           <TouchableOpacity
-            onPress={() => router.push('/expenses/add')}
+            onPress={() =>
+              router.push({ pathname: '/expenses/add', params: { from: 'Dashboard' } })
+            }
             className="flex-1 bg-blue-600 rounded-2xl py-4 items-center"
             activeOpacity={0.8}
           >
@@ -293,7 +295,7 @@ export default function DashboardScreen() {
             <Text className="text-white font-semibold mt-1">Add Expense</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => router.push('/accounts/add')}
+            onPress={() => router.push({ pathname: '/accounts/add', params: { from: 'Dashboard' } })}
             className="flex-1 bg-gray-100 dark:bg-gray-700 rounded-2xl py-4 items-center"
             activeOpacity={0.8}
           >

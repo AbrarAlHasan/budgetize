@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, ScrollView, Alert, Text, TouchableOpacity } from 'react-native';
-import { router } from 'expo-router';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useCreateTransaction } from '@/hooks/queries/use-transactions';
 import { useAccounts } from '@/hooks/queries/use-accounts';
 import { useTags, useCreateTag } from '@/hooks/queries/use-tags';
@@ -32,6 +32,9 @@ export default function AddTransactionScreen() {
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
   const [newTagName, setNewTagName] = useState('');
   const [showAddTag, setShowAddTag] = useState(false);
+
+  const params = useLocalSearchParams<{ from?: string }>();
+  const originLabel = params.from ?? 'Back';
 
   const transactionTypeOptions = [
     { label: 'Expense', value: 'expense' },
@@ -118,9 +121,17 @@ export default function AddTransactionScreen() {
   };
 
   return (
-    <ScrollView className="flex-1 bg-gray-50 dark:bg-gray-900">
-      <View className="p-4">
-        <Card>
+    <>
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          headerTitle: 'Add Transaction',
+          headerBackTitle: originLabel,
+        }}
+      />
+      <ScrollView className="flex-1 bg-gray-50 dark:bg-gray-900">
+        <View className="p-4">
+          <Card>
           <Input
             label="Amount"
             value={amount}
@@ -245,6 +256,7 @@ export default function AddTransactionScreen() {
         </Card>
       </View>
     </ScrollView>
+    </>
   );
 }
 

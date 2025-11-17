@@ -1,11 +1,18 @@
-import React from 'react';
-import { View, Text, ScrollView, ActivityIndicator, RefreshControl, TouchableOpacity } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useAccounts } from '@/hooks/queries/use-accounts';
-import { AccountCard } from '@/components/account-card';
-import { router } from 'expo-router';
-import { useQueryClient } from '@tanstack/react-query';
-import { Ionicons } from '@expo/vector-icons';
+import { AccountCard } from "@/components/account-card";
+import { useAccounts } from "@/hooks/queries/use-accounts";
+import { Ionicons } from "@expo/vector-icons";
+import { useQueryClient } from "@tanstack/react-query";
+import { router } from "expo-router";
+import React from "react";
+import {
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function AccountsScreen() {
   const queryClient = useQueryClient();
@@ -15,7 +22,7 @@ export default function AccountsScreen() {
   const onRefresh = React.useCallback(async () => {
     setRefreshing(true);
     try {
-      await queryClient.invalidateQueries({ queryKey: ['accounts'] });
+      await queryClient.invalidateQueries({ queryKey: ["accounts"] });
     } finally {
       setRefreshing(false);
     }
@@ -23,7 +30,10 @@ export default function AccountsScreen() {
 
   if (isLoading) {
     return (
-      <SafeAreaView className="flex-1 bg-gray-50 dark:bg-gray-950" edges={['top']}>
+      <SafeAreaView
+        className="flex-1 bg-gray-50 dark:bg-gray-950"
+        edges={["top"]}
+      >
         <View className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" />
         </View>
@@ -32,8 +42,11 @@ export default function AccountsScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50 dark:bg-gray-950" edges={['top']}>
-      <ScrollView 
+    <SafeAreaView
+      className="flex-1 bg-gray-50 dark:bg-gray-950"
+      edges={["top"]}
+    >
+      <ScrollView
         className="flex-1"
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
@@ -51,7 +64,9 @@ export default function AccountsScreen() {
           </View>
 
           <TouchableOpacity
-            onPress={() => router.push('/accounts/add')}
+            onPress={() =>
+              router.push({ pathname: "/accounts/add", params: { from: "Accounts" } })
+            }
             className="mb-6 bg-blue-600 rounded-2xl py-4 items-center flex-row justify-center"
             activeOpacity={0.8}
           >
@@ -70,11 +85,15 @@ export default function AccountsScreen() {
                 No accounts yet
               </Text>
               <TouchableOpacity
-                onPress={() => router.push('/accounts/add')}
+                onPress={() =>
+                  router.push({ pathname: "/accounts/add", params: { from: "Accounts" } })
+                }
                 className="bg-blue-600 rounded-2xl px-6 py-3"
                 activeOpacity={0.8}
               >
-                <Text className="text-white font-semibold">Create Your First Account</Text>
+                <Text className="text-white font-semibold">
+                  Create Your First Account
+                </Text>
               </TouchableOpacity>
             </View>
           )}
@@ -83,4 +102,3 @@ export default function AccountsScreen() {
     </SafeAreaView>
   );
 }
-

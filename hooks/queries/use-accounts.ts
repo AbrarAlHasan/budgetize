@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { accountRepository } from '@/repositories/account.repository';
-import { Account, CreateAccountInput, UpdateAccountInput } from '@/db/schema/types';
+import { Account, CreateAccountInput, DecryptedAccount, UpdateAccountInput } from '@/db/schema/types';
 
 const QUERY_KEYS = {
   all: ['accounts'] as const,
@@ -11,7 +11,7 @@ const QUERY_KEYS = {
 };
 
 export function useAccounts(filters?: { type?: Account['type'] }) {
-  return useQuery({
+  return useQuery<DecryptedAccount[]>({
     queryKey: QUERY_KEYS.list(filters),
     queryFn: async () => {
       let accounts;
@@ -26,7 +26,7 @@ export function useAccounts(filters?: { type?: Account['type'] }) {
 }
 
 export function useAccount(id: number) {
-  return useQuery({
+  return useQuery<DecryptedAccount | null>({
     queryKey: QUERY_KEYS.detail(id),
     queryFn: async () => {
       const account = await accountRepository.findById(id);
