@@ -1,85 +1,56 @@
-// app/(tabs)/_layout.tsx
-import CustomHomeHeader from "@/components/navigation/CustomHeader/CustomHomeHeader";
-import CustomReportsHeader from "@/components/navigation/CustomHeader/CustomReportsHeader";
-import CustomSettingsHeader from "@/components/navigation/CustomHeader/CustomSettingsHeader";
-import CustomTransactionsHeader from "@/components/navigation/CustomHeader/CustomTransactionsHeader";
-import { TabBarIcon } from "@/components/navigation/TabBarIcon";
-import { Colors } from "@/constants/Colors";
 import { Tabs } from "expo-router";
-import { useColorScheme } from "react-native";
+import React from "react";
 
-export default function TabsLayout() {
+import { HapticTab } from "@/components/haptic-tab";
+import { IconSymbol } from "@/components/ui/icon-symbol";
+import { Colors } from "@/constants/theme";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+
+export default function TabLayout() {
   const colorScheme = useColorScheme();
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? "light"].primary,
+        tabBarActiveTintColor: Colors[colorScheme ?? "light"].tint,
         headerShown: false,
-        tabBarVisibilityAnimationConfig: {
-          show: { animation: "spring", config: { delay: 1000 } },
-          hide: { animation: "spring" },
-        },
-        tabBarStyle: {
-          backgroundColor: Colors[colorScheme ?? "light"].background,
-        },
+        tabBarButton: HapticTab,
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: "Home",
-          tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon
-              name={focused ? "home" : "home-outline"}
-              color={color}
-            />
+          title: "Dashboard",
+          tabBarIcon: ({ color }) => (
+            <IconSymbol size={28} name="chart.bar.fill" color={color} />
           ),
-          header: () => <CustomHomeHeader />,
-          headerShown: true,
+        }}
+      />
+      <Tabs.Screen
+        name="accounts"
+        options={{
+          title: "Accounts",
+          tabBarIcon: ({ color }) => (
+            <IconSymbol size={28} name="creditcard.fill" color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="expenses"
+        options={{
+          title: "Expenses",
+          tabBarIcon: ({ color }) => (
+            <IconSymbol size={28} name="list.bullet" color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="reports"
         options={{
           title: "Reports",
-          tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon
-              name={focused ? "pie-chart" : "pie-chart-outline"}
-              color={color}
-            />
+          tabBarIcon: ({ color }) => (
+            <IconSymbol size={28} name="chart.pie.fill" color={color} />
           ),
-          header: () => <CustomReportsHeader />,
-          headerShown: true,
-        }}
-      />
-
-      <Tabs.Screen
-        name="transactions"
-        options={{
-          title: "Transactions",
-          tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon
-              name={focused ? "card" : "card-outline"}
-              color={color}
-            />
-          ),
-          header: () => <CustomTransactionsHeader />,
-          headerShown: true,
-        }}
-      />
-      <Tabs.Screen
-        name="settings"
-        options={{
-          title: "Settings",
-          tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon
-              name={focused ? "settings" : "settings-outline"}
-              color={color}
-            />
-          ),
-          header: () => <CustomSettingsHeader />,
-          headerShown: true,
         }}
       />
     </Tabs>

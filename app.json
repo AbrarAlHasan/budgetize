@@ -1,40 +1,52 @@
 {
   "expo": {
-    "name": "moneyManager",
-    "slug": "moneyManager",
-    "version": "1.0.1",
+    "name": "budgetize",
+    "slug": "budgetize",
+    "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/ic_launcher.png",
-    "scheme": "myapp",
-    "userInterfaceStyle": "light",
-    "splash": {
-      "image": "./assets/images/splash_icon.png",
-      "resizeMode": "",
-      "backgroundColor": "#ffffff"
-    },
+    "icon": "./assets/images/icon.png",
+    "scheme": "budgetize",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.suzukidigitalmobile.budgetize"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/ic_launcher.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundImage": "./assets/images/android-icon-background.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "package": "com.abrarhasanprogrammer.moneyManager"
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false,
+      "package": "com.suzukidigitalmobile.budgetize"
     },
     "web": {
-      "bundler": "metro",
       "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
-    "plugins": ["expo-router", "expo-font"],
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff",
+          "dark": {
+            "backgroundColor": "#000000"
+          }
+        }
+      ],
+      "expo-sqlite",
+      "expo-secure-store"
+    ],
     "experiments": {
-      "typedRoutes": true
-    },
-    "extra": {
-      "eas": {
-        "projectId": "8504b6b9-245d-405e-a4cb-d0d2e2e5031f"
-      }
+      "typedRoutes": true,
+      "reactCompiler": true
     }
   }
 }
