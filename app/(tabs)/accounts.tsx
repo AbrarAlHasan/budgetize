@@ -65,7 +65,10 @@ export default function AccountsScreen() {
 
           <TouchableOpacity
             onPress={() =>
-              router.push({ pathname: "/accounts/add", params: { from: "Accounts" } })
+              router.push({
+                pathname: "/accounts/add",
+                params: { from: "Accounts" },
+              })
             }
             className="mb-6 bg-blue-600 rounded-2xl py-4 items-center flex-row justify-center"
             activeOpacity={0.8}
@@ -86,7 +89,10 @@ export default function AccountsScreen() {
               </Text>
               <TouchableOpacity
                 onPress={() =>
-                  router.push({ pathname: "/accounts/add", params: { from: "Accounts" } })
+                  router.push({
+                    pathname: "/accounts/add",
+                    params: { from: "Accounts" },
+                  })
                 }
                 className="bg-blue-600 rounded-2xl px-6 py-3"
                 activeOpacity={0.8}
