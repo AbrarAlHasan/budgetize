@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
+import { BottomSheetSelect } from "@/components/ui/bottom-sheet-select";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
 import { AccountType } from "@/db/schema/types";
 import {
   useAccount,
@@ -9,7 +9,7 @@ import {
   useUpdateAccount,
 } from "@/hooks/queries/use-accounts";
 import { useQueryClient } from "@tanstack/react-query";
-import { router, useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams, Stack } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -22,8 +22,9 @@ import {
 
 export default function AccountDetailScreen() {
   const queryClient = useQueryClient();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, from } = useLocalSearchParams<{ id: string; from?: string }>();
   const accountId = parseInt(id || "0", 10);
+  const originLabel = from ?? "Back";
 
   const { data: account, isLoading } = useAccount(accountId);
   const updateAccount = useUpdateAccount();
@@ -133,6 +134,13 @@ export default function AccountDetailScreen() {
 
   return (
     <>
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          headerTitle: "Edit Account",
+          headerBackTitle: originLabel,
+        }}
+      />
       <ScrollView
         className="flex-1 bg-gray-50 dark:bg-gray-900"
         refreshControl={
@@ -148,7 +156,7 @@ export default function AccountDetailScreen() {
               placeholder="Enter account name"
             />
 
-            <Select
+            <BottomSheetSelect
               label="Account Type"
               options={accountTypeOptions}
               value={type}

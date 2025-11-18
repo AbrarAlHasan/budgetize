@@ -4,12 +4,16 @@ import { DecryptedAccount } from '@/db/schema/types';
 import { Card } from './ui/card';
 import { cn } from '@/utils/cn';
 import { router } from 'expo-router';
+import { useSettingsStore } from '@/store/settings-store';
+import { getCurrencySymbol } from '@/utils/currencies';
 
 interface AccountCardProps {
   account: DecryptedAccount;
 }
 
 export function AccountCard({ account }: AccountCardProps) {
+  const { settings } = useSettingsStore();
+
   const getAccountTypeColor = (type: DecryptedAccount['type']) => {
     switch (type) {
       case 'debit':
@@ -47,7 +51,7 @@ export function AccountCard({ account }: AccountCardProps) {
               </View>
               {account.type === 'credit' && account.credit_limit && (
                 <Text className="text-sm text-gray-600 dark:text-gray-400">
-                  Limit: ${account.credit_limit.toLocaleString()}
+                  Limit: {getCurrencySymbol(settings.currency)}{account.credit_limit.toLocaleString()}
                 </Text>
               )}
             </View>

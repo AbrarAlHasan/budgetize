@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { transactionRepository } from '@/repositories/transaction.repository';
-import { transactionTagRepository } from '@/repositories/transaction-tag.repository';
+import { categoryRepository } from '@/repositories/category.repository';
 import { startOfMonth, endOfMonth, format } from 'date-fns';
 import { useUIStore } from '@/store/ui-store';
 
@@ -18,14 +18,14 @@ interface DashboardData {
 }
 
 interface CategoryBreakdown {
-  tagId: number;
-  tagName: string;
+  categoryId: number;
+  categoryName: string;
   amount: number;
   count: number;
 }
 
 export function useDashboardData(month?: Date, useFilters: boolean = false) {
-  const filters = useUIStore((state) => state.filters);
+  const filters = useUIStore((state) => state.filters.dashboard);
   const targetMonth = month || new Date();
   const monthKey = format(targetMonth, 'yyyy-MM');
   
@@ -77,7 +77,7 @@ export function useDashboardData(month?: Date, useFilters: boolean = false) {
 }
 
 export function useCategoryBreakdown(month?: Date, useFilters: boolean = false) {
-  const filters = useUIStore((state) => state.filters);
+  const filters = useUIStore((state) => state.filters.dashboard);
   const targetMonth = month || new Date();
   const monthKey = format(targetMonth, 'yyyy-MM');
   
@@ -106,53 +106,49 @@ export function useCategoryBreakdown(month?: Date, useFilters: boolean = false) 
       const transactions = await transactionRepository.findAllWithFilters(filterOptions);
       const decrypted = await transactionRepository.decryptTransactions(transactions);
 
-      // Get all transaction tags
-      const tagMap = new Map<number, { name: string; amount: number; count: number }>();
+      // Get all transaction categories
+      const categoryMap = new Map<number, { name: string; amount: number; count: number }>();
 
       for (const transaction of decrypted) {
         if (transaction.type === 'expense') {
           const amount = typeof transaction.amount === 'number' ? transaction.amount : parseFloat(String(transaction.amount)) || 0;
-          const tags = await transactionTagRepository.findByTransactionId(transaction.id);
           
-          if (tags.length === 0) {
+          if (!transaction.category_id) {
             // Uncategorized
-            const uncategorized = tagMap.get(0) || { name: 'Uncategorized', amount: 0, count: 0 };
+            const uncategorized = categoryMap.get(0) || { name: 'Uncategorized', amount: 0, count: 0 };
             uncategorized.amount += amount;
             uncategorized.count += 1;
-            tagMap.set(0, uncategorized);
+            categoryMap.set(0, uncategorized);
           } else {
-            for (const tag of tags) {
-              const existing = tagMap.get(tag.tag_id) || { 
-                name: `Tag ${tag.tag_id}`, 
-                amount: 0, 
-                count: 0 
-              };
-              existing.amount += amount;
-              existing.count += 1;
-              tagMap.set(tag.tag_id, existing);
-            }
+            const existing = categoryMap.get(transaction.category_id) || { 
+              name: `Category ${transaction.category_id}`, 
+              amount: 0, 
+              count: 0 
+            };
+            existing.amount += amount;
+            existing.count += 1;
+            categoryMap.set(transaction.category_id, existing);
           }
         }
       }
 
-      // Fetch tag names
-      const { tagRepository } = await import('@/repositories/tag.repository');
+      // Fetch category names
       const breakdown: CategoryBreakdown[] = [];
 
-      for (const [tagId, data] of tagMap.entries()) {
-        if (tagId === 0) {
+      for (const [categoryId, data] of categoryMap.entries()) {
+        if (categoryId === 0) {
           breakdown.push({
-            tagId: 0,
-            tagName: data.name,
+            categoryId: 0,
+            categoryName: data.name,
             amount: data.amount,
             count: data.count,
           });
         } else {
-          const tag = await tagRepository.findById(tagId);
-          const decryptedTag = tag ? await tagRepository.decryptTag(tag) : null;
+          const category = await categoryRepository.findById(categoryId);
+          const decryptedCategory = category ? await categoryRepository.decryptCategory(category) : null;
           breakdown.push({
-            tagId,
-            tagName: decryptedTag?.name || data.name,
+            categoryId,
+            categoryName: decryptedCategory?.name || data.name,
             amount: data.amount,
             count: data.count,
           });

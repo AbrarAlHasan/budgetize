@@ -13,6 +13,7 @@ interface TransactionItemProps {
   note?: string | null;
   payment_mode: string;
   accountName?: string;
+  currencySymbol?: string; // Currency symbol from account
   tags?: Array<{ id: number; name: string }>;
   categoryName?: string;
 }
@@ -45,6 +46,7 @@ export function TransactionItem({
   note,
   payment_mode,
   accountName,
+  currencySymbol = '$', // Default to $ if not provided
   tags,
   categoryName,
 }: TransactionItemProps) {
@@ -90,7 +92,7 @@ export function TransactionItem({
             </View>
             <View className="items-end">
               <Text className={cn('text-base font-bold', amountColor)}>
-                {amountPrefix}${Math.abs(amount).toLocaleString(undefined, {
+                {amountPrefix}{currencySymbol}{Math.abs(amount).toLocaleString(undefined, {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
                 })}

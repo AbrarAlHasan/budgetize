@@ -42,7 +42,7 @@ interface AccountReport {
 }
 
 export function useReportSummary(startDate: string, endDate: string, useFilters: boolean = false) {
-  const filters = useUIStore((state) => state.filters);
+  const filters = useUIStore((state) => state.filters.reports);
   
   // Use filter dates if available, otherwise use provided dates
   const filterStartDate = useFilters && filters.startDate ? filters.startDate : startDate;
@@ -95,7 +95,7 @@ export function useReportSummary(startDate: string, endDate: string, useFilters:
 }
 
 export function useCategoryReport(startDate: string, endDate: string, useFilters: boolean = false) {
-  const filters = useUIStore((state) => state.filters);
+  const filters = useUIStore((state) => state.filters.reports);
   
   // Use filter dates if available, otherwise use provided dates
   const filterStartDate = useFilters && filters.startDate ? filters.startDate : startDate;
@@ -179,7 +179,7 @@ export function useCategoryReport(startDate: string, endDate: string, useFilters
 }
 
 export function useAccountReport(startDate: string, endDate: string, useFilters: boolean = false) {
-  const filters = useUIStore((state) => state.filters);
+  const filters = useUIStore((state) => state.filters.reports);
   
   // Use filter dates if available, otherwise use provided dates
   const filterStartDate = useFilters && filters.startDate ? filters.startDate : startDate;

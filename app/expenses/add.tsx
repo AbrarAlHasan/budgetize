@@ -9,10 +9,11 @@ import { useAccounts } from '@/hooks/queries/use-accounts';
 import { useCategories } from '@/hooks/queries/use-categories';
 import { useCreateTag, useTags } from '@/hooks/queries/use-tags';
 import { useCreateTransaction } from '@/hooks/queries/use-transactions';
+import { useSettingsStore } from '@/store/settings-store';
 import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
 export default function AddTransactionScreen() {
@@ -40,11 +41,18 @@ export default function AddTransactionScreen() {
 
   const params = useLocalSearchParams<{ from?: string }>();
   const originLabel = params.from ?? 'Back';
+  const { settings, loadSettings } = useSettingsStore();
 
-  const transactionTypeOptions = [
-    { label: 'Expense', value: 'expense' },
-    { label: 'Income', value: 'income' },
-  ];
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  const transactionTypeOptions = settings.incomeCalculationEnabled
+    ? [
+        { label: 'Expense', value: 'expense' },
+        { label: 'Income', value: 'income' },
+      ]
+    : [{ label: 'Expense', value: 'expense' }];
 
   const accountOptions =
     accounts?.map((acc) => ({ label: acc.name, value: acc.id })) || [];
@@ -234,7 +242,7 @@ export default function AddTransactionScreen() {
             )}
 
             {tags && tags.length > 0 && (
-              <View className="flex-row flex-wrap gap-2">
+              <View className="flex-row flex-wrap gap-3">
                 {tags.map((tag) => (
                   <TagChip
                     key={tag.id}

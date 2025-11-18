@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { View, ScrollView, Alert, Text, ActivityIndicator, TouchableOpacity, RefreshControl } from 'react-native';
-import { useLocalSearchParams, router } from 'expo-router';
+import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { useTransaction, useUpdateTransaction, useDeleteTransaction } from '@/hooks/queries/use-transactions';
 import { useAccounts } from '@/hooks/queries/use-accounts';
 import { useTags, useCreateTag } from '@/hooks/queries/use-tags';
 import { useCategories } from '@/hooks/queries/use-categories';
 import { Input } from '@/components/ui/input';
-import { Select } from '@/components/ui/select';
+import { BottomSheetSelect } from '@/components/ui/bottom-sheet-select';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { DatePicker } from '@/components/date-picker';
@@ -16,11 +16,13 @@ import { TransactionType } from '@/db/schema/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { transactionTagRepository } from '@/repositories/transaction-tag.repository';
+import { useSettingsStore } from '@/store/settings-store';
 
 export default function TransactionDetailScreen() {
   const queryClient = useQueryClient();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, from } = useLocalSearchParams<{ id: string; from?: string }>();
   const transactionId = parseInt(id || '0', 10);
+  const originLabel = from ?? 'Back';
 
   const { data: transaction, isLoading } = useTransaction(transactionId);
   const updateTransaction = useUpdateTransaction();
@@ -29,7 +31,12 @@ export default function TransactionDetailScreen() {
   const { data: tags } = useTags();
   const { data: categories } = useCategories();
   const createTag = useCreateTag();
+  const { settings, loadSettings } = useSettingsStore();
   const [refreshing, setRefreshing] = useState(false);
+
+  useEffect(() => {
+    loadSettings();
+  }, []);
 
   const [amount, setAmount] = useState('');
   const [type, setType] = useState<TransactionType>('expense');
@@ -66,10 +73,12 @@ export default function TransactionDetailScreen() {
     }
   }, [transaction]);
 
-  const transactionTypeOptions = [
-    { label: 'Expense', value: 'expense' },
-    { label: 'Income', value: 'income' },
-  ];
+  const transactionTypeOptions = settings.incomeCalculationEnabled
+    ? [
+        { label: 'Expense', value: 'expense' },
+        { label: 'Income', value: 'income' },
+      ]
+    : [{ label: 'Expense', value: 'expense' }];
 
   const accountOptions =
     accounts?.map((acc) => ({ label: acc.name, value: acc.id })) || [];
@@ -204,12 +213,20 @@ export default function TransactionDetailScreen() {
   }
 
   return (
-    <ScrollView 
-      className="flex-1 bg-gray-50 dark:bg-gray-900"
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
-    >
+    <>
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          headerTitle: 'Edit Transaction',
+          headerBackTitle: originLabel,
+        }}
+      />
+      <ScrollView 
+        className="flex-1 bg-gray-50 dark:bg-gray-900"
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
       <View className="p-4">
         <Card>
           <Input
@@ -220,14 +237,14 @@ export default function TransactionDetailScreen() {
             keyboardType="numeric"
           />
 
-          <Select
+          <BottomSheetSelect
             label="Type"
             options={transactionTypeOptions}
             value={type}
             onValueChange={(value) => setType(value as TransactionType)}
           />
 
-          <Select
+          <BottomSheetSelect
             label="Account"
             options={accountOptions}
             value={accountId}
@@ -235,7 +252,7 @@ export default function TransactionDetailScreen() {
             placeholder="Select an account"
           />
 
-          <Select
+          <BottomSheetSelect
             label="Category"
             options={categoryOptions}
             value={categoryId || 'none'}
@@ -306,7 +323,7 @@ export default function TransactionDetailScreen() {
             )}
 
             {tags && tags.length > 0 && (
-              <View className="flex-row flex-wrap gap-2">
+              <View className="flex-row flex-wrap gap-3">
                 {tags.map((tag) => (
                   <TagChip
                     key={tag.id}
@@ -345,6 +362,7 @@ export default function TransactionDetailScreen() {
         </Card>
       </View>
     </ScrollView>
+    </>
   );
 }
 

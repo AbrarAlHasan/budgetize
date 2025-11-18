@@ -2,6 +2,8 @@ import { BottomSheetSelect } from "@/components/ui/bottom-sheet-select";
 import { Card } from "@/components/ui/card";
 import { REMINDER_TIMES, requestNotificationPermissions } from "@/services/notifications";
 import { useNotificationStore } from "@/store/notification-store";
+import { useSettingsStore } from "@/store/settings-store";
+import { getCurrencyOptions, getCurrencySymbol } from "@/utils/currencies";
 import { useEffect, useState } from "react";
 import { Alert, ScrollView, Switch, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -9,10 +11,12 @@ import { SafeAreaView } from "react-native-safe-area-context";
 export default function SettingsScreen() {
   const { preferences, loadPreferences, updateReminderSettings, isLoading } =
     useNotificationStore();
+  const { settings, loadSettings, updateIncomeCalculationEnabled, updateCurrency } = useSettingsStore();
   const [permissionGranted, setPermissionGranted] = useState(false);
 
   useEffect(() => {
     loadPreferences();
+    loadSettings();
     checkPermissions();
   }, []);
 
@@ -118,6 +122,53 @@ export default function SettingsScreen() {
                   </Text>
                 </View>
               )}
+            </Card>
+
+            {/* Income Calculation Settings */}
+            <Card className="mb-4">
+              <Text className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+                Transaction Settings
+              </Text>
+
+              {/* Currency Selector */}
+              <View className="mb-4">
+                <BottomSheetSelect
+                  label="Currency"
+                  options={getCurrencyOptions()}
+                  value={settings.currency}
+                  onValueChange={updateCurrency}
+                />
+                <Text className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Current symbol: {getCurrencySymbol(settings.currency)}
+                </Text>
+              </View>
+
+              {/* Income Calculation Toggle */}
+              <View className="mb-4">
+                <View className="flex-row items-center justify-between mb-2">
+                  <View className="flex-1">
+                    <Text className="text-base font-medium text-gray-900 dark:text-gray-100">
+                      Enable Income Calculation
+                    </Text>
+                    <Text className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                      Track and calculate income along with expenses
+                    </Text>
+                  </View>
+                  <Switch
+                    value={settings.incomeCalculationEnabled}
+                    onValueChange={updateIncomeCalculationEnabled}
+                    trackColor={{ false: "#D1D5DB", true: "#3B82F6" }}
+                    thumbColor="#FFFFFF"
+                  />
+                </View>
+                {!settings.incomeCalculationEnabled && (
+                  <View className="mt-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                    <Text className="text-sm text-blue-800 dark:text-blue-200">
+                      Income tracking is disabled. Only expenses will be tracked and displayed.
+                    </Text>
+                  </View>
+                )}
+              </View>
             </Card>
         </View>
       </ScrollView>

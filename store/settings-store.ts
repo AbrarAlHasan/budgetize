@@ -1,0 +1,83 @@
+import { create } from 'zustand';
+import * as SecureStore from 'expo-secure-store';
+
+const SETTINGS_STORE_KEY = 'app_settings';
+
+interface AppSettings {
+  incomeCalculationEnabled: boolean;
+  currency: string; // Global currency code (e.g., 'USD', 'EUR', 'INR')
+}
+
+interface SettingsStore {
+  settings: AppSettings;
+  isLoading: boolean;
+  loadSettings: () => Promise<void>;
+  updateIncomeCalculationEnabled: (enabled: boolean) => Promise<void>;
+  updateCurrency: (currency: string) => Promise<void>;
+}
+
+const defaultSettings: AppSettings = {
+  incomeCalculationEnabled: true, // Default to enabled
+  currency: 'USD', // Default to USD
+};
+
+export const useSettingsStore = create<SettingsStore>((set, get) => ({
+  settings: defaultSettings,
+  isLoading: false,
+
+  loadSettings: async () => {
+    set({ isLoading: true });
+    try {
+      const stored = await SecureStore.getItemAsync(SETTINGS_STORE_KEY);
+      if (stored) {
+        const loadedSettings = JSON.parse(stored) as Partial<AppSettings>;
+        // Merge with defaults to ensure all fields exist
+        const settings: AppSettings = {
+          ...defaultSettings,
+          ...loadedSettings,
+        };
+        set({ settings });
+        
+        // Save back to ensure all fields are present in storage
+        await SecureStore.setItemAsync(SETTINGS_STORE_KEY, JSON.stringify(settings));
+      }
+    } catch (error) {
+      console.error('Error loading settings:', error);
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  updateIncomeCalculationEnabled: async (enabled: boolean) => {
+    const newSettings: AppSettings = {
+      ...get().settings,
+      incomeCalculationEnabled: enabled,
+    };
+
+    set({ settings: newSettings });
+
+    // Save to secure store
+    try {
+      await SecureStore.setItemAsync(SETTINGS_STORE_KEY, JSON.stringify(newSettings));
+    } catch (error) {
+      console.error('Error saving settings:', error);
+    }
+  },
+
+  updateCurrency: async (currency: string) => {
+    const newSettings: AppSettings = {
+      ...get().settings,
+      currency,
+    };
+
+    set({ settings: newSettings });
+
+    // Save to secure store
+    try {
+      await SecureStore.setItemAsync(SETTINGS_STORE_KEY, JSON.stringify(newSettings));
+    } catch (error) {
+      console.error('Error saving settings:', error);
+    }
+  },
+}));
+

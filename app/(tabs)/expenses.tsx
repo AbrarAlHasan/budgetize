@@ -12,10 +12,18 @@ import { tagRepository } from '@/repositories/tag.repository';
 import { useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { useUIStore } from '@/store/ui-store';
+import { useSettingsStore } from '@/store/settings-store';
+import { getCurrencySymbol } from '@/utils/currencies';
 
 export default function ExpensesScreen() {
   const queryClient = useQueryClient();
-  const filters = useUIStore((state) => state.filters);
+  const filters = useUIStore((state) => state.filters.expenses);
+  const setCurrentFilterContext = useUIStore((state) => state.setCurrentFilterContext);
+  const { settings, loadSettings } = useSettingsStore();
+
+  React.useEffect(() => {
+    loadSettings();
+  }, []);
   
   const { data: transactions, isLoading } = useTransactions({
     accountId: filters.accountId || undefined,
@@ -126,7 +134,10 @@ export default function ExpensesScreen() {
               </Text>
             </View>
             <TouchableOpacity
-              onPress={() => router.push('/filters')}
+              onPress={() => {
+                setCurrentFilterContext('expenses');
+                router.push({ pathname: '/filters', params: { context: 'expenses' } });
+              }}
               className="flex-row items-center gap-2 px-4 py-2.5 rounded-xl"
               style={{ 
                 backgroundColor: hasActiveFilters ? '#EFF6FF' : '#F3F4F6',
@@ -165,6 +176,7 @@ export default function ExpensesScreen() {
               note={transaction.note}
               payment_mode={transaction.payment_mode}
               accountName={getAccountName(transaction.account_id)}
+              currencySymbol={getCurrencySymbol(settings.currency)}
               tags={transactionTags.get(transaction.id)}
               categoryName={transactionCategories.get(transaction.id)}
             />

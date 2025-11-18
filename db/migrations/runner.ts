@@ -1,5 +1,6 @@
 import * as SQLite from 'expo-sqlite';
 import { encryptExistingData } from './003_encrypt_existing_data';
+import { addCurrencyToAccounts } from './004_add_currency_to_accounts';
 
 const INITIAL_SCHEMA_SQL = `
 -- Accounts table
@@ -185,6 +186,24 @@ export async function runMigrations(db: SQLite.SQLiteDatabase): Promise<void> {
       console.log('Migration 003_encrypt_existing_data applied successfully');
     } catch (error) {
       console.error('Error applying migration 003_encrypt_existing_data:', error);
+      throw error;
+    }
+  }
+
+  // Run migration 4 (add currency to accounts)
+  if (!appliedVersions.has(4)) {
+    try {
+      await addCurrencyToAccounts(db);
+      
+      // Record migration
+      await db.runAsync(
+        'INSERT OR IGNORE INTO schema_migrations (version, name) VALUES (?, ?)',
+        [4, '004_add_currency_to_accounts']
+      );
+      
+      console.log('Migration 004_add_currency_to_accounts applied successfully');
+    } catch (error) {
+      console.error('Error applying migration 004_add_currency_to_accounts:', error);
       throw error;
     }
   }

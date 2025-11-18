@@ -4,6 +4,7 @@ export interface Account {
   id: number;
   name: string; // Encrypted string
   type: AccountType;
+  currency: string; // Currency code (e.g., 'USD', 'EUR', 'INR')
   bank_name: string | null; // Encrypted string
   credit_limit: string | null; // Encrypted string (stored as string, decrypted to number)
   billing_start_date: string | null; // Encrypted string (ISO date string)
@@ -26,6 +27,7 @@ export type DecryptedAccount = Omit<
   | 'payment_due_date'
 > & {
   name: string;
+  currency: string;
   bank_name: string | null;
   credit_limit: number | null;
   billing_start_date: string | null;
@@ -80,6 +82,7 @@ export interface TransactionTag {
 export interface CreateAccountInput {
   name: string;
   type: AccountType;
+  currency?: string; // Defaults to 'USD' if not provided
   bank_name?: string | null;
   credit_limit?: number | null;
   billing_start_date?: string | null;

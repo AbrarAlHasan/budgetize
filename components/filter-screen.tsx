@@ -2,7 +2,7 @@ import { AccountType, TransactionType } from '@/db/schema/types';
 import { useAccounts } from '@/hooks/queries/use-accounts';
 import { useCategories } from '@/hooks/queries/use-categories';
 import { useTags } from '@/hooks/queries/use-tags';
-import { useUIStore } from '@/store/ui-store';
+import { useUIStore, type FilterContext } from '@/store/ui-store';
 import { Ionicons } from '@expo/vector-icons';
 import { endOfMonth, format, startOfMonth } from 'date-fns';
 import React, { useEffect, useState } from 'react';
@@ -11,17 +11,18 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { DatePicker } from './date-picker';
 import { TagChip } from './tag-chip';
 import { Button } from './ui/button';
+import { BottomSheetSelect } from './ui/bottom-sheet-select';
 import { Card } from './ui/card';
-import { Select } from './ui/select';
 
 interface FilterScreenProps {
   visible: boolean;
   onClose: () => void;
   onApply: () => void;
+  context?: FilterContext;
 }
 
-export function FilterScreen({ visible, onClose, onApply }: FilterScreenProps) {
-  const filters = useUIStore((state) => state.filters);
+export function FilterScreen({ visible, onClose, onApply, context = 'dashboard' }: FilterScreenProps) {
+  const filters = useUIStore((state) => state.filters[context]);
   const setAccountFilter = useUIStore((state) => state.setAccountFilter);
   const setTagFilter = useUIStore((state) => state.setTagFilter);
   const setCategoryFilter = useUIStore((state) => state.setCategoryFilter);
@@ -83,20 +84,20 @@ export function FilterScreen({ visible, onClose, onApply }: FilterScreenProps) {
   const handleApply = () => {
     // Update date filters
     if (startDate && endDate) {
-      setDateRangeFilter(format(startDate, 'yyyy-MM-dd'), format(endDate, 'yyyy-MM-dd'));
+      setDateRangeFilter(context, format(startDate, 'yyyy-MM-dd'), format(endDate, 'yyyy-MM-dd'));
     } else if (startDate) {
-      setDateRangeFilter(format(startDate, 'yyyy-MM-dd'), null);
+      setDateRangeFilter(context, format(startDate, 'yyyy-MM-dd'), null);
     } else if (endDate) {
-      setDateRangeFilter(null, format(endDate, 'yyyy-MM-dd'));
+      setDateRangeFilter(context, null, format(endDate, 'yyyy-MM-dd'));
     } else {
-      setDateRangeFilter(null, null);
+      setDateRangeFilter(context, null, null);
     }
     onApply();
     onClose();
   };
 
   const handleClear = () => {
-    clearFilters();
+    clearFilters(context);
     setStartDate(null);
     setEndDate(null);
   };
@@ -224,11 +225,12 @@ export function FilterScreen({ visible, onClose, onApply }: FilterScreenProps) {
                 <Text className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
                   Transaction Type
                 </Text>
-                <Select
+                <BottomSheetSelect
                   options={transactionTypeOptions}
                   value={filters.transactionType || 'all'}
                   onValueChange={(value) => {
                     setTransactionTypeFilter(
+                      context,
                       value === 'all' ? null : (value as TransactionType)
                     );
                   }}
@@ -241,11 +243,14 @@ export function FilterScreen({ visible, onClose, onApply }: FilterScreenProps) {
                 <Text className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
                   Account
                 </Text>
-                <Select
+                <BottomSheetSelect
                   options={accountOptions}
                   value={filters.accountId || 'all'}
                   onValueChange={(value) => {
-                    setAccountFilter(value === 'all' ? null : (value as number));
+                    setAccountFilter(
+                      context,
+                      value === 'all' ? null : (value as number)
+                    );
                   }}
                   placeholder="Select account"
                 />
@@ -256,11 +261,12 @@ export function FilterScreen({ visible, onClose, onApply }: FilterScreenProps) {
                 <Text className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
                   Account Type
                 </Text>
-                <Select
+                <BottomSheetSelect
                   options={accountTypeOptions}
                   value={filters.accountType || 'all'}
                   onValueChange={(value) => {
                     setAccountTypeFilter(
+                      context,
                       value === 'all' ? null : (value as AccountType)
                     );
                   }}
@@ -273,11 +279,12 @@ export function FilterScreen({ visible, onClose, onApply }: FilterScreenProps) {
                 <Text className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
                   Category
                 </Text>
-                <Select
+                <BottomSheetSelect
                   options={categoryOptions}
                   value={filters.categoryId || 'all'}
                   onValueChange={(value) => {
                     setCategoryFilter(
+                      context,
                       value === 'all' ? null : (value as number)
                     );
                   }}
@@ -291,14 +298,17 @@ export function FilterScreen({ visible, onClose, onApply }: FilterScreenProps) {
                   <Text className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
                     Tags
                   </Text>
-                  <View className="flex-row flex-wrap gap-2">
+                  <View className="flex-row flex-wrap gap-3">
                     {tags.map((tag) => (
                       <TagChip
                         key={tag.id}
                         name={tag.name}
                         selected={filters.tagId === tag.id}
                         onPress={() => {
-                          setTagFilter(filters.tagId === tag.id ? null : tag.id);
+                          setTagFilter(
+                            context,
+                            filters.tagId === tag.id ? null : tag.id
+                          );
                         }}
                       />
                     ))}

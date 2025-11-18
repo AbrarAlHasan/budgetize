@@ -24,13 +24,15 @@ export class AccountRepository extends BaseRepository<Account> {
 
     try {
       const now = new Date().toISOString();
+      const currency = input.currency || 'USD'; // Default to USD if not provided
       const result = await db.runAsync(
         `INSERT INTO ${this.tableName} 
-         (name, type, bank_name, credit_limit, billing_start_date, billing_end_date, payment_due_date, created_at, updated_at, is_synced)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
+         (name, type, currency, bank_name, credit_limit, billing_start_date, billing_end_date, payment_due_date, created_at, updated_at, is_synced)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
         [
           encryptedName,
           input.type,
+          currency,
           encryptedBankName,
           encryptedCreditLimit,
           encryptedBillingStartDate,
@@ -63,6 +65,7 @@ export class AccountRepository extends BaseRepository<Account> {
       const updateData: any = {};
       
       if (input.type !== undefined) updateData.type = input.type;
+      if (input.currency !== undefined) updateData.currency = input.currency;
       
       // Encrypt fields if provided
       if (input.name !== undefined) {
@@ -135,6 +138,7 @@ export class AccountRepository extends BaseRepository<Account> {
     return {
       ...account,
       name,
+      currency: account.currency || 'USD', // Default to USD if not set
       bank_name,
       credit_limit,
       billing_start_date,

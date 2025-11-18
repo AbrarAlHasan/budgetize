@@ -8,6 +8,8 @@ import { categoryRepository } from '@/repositories/category.repository';
 import { tagRepository } from '@/repositories/tag.repository';
 import { transactionTagRepository } from '@/repositories/transaction-tag.repository';
 import { useUIStore } from '@/store/ui-store';
+import { useSettingsStore } from '@/store/settings-store';
+import { getCurrencySymbol } from '@/utils/currencies';
 import { Ionicons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { endOfMonth, format, startOfMonth } from 'date-fns';
@@ -18,8 +20,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function DashboardScreen() {
   const queryClient = useQueryClient();
-  const filters = useUIStore((state) => state.filters);
+  const filters = useUIStore((state) => state.filters.dashboard);
+  const setCurrentFilterContext = useUIStore((state) => state.setCurrentFilterContext);
+  const { settings, loadSettings } = useSettingsStore();
   const [useFilters, setUseFilters] = React.useState(false);
+
+  React.useEffect(() => {
+    loadSettings();
+  }, []);
   
   const currentMonth = new Date();
   const { data: dashboardData, isLoading: dashboardLoading } = useDashboardData(currentMonth, useFilters);
@@ -146,8 +154,11 @@ export default function DashboardScreen() {
               {format(new Date(), 'MMMM yyyy')}
             </Text>
           </View>
-          <TouchableOpacity
-            onPress={() => router.push('/filters')}
+            <TouchableOpacity
+              onPress={() => {
+                setCurrentFilterContext('dashboard');
+                router.push({ pathname: '/filters', params: { context: 'dashboard' } });
+              }}
             className="flex-row items-center gap-2 px-4 py-2.5 rounded-xl"
             style={{ 
               backgroundColor: hasActiveFilters ? '#EFF6FF' : '#F3F4F6',
@@ -166,24 +177,26 @@ export default function DashboardScreen() {
 
         {/* Summary Cards */}
         <View className="mb-6">
-          <View className="flex-row gap-3 mb-3">
-            {/* Income Card */}
-            <View 
-              className="flex-1 rounded-2xl p-4"
-              style={{ backgroundColor: '#D1FAE5' }}
-            >
-              <View className="flex-row items-center justify-between mb-2">
-                <Text className="text-xs font-medium text-gray-600">Income</Text>
-                <Ionicons name="arrow-up" size={16} color="#10B981" />
+          <View className={`flex-row gap-3 ${settings.incomeCalculationEnabled ? 'mb-3' : ''}`}>
+            {/* Income Card - Only show if income calculation is enabled */}
+            {settings.incomeCalculationEnabled && (
+              <View 
+                className="flex-1 rounded-2xl p-4"
+                style={{ backgroundColor: '#D1FAE5' }}
+              >
+                <View className="flex-row items-center justify-between mb-2">
+                  <Text className="text-xs font-medium text-gray-600">Income</Text>
+                  <Ionicons name="arrow-up" size={16} color="#10B981" />
+                </View>
+                <Text className="text-2xl font-bold text-gray-900">
+                  {getCurrencySymbol(settings.currency)}{dashboardData?.totalIncome.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  }) || '0.00'}
+                </Text>
+                <Text className="text-xs text-gray-500 mt-1">This month</Text>
               </View>
-              <Text className="text-2xl font-bold text-gray-900">
-                ${dashboardData?.totalIncome.toLocaleString(undefined, {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                }) || '0.00'}
-              </Text>
-              <Text className="text-xs text-gray-500 mt-1">This month</Text>
-            </View>
+            )}
 
             {/* Expense Card */}
             <View 
@@ -195,7 +208,7 @@ export default function DashboardScreen() {
                 <Ionicons name="arrow-down" size={16} color="#EF4444" />
               </View>
               <Text className="text-2xl font-bold text-gray-900">
-                ${dashboardData?.totalSpending.toLocaleString(undefined, {
+                {getCurrencySymbol(settings.currency)}{dashboardData?.totalSpending.toLocaleString(undefined, {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
                 }) || '0.00'}
@@ -204,30 +217,35 @@ export default function DashboardScreen() {
             </View>
           </View>
 
-          {/* Net Amount Card */}
-          <Card className="bg-gradient-to-r" style={{ backgroundColor: (dashboardData?.netAmount || 0) >= 0 ? '#F0FDF4' : '#FEF2F2' }}>
-            <View className="flex-row items-center justify-between">
-              <View>
-                <Text className="text-sm text-gray-600 dark:text-gray-400 mb-1">Net Amount</Text>
-                <Text className={`
-                  text-2xl font-bold
-                  ${(dashboardData?.netAmount || 0) >= 0 
-                    ? 'text-green-600' 
-                    : 'text-red-600'}
-                `}>
-                  ${dashboardData?.netAmount.toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  }) || '0.00'}
-                </Text>
+          {/* Net Amount Card - Only show if income calculation is enabled */}
+          {settings.incomeCalculationEnabled && (
+            <Card className="bg-gradient-to-r" style={{ backgroundColor: (dashboardData?.netAmount || 0) >= 0 ? '#F0FDF4' : '#FEF2F2' }}>
+              <View className="flex-row items-center justify-between">
+                <View>
+                  <Text className="text-sm text-gray-600 dark:text-gray-400 mb-1">Net Amount</Text>
+                  <Text className={`
+                    text-2xl font-bold
+                    ${(dashboardData?.netAmount || 0) >= 0 
+                      ? 'text-green-600' 
+                      : 'text-red-600'}
+                  `}>
+                    {getCurrencySymbol(settings.currency)}{dashboardData?.netAmount.toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    }) || '0.00'}
+                  </Text>
+                </View>
+                <Ionicons 
+                  name={(dashboardData?.netAmount || 0) >= 0 ? "trending-up" : "trending-down"} 
+                  size={32} 
+                  color={(dashboardData?.netAmount || 0) >= 0 ? "#10B981" : "#EF4444"} 
+                />
               </View>
-              <Ionicons 
-                name={(dashboardData?.netAmount || 0) >= 0 ? "trending-up" : "trending-down"} 
-                size={32} 
-                color={(dashboardData?.netAmount || 0) >= 0 ? "#10B981" : "#EF4444"} 
-              />
-            </View>
-          </Card>
+              <Text className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                {dashboardData?.transactionCount || 0} transactions
+              </Text>
+            </Card>
+          )}
         </View>
 
         {/* Category Breakdown */}
@@ -246,14 +264,14 @@ export default function DashboardScreen() {
                   const color = colors[index % colors.length];
                   
                   return (
-                    <View key={category.tagId}>
+                    <View key={category.categoryId}>
                       <View className="flex-row justify-between items-center mb-2">
                         <Text className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                          {category.tagName}
+                          {category.categoryName}
                         </Text>
                         <View className="flex-row items-center gap-2">
                           <Text className="text-sm font-bold text-gray-900 dark:text-gray-100">
-                            ${category.amount.toLocaleString(undefined, {
+                            {getCurrencySymbol(settings.currency)}{category.amount.toLocaleString(undefined, {
                               minimumFractionDigits: 2,
                               maximumFractionDigits: 2,
                             })}
@@ -318,6 +336,7 @@ export default function DashboardScreen() {
                 note={transaction.note}
                 payment_mode={transaction.payment_mode}
                 accountName={getAccountName(transaction.account_id)}
+                currencySymbol={getCurrencySymbol(settings.currency)}
                 tags={transactionTags.get(transaction.id)}
                 categoryName={transactionCategories.get(transaction.id)}
               />

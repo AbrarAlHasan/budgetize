@@ -7,14 +7,36 @@ import { AccountType, TransactionType } from "@/db/schema/types";
 import { useAccounts } from "@/hooks/queries/use-accounts";
 import { useCategories } from "@/hooks/queries/use-categories";
 import { useTags } from "@/hooks/queries/use-tags";
-import { useUIStore } from "@/store/ui-store";
+import { useUIStore, type FilterContext } from "@/store/ui-store";
+import { useSettingsStore } from "@/store/settings-store";
 import { endOfMonth, format, startOfMonth } from "date-fns";
-import { router, Stack } from "expo-router";
+import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { ScrollView, Text, View } from "react-native";
 
+const FILTER_CONTEXTS: FilterContext[] = ["dashboard", "reports", "expenses"];
+
+const resolveFilterContext = (
+  context?: string | string[],
+  fallback: FilterContext = "dashboard"
+): FilterContext => {
+  const value = Array.isArray(context) ? context[0] : context;
+  if (value && FILTER_CONTEXTS.includes(value as FilterContext)) {
+    return value as FilterContext;
+  }
+  return fallback;
+};
+
 export default function FiltersScreen() {
-  const filters = useUIStore((state) => state.filters);
+  const params = useLocalSearchParams<{ context?: string }>();
+  const currentFilterContext = useUIStore((state) => state.currentFilterContext);
+  const filterContext = resolveFilterContext(params.context, currentFilterContext);
+  const filters = useUIStore((state) => state.filters[filterContext]);
+  const { settings, loadSettings } = useSettingsStore();
+
+  useEffect(() => {
+    loadSettings();
+  }, []);
   const setAccountFilter = useUIStore((state) => state.setAccountFilter);
   const setTagFilter = useUIStore((state) => state.setTagFilter);
   const setCategoryFilter = useUIStore((state) => state.setCategoryFilter);
@@ -56,11 +78,16 @@ export default function FiltersScreen() {
     }
   }, [filters.startDate, filters.endDate]);
 
-  const transactionTypeOptions = [
-    { label: "All Types", value: "all" },
-    { label: "Expense", value: "expense" },
-    { label: "Income", value: "income" },
-  ];
+  const transactionTypeOptions = settings.incomeCalculationEnabled
+    ? [
+        { label: "All Types", value: "all" },
+        { label: "Expense", value: "expense" },
+        { label: "Income", value: "income" },
+      ]
+    : [
+        { label: "All Types", value: "all" },
+        { label: "Expense", value: "expense" },
+      ];
 
   const accountTypeOptions = [
     { label: "All Account Types", value: "all" },
@@ -84,21 +111,22 @@ export default function FiltersScreen() {
     // Update date filters
     if (startDate && endDate) {
       setDateRangeFilter(
+        filterContext,
         format(startDate, "yyyy-MM-dd"),
         format(endDate, "yyyy-MM-dd")
       );
     } else if (startDate) {
-      setDateRangeFilter(format(startDate, "yyyy-MM-dd"), null);
+      setDateRangeFilter(filterContext, format(startDate, "yyyy-MM-dd"), null);
     } else if (endDate) {
-      setDateRangeFilter(null, format(endDate, "yyyy-MM-dd"));
+      setDateRangeFilter(filterContext, null, format(endDate, "yyyy-MM-dd"));
     } else {
-      setDateRangeFilter(null, null);
+      setDateRangeFilter(filterContext, null, null);
     }
     router.back();
   };
 
   const handleClear = () => {
-    clearFilters();
+    clearFilters(filterContext);
     setStartDate(null);
     setEndDate(null);
   };
@@ -235,6 +263,7 @@ export default function FiltersScreen() {
                 value={filters.transactionType || "all"}
                 onValueChange={(value) => {
                   setTransactionTypeFilter(
+                      filterContext,
                     value === "all" ? null : (value as TransactionType)
                   );
                 }}
@@ -251,7 +280,10 @@ export default function FiltersScreen() {
                 options={accountOptions}
                 value={filters.accountId || "all"}
                 onValueChange={(value) => {
-                  setAccountFilter(value === "all" ? null : (value as number));
+                    setAccountFilter(
+                      filterContext,
+                      value === "all" ? null : (value as number)
+                    );
                 }}
                 placeholder="Select account"
               />
@@ -267,6 +299,7 @@ export default function FiltersScreen() {
                 value={filters.accountType || "all"}
                 onValueChange={(value) => {
                   setAccountTypeFilter(
+                      filterContext,
                     value === "all" ? null : (value as AccountType)
                   );
                 }}
@@ -283,7 +316,10 @@ export default function FiltersScreen() {
                 options={categoryOptions}
                 value={filters.categoryId || "all"}
                 onValueChange={(value) => {
-                  setCategoryFilter(value === "all" ? null : (value as number));
+                  setCategoryFilter(
+                    filterContext,
+                    value === "all" ? null : (value as number)
+                  );
                 }}
                 placeholder="Select category"
               />
@@ -302,7 +338,10 @@ export default function FiltersScreen() {
                       name={tag.name}
                       selected={filters.tagId === tag.id}
                       onPress={() => {
-                        setTagFilter(filters.tagId === tag.id ? null : tag.id);
+                          setTagFilter(
+                            filterContext,
+                            filters.tagId === tag.id ? null : tag.id
+                          );
                       }}
                     />
                   ))}
