@@ -5,7 +5,7 @@ import { useReportSummary, useCategoryReport, useAccountReport } from '@/hooks/q
 import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
 import { Card } from '@/components/ui/card';
 import { DatePicker } from '@/components/date-picker';
-import { FilterScreen } from '@/components/filter-screen';
+import { router } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { useUIStore } from '@/store/ui-store';
@@ -13,7 +13,6 @@ import { useUIStore } from '@/store/ui-store';
 export default function ReportsScreen() {
   const queryClient = useQueryClient();
   const filters = useUIStore((state) => state.filters);
-  const [filterVisible, setFilterVisible] = useState(false);
   const [useFilters, setUseFilters] = useState(false);
   const [startDate, setStartDate] = useState<Date>(startOfMonth(new Date()));
   const [endDate, setEndDate] = useState<Date>(endOfMonth(new Date()));
@@ -76,7 +75,7 @@ export default function ReportsScreen() {
             </Text>
           </View>
           <TouchableOpacity
-            onPress={() => setFilterVisible(true)}
+            onPress={() => router.push('/filters')}
             className="flex-row items-center gap-2 px-4 py-2.5 rounded-xl"
             style={{ 
               backgroundColor: hasActiveFilters ? '#EFF6FF' : '#F3F4F6',
@@ -293,11 +292,6 @@ export default function ReportsScreen() {
         </View>
       </ScrollView>
       
-      <FilterScreen
-        visible={filterVisible}
-        onClose={() => setFilterVisible(false)}
-        onApply={handleApplyFilters}
-      />
     </SafeAreaView>
   );
 }

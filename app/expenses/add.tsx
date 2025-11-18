@@ -1,19 +1,19 @@
-import React, { useState } from 'react';
-import { View, ScrollView, Alert, Text, TouchableOpacity } from 'react-native';
-import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { useCreateTransaction } from '@/hooks/queries/use-transactions';
-import { useAccounts } from '@/hooks/queries/use-accounts';
-import { useTags, useCreateTag } from '@/hooks/queries/use-tags';
-import { useCategories } from '@/hooks/queries/use-categories';
-import { Input } from '@/components/ui/input';
-import { Select } from '@/components/ui/select';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { DatePicker } from '@/components/date-picker';
 import { TagChip } from '@/components/tag-chip';
-import { format } from 'date-fns';
+import { BottomSheetSelect } from '@/components/ui/bottom-sheet-select';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { TransactionType } from '@/db/schema/types';
+import { useAccounts } from '@/hooks/queries/use-accounts';
+import { useCategories } from '@/hooks/queries/use-categories';
+import { useCreateTag, useTags } from '@/hooks/queries/use-tags';
+import { useCreateTransaction } from '@/hooks/queries/use-transactions';
 import { Ionicons } from '@expo/vector-icons';
+import { format } from 'date-fns';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { useRef, useState } from 'react';
+import { Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
 export default function AddTransactionScreen() {
   const createTransaction = useCreateTransaction();
@@ -21,6 +21,11 @@ export default function AddTransactionScreen() {
   const { data: tags } = useTags();
   const { data: categories } = useCategories();
   const createTag = useCreateTag();
+
+  // Refs for bottom sheet selects
+  const typeSelectRef = useRef<any>(null);
+  const accountSelectRef = useRef<any>(null);
+  const categorySelectRef = useRef<any>(null);
 
   const [amount, setAmount] = useState('');
   const [type, setType] = useState<TransactionType>('expense');
@@ -121,7 +126,7 @@ export default function AddTransactionScreen() {
   };
 
   return (
-    <>
+    <View className="flex-1 bg-gray-50 dark:bg-gray-900">
       <Stack.Screen
         options={{
           headerShown: true,
@@ -129,7 +134,7 @@ export default function AddTransactionScreen() {
           headerBackTitle: originLabel,
         }}
       />
-      <ScrollView className="flex-1 bg-gray-50 dark:bg-gray-900">
+      <ScrollView className="flex-1">
         <View className="p-4">
           <Card>
           <Input
@@ -140,14 +145,16 @@ export default function AddTransactionScreen() {
             keyboardType="numeric"
           />
 
-          <Select
+          <BottomSheetSelect
+            ref={typeSelectRef}
             label="Type"
             options={transactionTypeOptions}
             value={type}
             onValueChange={(value) => setType(value as TransactionType)}
           />
 
-          <Select
+          <BottomSheetSelect
+            ref={accountSelectRef}
             label="Account"
             options={accountOptions}
             value={accountId}
@@ -155,7 +162,8 @@ export default function AddTransactionScreen() {
             placeholder="Select an account"
           />
 
-          <Select
+          <BottomSheetSelect
+            ref={categorySelectRef}
             label="Category"
             options={categoryOptions}
             value={categoryId || 'none'}
@@ -255,8 +263,8 @@ export default function AddTransactionScreen() {
           </View>
         </Card>
       </View>
-    </ScrollView>
-    </>
+      </ScrollView>
+    </View>
   );
 }
 

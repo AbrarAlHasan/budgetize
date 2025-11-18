@@ -1,4 +1,3 @@
-import { FilterScreen } from '@/components/filter-screen';
 import { TransactionItem } from '@/components/transaction-item';
 import { Card } from '@/components/ui/card';
 import { useAccounts } from '@/hooks/queries/use-accounts';
@@ -20,7 +19,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 export default function DashboardScreen() {
   const queryClient = useQueryClient();
   const filters = useUIStore((state) => state.filters);
-  const [filterVisible, setFilterVisible] = React.useState(false);
   const [useFilters, setUseFilters] = React.useState(false);
   
   const currentMonth = new Date();
@@ -149,7 +147,7 @@ export default function DashboardScreen() {
             </Text>
           </View>
           <TouchableOpacity
-            onPress={() => setFilterVisible(true)}
+            onPress={() => router.push('/filters')}
             className="flex-row items-center gap-2 px-4 py-2.5 rounded-xl"
             style={{ 
               backgroundColor: hasActiveFilters ? '#EFF6FF' : '#F3F4F6',
@@ -336,11 +334,6 @@ export default function DashboardScreen() {
         </View>
       </ScrollView>
       
-      <FilterScreen
-        visible={filterVisible}
-        onClose={() => setFilterVisible(false)}
-        onApply={handleApplyFilters}
-      />
     </SafeAreaView>
   );
 }

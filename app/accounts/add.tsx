@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
+import { BottomSheetSelect } from "@/components/ui/bottom-sheet-select";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
 import { AccountType } from "@/db/schema/types";
 import { useCreateAccount } from "@/hooks/queries/use-accounts";
 import { router, Stack, useLocalSearchParams } from "expo-router";
@@ -70,7 +70,7 @@ export default function AddAccountScreen() {
               placeholder="Enter account name"
             />
 
-            <Select
+            <BottomSheetSelect
               label="Account Type"
               options={accountTypeOptions}
               value={type}

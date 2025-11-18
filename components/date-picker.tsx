@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useImperativeHandle, forwardRef } from 'react';
 import { View, Text, TouchableOpacity, Modal, Pressable } from 'react-native';
 import { Calendar, toDateId, fromDateId } from '@marceloterreiro/flash-calendar';
 import { format, addMonths, subMonths, startOfMonth, isBefore, startOfDay } from 'date-fns';
@@ -16,7 +16,11 @@ interface DatePickerProps {
   maxDate?: Date | null;
 }
 
-export function DatePicker({
+export interface DatePickerRef {
+  open: () => void;
+}
+
+export const DatePicker = forwardRef<DatePickerRef, DatePickerProps>(({
   label,
   value,
   onChange,
@@ -25,7 +29,7 @@ export function DatePicker({
   className,
   minDate,
   maxDate,
-}: DatePickerProps) {
+}, ref) => {
   const [show, setShow] = useState(false);
   const [selectedDateId, setSelectedDateId] = useState<string>(() => 
     value ? toDateId(value) : toDateId(new Date())
@@ -113,6 +117,10 @@ export function DatePicker({
     setShow(true);
   };
 
+  useImperativeHandle(ref, () => ({
+    open: handleOpen,
+  }));
+
   // Get current month display text
   const currentMonthDisplay = useMemo(() => {
     const month = fromDateId(currentMonthId);
@@ -129,7 +137,7 @@ export function DatePicker({
       <TouchableOpacity
         onPress={handleOpen}
         className={cn(
-          'border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 flex-row justify-between items-center',
+          'border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-3 flex-row justify-between items-center',
           'bg-white dark:bg-gray-800',
           error && 'border-red-500'
         )}
@@ -273,5 +281,5 @@ export function DatePicker({
       </Modal>
     </View>
   );
-}
+});
 

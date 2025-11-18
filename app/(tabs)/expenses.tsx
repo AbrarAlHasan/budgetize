@@ -3,7 +3,6 @@ import { View, Text, ScrollView, ActivityIndicator, RefreshControl, TouchableOpa
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTransactions } from '@/hooks/queries/use-transactions';
 import { TransactionItem } from '@/components/transaction-item';
-import { FilterScreen } from '@/components/filter-screen';
 import { router } from 'expo-router';
 import { useAccounts } from '@/hooks/queries/use-accounts';
 import { useCategories } from '@/hooks/queries/use-categories';
@@ -17,7 +16,6 @@ import { useUIStore } from '@/store/ui-store';
 export default function ExpensesScreen() {
   const queryClient = useQueryClient();
   const filters = useUIStore((state) => state.filters);
-  const [filterVisible, setFilterVisible] = React.useState(false);
   
   const { data: transactions, isLoading } = useTransactions({
     accountId: filters.accountId || undefined,
@@ -128,7 +126,7 @@ export default function ExpensesScreen() {
               </Text>
             </View>
             <TouchableOpacity
-              onPress={() => setFilterVisible(true)}
+              onPress={() => router.push('/filters')}
               className="flex-row items-center gap-2 px-4 py-2.5 rounded-xl"
               style={{ 
                 backgroundColor: hasActiveFilters ? '#EFF6FF' : '#F3F4F6',
@@ -191,11 +189,6 @@ export default function ExpensesScreen() {
         </View>
       </ScrollView>
       
-      <FilterScreen
-        visible={filterVisible}
-        onClose={() => setFilterVisible(false)}
-        onApply={handleApplyFilters}
-      />
     </SafeAreaView>
   );
 }
