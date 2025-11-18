@@ -5,8 +5,10 @@ import { useNotificationStore } from "@/store/notification-store";
 import { useSettingsStore } from "@/store/settings-store";
 import { getCurrencyOptions, getCurrencySymbol } from "@/utils/currencies";
 import { useEffect, useState } from "react";
-import { Alert, ScrollView, Switch, Text, View } from "react-native";
+import { Alert, ScrollView, Switch, Text, View, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 
 export default function SettingsScreen() {
   const { preferences, loadPreferences, updateReminderSettings, isLoading } =
@@ -169,6 +171,57 @@ export default function SettingsScreen() {
                   </View>
                 )}
               </View>
+            </Card>
+
+            {/* Data Management */}
+            <Card className="mb-4">
+              <Text className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+                Data Management
+              </Text>
+
+              {/* Manage Categories */}
+              <TouchableOpacity
+                onPress={() => router.push('/settings/categories')}
+                className="flex-row items-center justify-between py-3 mb-3"
+                activeOpacity={0.7}
+              >
+                <View className="flex-row items-center gap-3 flex-1">
+                  <View className="bg-purple-100 dark:bg-purple-900/30 rounded-full p-2">
+                    <Ionicons name="apps" size={20} color="#9333EA" />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-base font-medium text-gray-900 dark:text-gray-100">
+                      Manage Categories
+                    </Text>
+                    <Text className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                      Add, edit, or delete categories
+                    </Text>
+                  </View>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+              </TouchableOpacity>
+
+              {/* Manage Tags */}
+              <TouchableOpacity
+                onPress={() => router.push('/settings/tags')}
+                className="flex-row items-center justify-between py-3"
+                activeOpacity={0.7}
+              >
+                <View className="flex-row items-center gap-3 flex-1">
+                  <View className="bg-blue-100 dark:bg-blue-900/30 rounded-full p-2">
+                    <Ionicons name="pricetag" size={20} color="#3B82F6" />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-base font-medium text-gray-900 dark:text-gray-100">
+                      Manage Tags
+                    </Text>
+                    <Text className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                      Add, edit, or delete tags
+                    </Text>
+                  </View>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+              </TouchableOpacity>
             </Card>
         </View>
       </ScrollView>

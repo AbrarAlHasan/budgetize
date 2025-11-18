@@ -32,30 +32,32 @@ export function FilterScreen({ visible, onClose, onApply, context = 'dashboard' 
   const clearFilters = useUIStore((state) => state.clearFilters);
 
   const { data: accounts } = useAccounts();
-  const { data: tags } = useTags();
   const { data: categories } = useCategories();
+  const { data: tags } = useTags();
 
-  // Local state for date pickers
+  // Local state for ALL filters (updates immediately, syncs to store on Apply)
   const [startDate, setStartDate] = useState<Date | null>(
     filters.startDate ? new Date(filters.startDate) : null
   );
   const [endDate, setEndDate] = useState<Date | null>(
     filters.endDate ? new Date(filters.endDate) : null
   );
+  const [localAccountId, setLocalAccountId] = useState<number | null>(filters.accountId);
+  const [localCategoryId, setLocalCategoryId] = useState<number | null>(filters.categoryId);
+  const [localTagId, setLocalTagId] = useState<number | null>(filters.tagId);
+  const [localTransactionType, setLocalTransactionType] = useState<TransactionType | null>(filters.transactionType);
+  const [localAccountType, setLocalAccountType] = useState<AccountType | null>(filters.accountType);
 
-  // Update local state when filters change
+  // Initialize local state when filters change from outside (e.g., clear filters)
   useEffect(() => {
-    if (filters.startDate) {
-      setStartDate(new Date(filters.startDate));
-    } else {
-      setStartDate(null);
-    }
-    if (filters.endDate) {
-      setEndDate(new Date(filters.endDate));
-    } else {
-      setEndDate(null);
-    }
-  }, [filters.startDate, filters.endDate]);
+    setStartDate(filters.startDate ? new Date(filters.startDate) : null);
+    setEndDate(filters.endDate ? new Date(filters.endDate) : null);
+    setLocalAccountId(filters.accountId);
+    setLocalCategoryId(filters.categoryId);
+    setLocalTagId(filters.tagId);
+    setLocalTransactionType(filters.transactionType);
+    setLocalAccountType(filters.accountType);
+  }, [filters.startDate, filters.endDate, filters.accountId, filters.categoryId, filters.tagId, filters.transactionType, filters.accountType]);
 
   const transactionTypeOptions = [
     { label: 'All Types', value: 'all' },
@@ -82,7 +84,7 @@ export function FilterScreen({ visible, onClose, onApply, context = 'dashboard' 
   ];
 
   const handleApply = () => {
-    // Update date filters
+    // Sync all local state to the filter store
     if (startDate && endDate) {
       setDateRangeFilter(context, format(startDate, 'yyyy-MM-dd'), format(endDate, 'yyyy-MM-dd'));
     } else if (startDate) {
@@ -92,14 +94,27 @@ export function FilterScreen({ visible, onClose, onApply, context = 'dashboard' 
     } else {
       setDateRangeFilter(context, null, null);
     }
+    
+    setAccountFilter(context, localAccountId);
+    setCategoryFilter(context, localCategoryId);
+    setTagFilter(context, localTagId);
+    setTransactionTypeFilter(context, localTransactionType);
+    setAccountTypeFilter(context, localAccountType);
+    
     onApply();
     onClose();
   };
 
   const handleClear = () => {
-    clearFilters(context);
+    // Clear both local state and store
     setStartDate(null);
     setEndDate(null);
+    setLocalAccountId(null);
+    setLocalCategoryId(null);
+    setLocalTagId(null);
+    setLocalTransactionType(null);
+    setLocalAccountType(null);
+    clearFilters(context);
   };
 
   const handleQuickFilter = (type: 'today' | 'week' | 'month' | 'year') => {
@@ -130,13 +145,13 @@ export function FilterScreen({ visible, onClose, onApply, context = 'dashboard' 
   };
 
   const hasActiveFilters = 
-    filters.accountId !== null ||
-    filters.tagId !== null ||
-    filters.categoryId !== null ||
-    filters.startDate !== null ||
-    filters.endDate !== null ||
-    filters.transactionType !== null ||
-    filters.accountType !== null;
+    localAccountId !== null ||
+    localTagId !== null ||
+    localCategoryId !== null ||
+    startDate !== null ||
+    endDate !== null ||
+    localTransactionType !== null ||
+    localAccountType !== null;
 
   return (
     <Modal
@@ -227,12 +242,9 @@ export function FilterScreen({ visible, onClose, onApply, context = 'dashboard' 
                 </Text>
                 <BottomSheetSelect
                   options={transactionTypeOptions}
-                  value={filters.transactionType || 'all'}
+                  value={localTransactionType || 'all'}
                   onValueChange={(value) => {
-                    setTransactionTypeFilter(
-                      context,
-                      value === 'all' ? null : (value as TransactionType)
-                    );
+                    setLocalTransactionType(value === 'all' ? null : (value as TransactionType));
                   }}
                   placeholder="Select transaction type"
                 />
@@ -245,12 +257,9 @@ export function FilterScreen({ visible, onClose, onApply, context = 'dashboard' 
                 </Text>
                 <BottomSheetSelect
                   options={accountOptions}
-                  value={filters.accountId || 'all'}
+                  value={localAccountId || 'all'}
                   onValueChange={(value) => {
-                    setAccountFilter(
-                      context,
-                      value === 'all' ? null : (value as number)
-                    );
+                    setLocalAccountId(value === 'all' ? null : (value as number));
                   }}
                   placeholder="Select account"
                 />
@@ -263,12 +272,9 @@ export function FilterScreen({ visible, onClose, onApply, context = 'dashboard' 
                 </Text>
                 <BottomSheetSelect
                   options={accountTypeOptions}
-                  value={filters.accountType || 'all'}
+                  value={localAccountType || 'all'}
                   onValueChange={(value) => {
-                    setAccountTypeFilter(
-                      context,
-                      value === 'all' ? null : (value as AccountType)
-                    );
+                    setLocalAccountType(value === 'all' ? null : (value as AccountType));
                   }}
                   placeholder="Select account type"
                 />
@@ -281,12 +287,9 @@ export function FilterScreen({ visible, onClose, onApply, context = 'dashboard' 
                 </Text>
                 <BottomSheetSelect
                   options={categoryOptions}
-                  value={filters.categoryId || 'all'}
+                  value={localCategoryId || 'all'}
                   onValueChange={(value) => {
-                    setCategoryFilter(
-                      context,
-                      value === 'all' ? null : (value as number)
-                    );
+                    setLocalCategoryId(value === 'all' ? null : (value as number));
                   }}
                   placeholder="Select category"
                 />
@@ -303,12 +306,9 @@ export function FilterScreen({ visible, onClose, onApply, context = 'dashboard' 
                       <TagChip
                         key={tag.id}
                         name={tag.name}
-                        selected={filters.tagId === tag.id}
+                        selected={localTagId === tag.id}
                         onPress={() => {
-                          setTagFilter(
-                            context,
-                            filters.tagId === tag.id ? null : tag.id
-                          );
+                          setLocalTagId(localTagId === tag.id ? null : tag.id);
                         }}
                       />
                     ))}

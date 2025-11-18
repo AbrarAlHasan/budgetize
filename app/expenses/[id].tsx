@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, ScrollView, Alert, Text, ActivityIndicator, TouchableOpacity, RefreshControl } from 'react-native';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { useTransaction, useUpdateTransaction, useDeleteTransaction } from '@/hooks/queries/use-transactions';
 import { useAccounts } from '@/hooks/queries/use-accounts';
-import { useTags, useCreateTag } from '@/hooks/queries/use-tags';
+import { useTagsForTransaction } from '@/hooks/queries/use-tags';
 import { useCategories } from '@/hooks/queries/use-categories';
 import { Input } from '@/components/ui/input';
 import { BottomSheetSelect } from '@/components/ui/bottom-sheet-select';
@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { DatePicker } from '@/components/date-picker';
 import { TagChip } from '@/components/tag-chip';
+import { AddTagBottomSheet, AddTagBottomSheetRef } from '@/components/add-tag-bottom-sheet';
 import { format, parseISO } from 'date-fns';
 import { TransactionType } from '@/db/schema/types';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,11 +29,11 @@ export default function TransactionDetailScreen() {
   const updateTransaction = useUpdateTransaction();
   const deleteTransaction = useDeleteTransaction();
   const { data: accounts } = useAccounts();
-  const { data: tags } = useTags();
+  const { data: tags } = useTagsForTransaction(transactionId);
   const { data: categories } = useCategories();
-  const createTag = useCreateTag();
   const { settings, loadSettings } = useSettingsStore();
   const [refreshing, setRefreshing] = useState(false);
+  const addTagBottomSheetRef = useRef<AddTagBottomSheetRef>(null);
 
   useEffect(() => {
     loadSettings();
@@ -46,8 +47,6 @@ export default function TransactionDetailScreen() {
   const [note, setNote] = useState('');
   const [paymentMode, setPaymentMode] = useState('');
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
-  const [newTagName, setNewTagName] = useState('');
-  const [showAddTag, setShowAddTag] = useState(false);
 
   useEffect(() => {
     if (transaction) {
@@ -160,27 +159,12 @@ export default function TransactionDetailScreen() {
     );
   };
 
-  const handleAddTag = async () => {
-    if (!newTagName.trim()) {
-      Alert.alert('Error', 'Tag name is required');
-      return;
-    }
+  const handleTagCreated = (tagId: number) => {
+    setSelectedTagIds((prev) => [...prev, tagId]);
+  };
 
-    // Check if tag already exists
-    if (tags?.some((tag) => tag.name.toLowerCase() === newTagName.trim().toLowerCase())) {
-      Alert.alert('Error', 'Tag with this name already exists');
-      return;
-    }
-
-    try {
-      const newTag = await createTag.mutateAsync({ name: newTagName.trim() });
-      setSelectedTagIds((prev) => [...prev, newTag.id]);
-      setNewTagName('');
-      setShowAddTag(false);
-      Alert.alert('Success', 'Tag created successfully');
-    } catch (error) {
-      Alert.alert('Error', 'Failed to create tag');
-    }
+  const handleOpenAddTag = () => {
+    addTagBottomSheetRef.current?.present();
   };
 
   const onRefresh = React.useCallback(async () => {
@@ -283,59 +267,48 @@ export default function TransactionDetailScreen() {
           />
 
           <View className="mb-4">
-            <View className="flex-row justify-between items-center mb-2">
+            <View className="flex-row justify-between items-center mb-3">
               <Text className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 Tags
               </Text>
               <TouchableOpacity
-                onPress={() => setShowAddTag(!showAddTag)}
-                className="flex-row items-center gap-1"
+                onPress={handleOpenAddTag}
+                className="flex-row items-center gap-1 bg-blue-50 dark:bg-blue-900/30 px-3 py-2 rounded-lg"
+                activeOpacity={0.7}
               >
                 <Ionicons 
-                  name={showAddTag ? "close-circle" : "add-circle"} 
+                  name="add-circle" 
                   size={20} 
                   color="#3B82F6" 
                 />
-                <Text className="text-sm text-blue-600 dark:text-blue-400">
-                  {showAddTag ? 'Cancel' : 'Add Tag'}
+                <Text className="text-sm font-semibold text-blue-600 dark:text-blue-400">
+                  Add Tag
                 </Text>
               </TouchableOpacity>
             </View>
 
-            {showAddTag && (
-              <View className="mb-3 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
-                <Input
-                  label="New Tag Name"
-                  value={newTagName}
-                  onChangeText={setNewTagName}
-                  placeholder="Enter tag name"
-                  autoFocus
-                />
-                <Button
-                  onPress={handleAddTag}
-                  loading={createTag.isPending}
-                  className="mt-2"
-                  variant="outline"
-                >
-                  Create Tag
-                </Button>
-              </View>
-            )}
-
             {tags && tags.length > 0 && (
               <View className="flex-row flex-wrap gap-3">
                 {tags.map((tag) => (
-                  <TagChip
-                    key={tag.id}
-                    name={tag.name}
-                    selected={selectedTagIds.includes(tag.id)}
-                    onPress={() => toggleTag(tag.id)}
-                  />
+                  <View key={tag.id} className="flex-col items-start gap-1">
+                    <TagChip
+                      name={tag.name}
+                      selected={selectedTagIds.includes(tag.id)}
+                      onPress={() => toggleTag(tag.id)}
+                    />
+                    {tag.isDeleted && (
+                      <View className="bg-gray-200 dark:bg-gray-700 px-2 py-0.5 rounded ml-1">
+                        <Text className="text-xs text-gray-600 dark:text-gray-400">
+                          Deleted
+                        </Text>
+                      </View>
+                    )}
+                  </View>
                 ))}
               </View>
             )}
 
-            {(!tags || tags.length === 0) && !showAddTag && (
+            {(!tags || tags.length === 0) && (
               <Text className="text-sm text-gray-500 dark:text-gray-400">
                 No tags yet. Click "Add Tag" to create one.
               </Text>
@@ -362,6 +335,12 @@ export default function TransactionDetailScreen() {
         </Card>
       </View>
     </ScrollView>
+
+    {/* Add Tag Bottom Sheet */}
+    <AddTagBottomSheet 
+      ref={addTagBottomSheetRef} 
+      onTagCreated={handleTagCreated}
+    />
     </>
   );
 }

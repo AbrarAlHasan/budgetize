@@ -9,6 +9,14 @@ export class TagRepository extends BaseRepository<Tag> {
   protected primaryKey = 'id';
 
   async create(input: CreateTagInput): Promise<Tag> {
+    // Check if a soft-deleted tag with this name exists
+    const existingDeletedTag = await this.findDeletedByName(input.name);
+    
+    if (existingDeletedTag) {
+      // Reactivate the soft-deleted tag
+      return this.reactivate(existingDeletedTag.id);
+    }
+
     // Encrypt sensitive fields
     const encryptedName = await encrypt(input.name);
 
@@ -71,6 +79,60 @@ export class TagRepository extends BaseRepository<Tag> {
     const allTags = await this.findAll();
     const decryptedTags = await this.decryptTags(allTags);
     return decryptedTags.find(t => t.name === name) || null;
+  }
+
+  async findDeletedByName(name: string): Promise<Tag | null> {
+    // Find deleted tags (including soft-deleted ones)
+    const db = await getDatabase();
+    const deletedTags = await db.getAllAsync<Tag>(
+      `SELECT * FROM ${this.tableName} WHERE deleted_at IS NOT NULL`
+    );
+    
+    if (!deletedTags || deletedTags.length === 0) {
+      return null;
+    }
+
+    // Decrypt and search for matching name
+    const decryptedTags = await this.decryptTags(deletedTags);
+    return decryptedTags.find(t => t.name.toLowerCase() === name.trim().toLowerCase()) || null;
+  }
+
+  async reactivate(id: number): Promise<Tag> {
+    // Reactivate a soft-deleted tag by clearing deleted_at
+    const db = await getDatabase();
+    await db.execAsync('BEGIN TRANSACTION');
+
+    try {
+      const now = new Date().toISOString();
+      await db.runAsync(
+        `UPDATE ${this.tableName} SET deleted_at = NULL, updated_at = ?, is_synced = 0 WHERE id = ?`,
+        [now, id]
+      );
+
+      await db.execAsync('COMMIT');
+
+      const tag = await this.findById(id);
+      if (!tag) {
+        throw new Error('Tag not found');
+      }
+      return tag;
+    } catch (error) {
+      await db.execAsync('ROLLBACK');
+      console.error('Error reactivating tag:', error);
+      throw new Error(error instanceof Error ? error.message : 'Failed to reactivate tag');
+    }
+  }
+
+  /**
+   * Find a tag by ID including deleted ones (useful for reports)
+   */
+  async findByIdIncludingDeleted(id: number): Promise<Tag | null> {
+    const db = await getDatabase();
+    const tag = await db.getFirstAsync<Tag>(
+      `SELECT * FROM ${this.tableName} WHERE id = ?`,
+      [id]
+    );
+    return tag || null;
   }
 
   /**

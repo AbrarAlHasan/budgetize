@@ -29,6 +29,7 @@ interface CategoryReport {
   amount: number;
   count: number;
   percentage: number;
+  isDeleted?: boolean;
 }
 
 interface AccountReport {
@@ -158,9 +159,11 @@ export function useCategoryReport(startDate: string, endDate: string, useFilters
             amount: data.amount,
             count: data.count,
             percentage: totalExpenses > 0 ? (data.amount / totalExpenses) * 100 : 0,
+            isDeleted: false,
           });
         } else {
-          const tag = await tagRepository.findById(tagId);
+          // Fetch tag including deleted ones for reports
+          const tag = await tagRepository.findByIdIncludingDeleted(tagId);
           const decryptedTag = tag ? await tagRepository.decryptTag(tag) : null;
           reports.push({
             tagId,
@@ -168,6 +171,7 @@ export function useCategoryReport(startDate: string, endDate: string, useFilters
             amount: data.amount,
             count: data.count,
             percentage: totalExpenses > 0 ? (data.amount / totalExpenses) * 100 : 0,
+            isDeleted: tag?.deleted_at !== null,
           });
         }
       }

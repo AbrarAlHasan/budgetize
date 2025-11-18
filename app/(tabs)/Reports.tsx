@@ -199,11 +199,11 @@ export default function ReportsScreen() {
               </View>
             )}
 
-            {/* Category Report */}
+            {/* Tag Report */}
             {categoryReport && categoryReport.length > 0 && (
               <Card className="mb-6">
                 <Text className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">
-                  By Category
+                  By Tag
                 </Text>
                 <View className="gap-3">
                   {categoryReport.map((category, index) => {
@@ -213,9 +213,18 @@ export default function ReportsScreen() {
                     return (
                       <View key={category.tagId}>
                         <View className="flex-row justify-between items-center mb-2">
-                          <Text className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                            {category.tagName}
-                          </Text>
+                          <View className="flex-row items-center gap-2 flex-1">
+                            <Text className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                              {category.tagName}
+                            </Text>
+                            {category.isDeleted && (
+                              <View className="bg-gray-200 dark:bg-gray-700 px-2 py-0.5 rounded">
+                                <Text className="text-xs text-gray-600 dark:text-gray-400">
+                                  Deleted
+                                </Text>
+                              </View>
+                            )}
+                          </View>
                           <View className="flex-row items-center gap-2">
                             <Text className="text-sm font-bold text-gray-900 dark:text-gray-100">
                               {getCurrencySymbol(settings.currency)}{category.amount.toLocaleString(undefined, {

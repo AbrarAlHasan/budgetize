@@ -7,8 +7,8 @@ import { useTransactions } from '@/hooks/queries/use-transactions';
 import { categoryRepository } from '@/repositories/category.repository';
 import { tagRepository } from '@/repositories/tag.repository';
 import { transactionTagRepository } from '@/repositories/transaction-tag.repository';
-import { useUIStore } from '@/store/ui-store';
 import { useSettingsStore } from '@/store/settings-store';
+import { useUIStore } from '@/store/ui-store';
 import { getCurrencySymbol } from '@/utils/currencies';
 import { Ionicons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
@@ -65,11 +65,11 @@ export default function DashboardScreen() {
         const tagsMap = new Map<number, Array<{ id: number; name: string }>>();
         const categoriesMap = new Map<number, string>();
         for (const transaction of transactions) {
-          // Load tags
+          // Load tags (including deleted ones)
           const tags = await transactionTagRepository.findByTransactionId(transaction.id);
           const tagDetails = await Promise.all(
             tags.map(async (tt) => {
-              const tag = await tagRepository.findById(tt.tag_id);
+              const tag = await tagRepository.findByIdIncludingDeleted(tt.tag_id);
               if (!tag) return null;
               const decryptedTag = await tagRepository.decryptTag(tag);
               return { id: decryptedTag.id, name: decryptedTag.name };
@@ -77,9 +77,9 @@ export default function DashboardScreen() {
           );
           tagsMap.set(transaction.id, tagDetails.filter((t): t is { id: number; name: string } => t !== null));
           
-          // Load category
+          // Load category (including deleted ones)
           if (transaction.category_id) {
-            const category = await categoryRepository.findById(transaction.category_id);
+            const category = await categoryRepository.findByIdIncludingDeleted(transaction.category_id);
             if (category) {
               const decryptedCategory = await categoryRepository.decryptCategory(category);
               categoriesMap.set(transaction.id, decryptedCategory.name);

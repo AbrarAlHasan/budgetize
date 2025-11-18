@@ -59,6 +59,11 @@ const BottomSheet = ({
       onChange={(data) => {
         onBottomSheetChange(data);
       }}
+      enablePanDownToClose={true}
+      enableDismissOnClose={true}
+      keyboardBehavior="extend"
+      keyboardBlurBehavior="restore"
+      android_keyboardInputMode="adjustResize"
       {...props}
     >
       <BottomSheetScrollView

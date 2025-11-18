@@ -126,3 +126,12 @@ export interface UpdateTagInput {
   name: string;
 }
 
+export interface CreateCategoryInput {
+  name: string;
+}
+
+export interface UpdateCategoryInput {
+  id: number;
+  name: string;
+}
+
