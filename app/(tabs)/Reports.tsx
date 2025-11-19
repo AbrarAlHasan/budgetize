@@ -1,12 +1,20 @@
-import { DatePicker } from '@/components/date-picker';
+import { SimpleBarChart } from '@/components/charts/simple-bar-chart';
+import { TrendIndicator } from '@/components/charts/trend-indicator';
 import { Card } from '@/components/ui/card';
-import { useAccountReport, useCategoryReport, useReportSummary } from '@/hooks/queries/use-reports';
+import {
+  useAccountReport,
+  useCategoryReport,
+  useDailyPatterns,
+  useMonthlyTrends,
+  usePeriodComparison,
+  useReportSummary
+} from '@/hooks/queries/use-reports';
 import { useSettingsStore } from '@/store/settings-store';
 import { useUIStore } from '@/store/ui-store';
 import { getCurrencySymbol } from '@/utils/currencies';
 import { Ionicons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
-import { endOfMonth, format, startOfMonth } from 'date-fns';
+import { endOfMonth, format, startOfMonth, subMonths } from 'date-fns';
 import { router } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
@@ -17,23 +25,46 @@ export default function ReportsScreen() {
   const filters = useUIStore((state) => state.filters.reports);
   const setCurrentFilterContext = useUIStore((state) => state.setCurrentFilterContext);
   const { settings, loadSettings } = useSettingsStore();
-  const [useFilters, setUseFilters] = useState(false);
-  const [startDate, setStartDate] = useState<Date>(startOfMonth(new Date()));
-  const [endDate, setEndDate] = useState<Date>(endOfMonth(new Date()));
   const [refreshing, setRefreshing] = useState(false);
 
   React.useEffect(() => {
     loadSettings();
   }, []);
 
+  // Use filter dates if available, otherwise use current month
+  const defaultStartDate = startOfMonth(new Date());
+  const defaultEndDate = endOfMonth(new Date());
+  
+  const startDate = filters.startDate 
+    ? new Date(filters.startDate) 
+    : defaultStartDate;
+  const endDate = filters.endDate 
+    ? new Date(filters.endDate) 
+    : defaultEndDate;
+
   const startDateStr = format(startDate, 'yyyy-MM-dd');
   const endDateStr = format(endDate, 'yyyy-MM-dd');
+  const trendStartDateStr = format(subMonths(endDate, 10), 'yyyy-MM-dd');
+
+  const hasActiveFilters = 
+    filters.accountId !== null ||
+    filters.tagId !== null ||
+    filters.startDate !== null ||
+    filters.endDate !== null ||
+    filters.transactionType !== null ||
+    filters.accountType !== null;
+  
+  // Automatically use filters if any filter is active
+  const useFilters = hasActiveFilters;
 
   const { data: summary, isLoading: summaryLoading } = useReportSummary(startDateStr, endDateStr, useFilters);
   const { data: categoryReport, isLoading: categoryLoading } = useCategoryReport(startDateStr, endDateStr, useFilters);
   const { data: accountReport, isLoading: accountLoading } = useAccountReport(startDateStr, endDateStr, useFilters);
+  const { data: periodComparison, isLoading: comparisonLoading } = usePeriodComparison(startDateStr, endDateStr, useFilters);
+  const { data: dailyPatterns, isLoading: dailyLoading } = useDailyPatterns(startDateStr, endDateStr, useFilters);
+  const { data: monthlyTrends, isLoading: monthlyLoading } = useMonthlyTrends(trendStartDateStr, endDateStr, useFilters);
 
-  const isLoading = summaryLoading || categoryLoading || accountLoading;
+  const isLoading = summaryLoading || categoryLoading || accountLoading || comparisonLoading || dailyLoading || monthlyLoading;
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -46,24 +77,10 @@ export default function ReportsScreen() {
     } finally {
       setRefreshing(false);
     }
-  }, [queryClient, startDateStr, endDateStr]);
-
-  const handleApplyFilters = () => {
-    setUseFilters(true);
-    queryClient.invalidateQueries({ queryKey: ['reports'] });
-    queryClient.invalidateQueries({ queryKey: ['transactions'] });
-  };
-
-  const hasActiveFilters = 
-    filters.accountId !== null ||
-    filters.tagId !== null ||
-    filters.startDate !== null ||
-    filters.endDate !== null ||
-    filters.transactionType !== null ||
-    filters.accountType !== null;
+  }, [queryClient]);
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50 dark:bg-gray-950" edges={['top']}>
+    <SafeAreaView className="flex-1 bg-gray-50 dark:bg-black" edges={['top']}>
       <ScrollView 
         className="flex-1"
         refreshControl={
@@ -79,7 +96,7 @@ export default function ReportsScreen() {
               Reports
             </Text>
             <Text className="text-sm text-gray-500 dark:text-gray-400">
-              Financial insights
+                Financial insights & analytics
             </Text>
           </View>
             <TouchableOpacity
@@ -103,34 +120,17 @@ export default function ReportsScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Date Range Picker */}
-        <Card className="mb-6">
-          <Text className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">
-            Date Range
-          </Text>
-          <DatePicker
-            label="Start Date"
-            value={startDate}
-            onChange={setStartDate}
-          />
-          <DatePicker
-            label="End Date"
-            value={endDate}
-            onChange={setEndDate}
-          />
-        </Card>
-
         {isLoading ? (
           <View className="items-center justify-center py-8">
             <ActivityIndicator size="large" />
           </View>
         ) : (
           <>
-            {/* Summary */}
+              {/* Enhanced Summary Cards */}
             {summary && (
               <View className="mb-6">
                 <View className={`flex-row gap-3 ${settings.incomeCalculationEnabled ? 'mb-3' : ''}`}>
-                  {/* Income Card - Only show if income calculation is enabled */}
+                    {/* Income Card */}
                   {settings.incomeCalculationEnabled && (
                     <View 
                       className="flex-1 rounded-2xl p-4"
@@ -145,6 +145,17 @@ export default function ReportsScreen() {
                           minimumFractionDigits: 2,
                           maximumFractionDigits: 2,
                         })}
+                      </Text>
+                        {periodComparison && (
+                          <View className="mt-2">
+                            <TrendIndicator 
+                              value={periodComparison.changes.incomeChange}
+                              percent={periodComparison.changes.incomeChangePercent}
+                            />
+                          </View>
+                        )}
+                        <Text className="text-xs text-gray-500 mt-1">
+                          Avg: {getCurrencySymbol(settings.currency)}{summary.averageIncome.toFixed(2)}
                       </Text>
                     </View>
                   )}
@@ -164,13 +175,24 @@ export default function ReportsScreen() {
                         maximumFractionDigits: 2,
                       })}
                     </Text>
+                      {periodComparison && (
+                        <View className="mt-2">
+                          <TrendIndicator 
+                            value={periodComparison.changes.expenseChange}
+                            percent={periodComparison.changes.expenseChangePercent}
+                          />
+                        </View>
+                      )}
+                      <Text className="text-xs text-gray-500 mt-1">
+                        Avg: {getCurrencySymbol(settings.currency)}{summary.averageExpense.toFixed(2)}
+                    </Text>
                   </View>
                 </View>
 
-                {/* Net Amount Card - Only show if income calculation is enabled */}
-                {settings.incomeCalculationEnabled && (
+                  {/* Net Amount & Stats Card */}
+                  {settings.incomeCalculationEnabled && summary && (
                   <Card style={{ backgroundColor: summary.netAmount >= 0 ? '#F0FDF4' : '#FEF2F2' }}>
-                    <View className="flex-row items-center justify-between">
+                      <View className="flex-row items-center justify-between mb-4">
                       <View>
                         <Text className="text-sm text-gray-600 dark:text-gray-400 mb-1">Net Amount</Text>
                         <Text className={`
@@ -184,9 +206,14 @@ export default function ReportsScreen() {
                             maximumFractionDigits: 2,
                           })}
                         </Text>
-                        <Text className="text-xs text-gray-500 mt-1">
-                          {summary.transactionCount} transactions
-                        </Text>
+                          {periodComparison && (
+                            <View className="mt-2">
+                              <TrendIndicator 
+                                value={periodComparison.changes.netChange}
+                                percent={periodComparison.changes.netChangePercent}
+                              />
+                            </View>
+                          )}
                       </View>
                       <Ionicons 
                         name={summary.netAmount >= 0 ? "trending-up" : "trending-down"} 
@@ -194,16 +221,164 @@ export default function ReportsScreen() {
                         color={summary.netAmount >= 0 ? "#10B981" : "#EF4444"} 
                       />
                     </View>
+                      <View className="flex-row gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                        <View className="flex-1">
+                          <Text className="text-xs text-gray-500 dark:text-gray-400 mb-1">Transactions</Text>
+                          <Text className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                            {summary.transactionCount}
+                          </Text>
+                          {periodComparison && (
+                            <TrendIndicator 
+                              value={periodComparison.changes.transactionCountChange}
+                              percent={periodComparison.changes.transactionCountChangePercent}
+                              showArrow={false}
+                            />
+                          )}
+                        </View>
+                        {summary.totalIncome > 0 && (
+                          <View className="flex-1">
+                            <Text className="text-xs text-gray-500 dark:text-gray-400 mb-1">Savings Rate</Text>
+                            <Text className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                              {((summary.netAmount / summary.totalIncome) * 100).toFixed(1)}%
+                            </Text>
+                          </View>
+                        )}
+                    </View>
                   </Card>
                 )}
               </View>
             )}
 
-            {/* Tag Report */}
+              {/* Period Comparison */}
+              {periodComparison && (
+                <Card className="mb-6">
+                  <Text className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">
+                    Period Comparison
+                  </Text>
+                  <View className="gap-4">
+                    <View className="flex-row justify-between items-center pb-3 border-b border-gray-200 dark:border-gray-700">
+                      <Text className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex-1">Metric</Text>
+                      <View className="flex-row gap-4" style={{ width: 240 }}>
+                        <Text className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex-1 text-right">Current</Text>
+                        <Text className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex-1 text-right">Previous</Text>
+                        <Text className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex-1 text-right">Change</Text>
+                      </View>
+                    </View>
+                    <View className="gap-3">
+                      {settings.incomeCalculationEnabled && (
+                        <View className="flex-row justify-between items-center">
+                          <Text className="text-sm text-gray-600 dark:text-gray-400 flex-1">Income</Text>
+                          <View className="flex-row gap-4" style={{ width: 240 }}>
+                            <Text className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex-1 text-right">
+                              {getCurrencySymbol(settings.currency)}{periodComparison.current.totalIncome.toFixed(0)}
+                            </Text>
+                            <Text className="text-sm text-gray-500 dark:text-gray-400 flex-1 text-right">
+                              {getCurrencySymbol(settings.currency)}{periodComparison.previous.totalIncome.toFixed(0)}
+                            </Text>
+                            <View className="flex-1 items-end">
+                              <TrendIndicator 
+                                value={periodComparison.changes.incomeChange}
+                                percent={periodComparison.changes.incomeChangePercent}
+                              />
+                            </View>
+                          </View>
+                        </View>
+                      )}
+                      <View className="flex-row justify-between items-center">
+                        <Text className="text-sm text-gray-600 dark:text-gray-400 flex-1">Expenses</Text>
+                        <View className="flex-row gap-4" style={{ width: 240 }}>
+                          <Text className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex-1 text-right">
+                            {getCurrencySymbol(settings.currency)}{periodComparison.current.totalExpenses.toFixed(0)}
+                          </Text>
+                          <Text className="text-sm text-gray-500 dark:text-gray-400 flex-1 text-right">
+                            {getCurrencySymbol(settings.currency)}{periodComparison.previous.totalExpenses.toFixed(0)}
+                          </Text>
+                          <View className="flex-1 items-end">
+                            <TrendIndicator 
+                              value={periodComparison.changes.expenseChange}
+                              percent={periodComparison.changes.expenseChangePercent}
+                            />
+                          </View>
+                        </View>
+                      </View>
+                      {settings.incomeCalculationEnabled && (
+                        <View className="flex-row justify-between items-center">
+                          <Text className="text-sm text-gray-600 dark:text-gray-400 flex-1">Net Amount</Text>
+                          <View className="flex-row gap-4" style={{ width: 240 }}>
+                            <Text className={`text-sm font-semibold flex-1 text-right ${
+                              periodComparison.current.netAmount >= 0 ? 'text-green-600' : 'text-red-600'
+                            }`}>
+                              {getCurrencySymbol(settings.currency)}{periodComparison.current.netAmount.toFixed(0)}
+                            </Text>
+                            <Text className="text-sm text-gray-500 dark:text-gray-400 flex-1 text-right">
+                              {getCurrencySymbol(settings.currency)}{periodComparison.previous.netAmount.toFixed(0)}
+                            </Text>
+                            <View className="flex-1 items-end">
+                              <TrendIndicator 
+                                value={periodComparison.changes.netChange}
+                                percent={periodComparison.changes.netChangePercent}
+                              />
+                            </View>
+                          </View>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                </Card>
+              )}
+
+              {/* Daily Spending Patterns */}
+              {dailyPatterns && (
+                <Card className="mb-6">
+                  <Text className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">
+                    Daily Spending Patterns
+                  </Text>
+                  {dailyPatterns.some(p => p.totalAmount > 0) ? (
+                    <SimpleBarChart
+                      data={['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((day) => {
+                        const entry = dailyPatterns.find((p) => p.dayOfWeek === day);
+                        return {
+                          label: day,
+                          value: entry ? entry.totalAmount : 0,
+                        };
+                      })}
+                      height={180}
+                      showValues={true}
+                      currencySymbol={getCurrencySymbol(settings.currency)}
+                    />
+                  ) : (
+                    <View className="py-8 items-center">
+                      <Text className="text-sm text-gray-500 dark:text-gray-400">
+                        No spending data available for this period
+                      </Text>
+                    </View>
+                  )}
+                </Card>
+              )}
+
+              {/* Monthly Trends */}
+              {monthlyTrends && monthlyTrends.length > 0 && (
+                <Card className="mb-6">
+                  <Text className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">
+                    Monthly Trends
+                  </Text>
+                  <SimpleBarChart
+                    data={monthlyTrends.map((t) => ({
+                      label: t.month.split(' ')[0],
+                      value: t.totalExpenses,
+                    }))}
+                    height={150}
+                    showValues={true}
+                    currencySymbol={getCurrencySymbol(settings.currency)}
+                  />
+                </Card>
+              )}
+
+              {/* Category Breakdown (Enhanced) */}
             {categoryReport && categoryReport.length > 0 && (
               <Card className="mb-6">
                 <Text className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">
-                  By Tag
+                    Category Breakdown
                 </Text>
                 <View className="gap-3">
                   {categoryReport.map((category, index) => {
@@ -246,18 +421,26 @@ export default function ReportsScreen() {
                             }}
                           />
                         </View>
-                      </View>
-                    );
-                  })}
-                </View>
-              </Card>
-            )}
+                          <View className="flex-row justify-between items-center mt-1">
+                            <Text className="text-xs text-gray-500 dark:text-gray-400">
+                              {category.count} transactions
+                            </Text>
+                            <Text className="text-xs text-gray-500 dark:text-gray-400">
+                              Avg: {getCurrencySymbol(settings.currency)}{(category.amount / category.count).toFixed(2)}
+                            </Text>
+                          </View>
+                        </View>
+                      );
+                    })}
+                  </View>
+                </Card>
+              )}
 
-            {/* Account Report */}
+              {/* Account Report (Enhanced) */}
             {accountReport && accountReport.length > 0 && (
               <Card>
                 <Text className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">
-                  By Account
+                    Account Analysis
                 </Text>
                 <View className="gap-4">
                   {accountReport.map((account) => (
@@ -287,7 +470,7 @@ export default function ReportsScreen() {
                         </View>
                       </View>
                       <View className="flex-row gap-4 mt-3">
-                        <View className={settings.incomeCalculationEnabled ? "flex-1" : "flex-1"}>
+                          <View className="flex-1">
                           <Text className="text-xs text-gray-500 dark:text-gray-400 mb-1">Expenses</Text>
                           <Text className="text-sm font-semibold text-red-500">
                             {getCurrencySymbol(settings.currency)}{account.expenses.toLocaleString(undefined, {
@@ -307,6 +490,12 @@ export default function ReportsScreen() {
                             </Text>
                           </View>
                         )}
+                          <View className="flex-1">
+                            <Text className="text-xs text-gray-500 dark:text-gray-400 mb-1">Transactions</Text>
+                            <Text className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                              {account.transactionCount}
+                            </Text>
+                          </View>
                       </View>
                     </View>
                   ))}
@@ -317,8 +506,6 @@ export default function ReportsScreen() {
         )}
         </View>
       </ScrollView>
-      
     </SafeAreaView>
   );
 }
-
