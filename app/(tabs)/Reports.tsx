@@ -1,5 +1,6 @@
 import { SimpleBarChart } from '@/components/charts/simple-bar-chart';
 import { TrendIndicator } from '@/components/charts/trend-indicator';
+import { ActiveFilterChips } from '@/components/filters/active-filter-chips';
 import { Card } from '@/components/ui/card';
 import {
   useAccountReport,
@@ -138,6 +139,8 @@ export default function ReportsScreen() {
             )}
           </TouchableOpacity>
         </View>
+
+        <ActiveFilterChips context="reports" />
 
         {isLoading ? (
           <View className="items-center justify-center py-8">

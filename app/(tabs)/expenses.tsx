@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, ScrollView, ActivityIndicator, RefreshControl, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTransactions } from '@/hooks/queries/use-transactions';
+import { ActiveFilterChips } from '@/components/filters/active-filter-chips';
 import { TransactionItem } from '@/components/transaction-item';
 import { router } from 'expo-router';
 import { useAccounts } from '@/hooks/queries/use-accounts';
@@ -181,6 +182,8 @@ export default function ExpensesScreen() {
               )}
             </TouchableOpacity>
           </View>
+
+        <ActiveFilterChips context="expenses" />
 
           <TouchableOpacity
             onPress={() =>

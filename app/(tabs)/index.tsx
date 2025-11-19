@@ -1,3 +1,4 @@
+import { ActiveFilterChips } from '@/components/filters/active-filter-chips';
 import { TransactionItem } from '@/components/transaction-item';
 import { Card } from '@/components/ui/card';
 import { useAccounts } from '@/hooks/queries/use-accounts';
@@ -203,6 +204,8 @@ export default function DashboardScreen() {
             )}
           </TouchableOpacity>
         </View>
+
+          <ActiveFilterChips context="dashboard" />
 
         {/* Summary Cards */}
         <View className="mb-6">
