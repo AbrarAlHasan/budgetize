@@ -1,6 +1,7 @@
 import { DatePicker, DatePickerRef } from "@/components/date-picker";
 import { TagChip } from "@/components/tag-chip";
 import { BottomSheetSelect } from "@/components/ui/bottom-sheet-select";
+import { BottomSheetMultiSelect } from "@/components/ui/bottom-sheet-multi-select";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { AccountType, TransactionType } from "@/db/schema/types";
@@ -37,15 +38,15 @@ export default function FiltersScreen() {
   useEffect(() => {
     loadSettings();
   }, []);
-  const setAccountFilter = useUIStore((state) => state.setAccountFilter);
-  const setTagFilter = useUIStore((state) => state.setTagFilter);
-  const setCategoryFilter = useUIStore((state) => state.setCategoryFilter);
+  const setAccountIdsFilter = useUIStore((state) => state.setAccountIdsFilter);
+  const setTagIdsFilter = useUIStore((state) => state.setTagIdsFilter);
+  const setCategoryIdsFilter = useUIStore((state) => state.setCategoryIdsFilter);
   const setDateRangeFilter = useUIStore((state) => state.setDateRangeFilter);
-  const setTransactionTypeFilter = useUIStore(
-    (state) => state.setTransactionTypeFilter
+  const setTransactionTypesFilter = useUIStore(
+    (state) => state.setTransactionTypesFilter
   );
-  const setAccountTypeFilter = useUIStore(
-    (state) => state.setAccountTypeFilter
+  const setAccountTypesFilter = useUIStore(
+    (state) => state.setAccountTypesFilter
   );
   const clearFilters = useUIStore((state) => state.clearFilters);
 
@@ -80,32 +81,23 @@ export default function FiltersScreen() {
 
   const transactionTypeOptions = settings.incomeCalculationEnabled
     ? [
-        { label: "All Types", value: "all" },
         { label: "Expense", value: "expense" },
         { label: "Income", value: "income" },
       ]
     : [
-        { label: "All Types", value: "all" },
         { label: "Expense", value: "expense" },
       ];
 
   const accountTypeOptions = [
-    { label: "All Account Types", value: "all" },
     { label: "Debit", value: "debit" },
     { label: "Credit", value: "credit" },
     { label: "Borrowed", value: "borrowed" },
     { label: "Lent", value: "lent" },
   ];
 
-  const categoryOptions = [
-    { label: "All Categories", value: "all" },
-    ...(categories?.map((cat) => ({ label: cat.name, value: cat.id })) || []),
-  ];
+  const categoryOptions = categories?.map((cat) => ({ label: cat.name, value: cat.id })) || [];
 
-  const accountOptions = [
-    { label: "All Accounts", value: "all" },
-    ...(accounts?.map((acc) => ({ label: acc.name, value: acc.id })) || []),
-  ];
+  const accountOptions = accounts?.map((acc) => ({ label: acc.name, value: acc.id })) || [];
 
   const handleApply = () => {
     // Update date filters
@@ -159,13 +151,13 @@ export default function FiltersScreen() {
   };
 
   const hasActiveFilters =
-    filters.accountId !== null ||
-    filters.tagId !== null ||
-    filters.categoryId !== null ||
+    (filters.accountIds && filters.accountIds.length > 0) ||
+    (filters.tagIds && filters.tagIds.length > 0) ||
+    (filters.categoryIds && filters.categoryIds.length > 0) ||
     filters.startDate !== null ||
     filters.endDate !== null ||
-    filters.transactionType !== null ||
-    filters.accountType !== null;
+    (filters.transactionTypes && filters.transactionTypes.length > 0) ||
+    (filters.accountTypes && filters.accountTypes.length > 0);
 
   return (
     <>
@@ -258,16 +250,16 @@ export default function FiltersScreen() {
               <Text className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
                 Transaction Type
               </Text>
-              <BottomSheetSelect
+              <BottomSheetMultiSelect
                 options={transactionTypeOptions}
-                value={filters.transactionType || "all"}
-                onValueChange={(value) => {
-                  setTransactionTypeFilter(
-                      filterContext,
-                    value === "all" ? null : (value as TransactionType)
+                value={filters.transactionTypes || []}
+                onValueChange={(values) => {
+                  setTransactionTypesFilter(
+                    filterContext,
+                    values as TransactionType[]
                   );
                 }}
-                placeholder="Select transaction type"
+                placeholder="Select transaction types"
               />
             </Card>
 
@@ -276,16 +268,16 @@ export default function FiltersScreen() {
               <Text className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
                 Account
               </Text>
-              <BottomSheetSelect
+              <BottomSheetMultiSelect
                 options={accountOptions}
-                value={filters.accountId || "all"}
-                onValueChange={(value) => {
-                    setAccountFilter(
-                      filterContext,
-                      value === "all" ? null : (value as number)
-                    );
+                value={filters.accountIds || []}
+                onValueChange={(values) => {
+                  setAccountIdsFilter(
+                    filterContext,
+                    values as number[]
+                  );
                 }}
-                placeholder="Select account"
+                placeholder="Select accounts"
               />
             </Card>
 
@@ -294,16 +286,16 @@ export default function FiltersScreen() {
               <Text className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
                 Account Type
               </Text>
-              <BottomSheetSelect
+              <BottomSheetMultiSelect
                 options={accountTypeOptions}
-                value={filters.accountType || "all"}
-                onValueChange={(value) => {
-                  setAccountTypeFilter(
-                      filterContext,
-                    value === "all" ? null : (value as AccountType)
+                value={filters.accountTypes || []}
+                onValueChange={(values) => {
+                  setAccountTypesFilter(
+                    filterContext,
+                    values as AccountType[]
                   );
                 }}
-                placeholder="Select account type"
+                placeholder="Select account types"
               />
             </Card>
 
@@ -312,16 +304,16 @@ export default function FiltersScreen() {
               <Text className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
                 Category
               </Text>
-              <BottomSheetSelect
+              <BottomSheetMultiSelect
                 options={categoryOptions}
-                value={filters.categoryId || "all"}
-                onValueChange={(value) => {
-                  setCategoryFilter(
+                value={filters.categoryIds || []}
+                onValueChange={(values) => {
+                  setCategoryIdsFilter(
                     filterContext,
-                    value === "all" ? null : (value as number)
+                    values as number[]
                   );
                 }}
-                placeholder="Select category"
+                placeholder="Select categories"
               />
             </Card>
 
@@ -336,12 +328,13 @@ export default function FiltersScreen() {
                     <TagChip
                       key={tag.id}
                       name={tag.name}
-                      selected={filters.tagId === tag.id}
+                      selected={(filters.tagIds || []).includes(tag.id)}
                       onPress={() => {
-                          setTagFilter(
-                            filterContext,
-                            filters.tagId === tag.id ? null : tag.id
-                          );
+                        const currentTagIds = filters.tagIds || [];
+                        const newTagIds = currentTagIds.includes(tag.id)
+                          ? currentTagIds.filter((id) => id !== tag.id)
+                          : [...currentTagIds, tag.id];
+                        setTagIdsFilter(filterContext, newTagIds);
                       }}
                     />
                   ))}

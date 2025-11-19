@@ -160,34 +160,49 @@ export class TransactionRepository extends BaseRepository<Transaction> {
 
   async findAllWithFilters(filters?: {
     accountId?: number;
+    accountIds?: number[];
     tagId?: number;
+    tagIds?: number[];
     categoryId?: number;
+    categoryIds?: number[];
     startDate?: string;
     endDate?: string;
     type?: Transaction['type'];
+    types?: Transaction['type'][];
+    accountType?: string;
+    accountTypes?: string[];
   }): Promise<Transaction[]> {
     let query = `SELECT DISTINCT t.* FROM ${this.tableName} t`;
     const params: any[] = [];
     const conditions: string[] = ['t.deleted_at IS NULL'];
     let hasJoin = false;
 
-    if (filters?.accountId) {
-      conditions.push('t.account_id = ?');
-      params.push(filters.accountId);
+    // Handle account filters (support both single and array)
+    const accountIds = filters?.accountIds || (filters?.accountId ? [filters.accountId] : []);
+    if (accountIds.length > 0) {
+      const placeholders = accountIds.map(() => '?').join(',');
+      conditions.push(`t.account_id IN (${placeholders})`);
+      params.push(...accountIds);
     }
 
-    if (filters?.tagId) {
+    // Handle tag filters (support both single and array)
+    const tagIds = filters?.tagIds || (filters?.tagId ? [filters.tagId] : []);
+    if (tagIds.length > 0) {
       if (!hasJoin) {
         query += ' INNER JOIN transaction_tags tt ON t.id = tt.transaction_id';
         hasJoin = true;
       }
-      conditions.push('tt.tag_id = ?');
-      params.push(filters.tagId);
+      const placeholders = tagIds.map(() => '?').join(',');
+      conditions.push(`tt.tag_id IN (${placeholders})`);
+      params.push(...tagIds);
     }
 
-    if (filters?.categoryId) {
-      conditions.push('t.category_id = ?');
-      params.push(filters.categoryId);
+    // Handle category filters (support both single and array)
+    const categoryIds = filters?.categoryIds || (filters?.categoryId ? [filters.categoryId] : []);
+    if (categoryIds.length > 0) {
+      const placeholders = categoryIds.map(() => '?').join(',');
+      conditions.push(`t.category_id IN (${placeholders})`);
+      params.push(...categoryIds);
     }
 
     if (filters?.startDate) {
@@ -200,9 +215,27 @@ export class TransactionRepository extends BaseRepository<Transaction> {
       params.push(filters.endDate);
     }
 
-    if (filters?.type) {
-      conditions.push('t.type = ?');
-      params.push(filters.type);
+    // Handle transaction type filters (support both single and array)
+    const types = filters?.types || (filters?.type ? [filters.type] : []);
+    if (types.length > 0) {
+      const placeholders = types.map(() => '?').join(',');
+      conditions.push(`t.type IN (${placeholders})`);
+      params.push(...types);
+    }
+
+    // Handle account type filters (support both single and array)
+    // Note: account type is stored in accounts table, so we need to join
+    const accountTypes = filters?.accountTypes || (filters?.accountType ? [filters.accountType] : []);
+    if (accountTypes.length > 0) {
+      if (!hasJoin) {
+        query += ' INNER JOIN accounts a ON t.account_id = a.id';
+        hasJoin = true;
+      } else if (!query.includes('INNER JOIN accounts')) {
+        query += ' INNER JOIN accounts a ON t.account_id = a.id';
+      }
+      const placeholders = accountTypes.map(() => '?').join(',');
+      conditions.push(`a.type IN (${placeholders})`);
+      params.push(...accountTypes);
     }
 
     query += ` WHERE ${conditions.join(' AND ')} ORDER BY t.date DESC, t.created_at DESC`;

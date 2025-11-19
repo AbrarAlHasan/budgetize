@@ -45,10 +45,16 @@ export function useDashboardData(month?: Date, useFilters: boolean = false) {
       const filterOptions = useFilters ? {
         startDate,
         endDate,
+        accountIds: filters.accountIds && filters.accountIds.length > 0 ? filters.accountIds : undefined,
         accountId: filters.accountId || undefined,
+        tagIds: filters.tagIds && filters.tagIds.length > 0 ? filters.tagIds : undefined,
         tagId: filters.tagId || undefined,
+        categoryIds: filters.categoryIds && filters.categoryIds.length > 0 ? filters.categoryIds : undefined,
         categoryId: filters.categoryId || undefined,
+        types: filters.transactionTypes && filters.transactionTypes.length > 0 ? filters.transactionTypes : undefined,
         type: filters.transactionType || undefined,
+        accountTypes: filters.accountTypes && filters.accountTypes.length > 0 ? filters.accountTypes : undefined,
+        accountType: filters.accountType || undefined,
       } : { startDate, endDate };
       
       const transactions = await transactionRepository.findAllWithFilters(filterOptions);
@@ -97,10 +103,16 @@ export function useCategoryBreakdown(month?: Date, useFilters: boolean = false) 
       const filterOptions = useFilters ? {
         startDate,
         endDate,
+        accountIds: filters.accountIds && filters.accountIds.length > 0 ? filters.accountIds : undefined,
         accountId: filters.accountId || undefined,
+        tagIds: filters.tagIds && filters.tagIds.length > 0 ? filters.tagIds : undefined,
         tagId: filters.tagId || undefined,
+        categoryIds: filters.categoryIds && filters.categoryIds.length > 0 ? filters.categoryIds : undefined,
         categoryId: filters.categoryId || undefined,
+        types: filters.transactionTypes && filters.transactionTypes.length > 0 ? filters.transactionTypes : undefined,
         type: filters.transactionType || undefined,
+        accountTypes: filters.accountTypes && filters.accountTypes.length > 0 ? filters.accountTypes : undefined,
+        accountType: filters.accountType || undefined,
       } : { startDate, endDate };
       
       const transactions = await transactionRepository.findAllWithFilters(filterOptions);

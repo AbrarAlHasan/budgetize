@@ -31,6 +31,24 @@ export default function ReportsScreen() {
     loadSettings();
   }, []);
 
+  // Invalidate queries when filters change
+  const filterKey = React.useMemo(() => 
+    JSON.stringify({
+      accountIds: filters.accountIds,
+      tagIds: filters.tagIds,
+      categoryIds: filters.categoryIds,
+      startDate: filters.startDate,
+      endDate: filters.endDate,
+      transactionTypes: filters.transactionTypes,
+      accountTypes: filters.accountTypes,
+    }),
+    [filters.accountIds, filters.tagIds, filters.categoryIds, filters.startDate, filters.endDate, filters.transactionTypes, filters.accountTypes]
+  );
+  
+  React.useEffect(() => {
+    queryClient.invalidateQueries({ queryKey: ['reports'] });
+  }, [filterKey, queryClient]);
+
   // Use filter dates if available, otherwise use current month
   const defaultStartDate = startOfMonth(new Date());
   const defaultEndDate = endOfMonth(new Date());
@@ -47,12 +65,13 @@ export default function ReportsScreen() {
   const trendStartDateStr = format(subMonths(endDate, 10), 'yyyy-MM-dd');
 
   const hasActiveFilters = 
-    filters.accountId !== null ||
-    filters.tagId !== null ||
+    (filters.accountIds && filters.accountIds.length > 0) ||
+    (filters.tagIds && filters.tagIds.length > 0) ||
+    (filters.categoryIds && filters.categoryIds.length > 0) ||
     filters.startDate !== null ||
     filters.endDate !== null ||
-    filters.transactionType !== null ||
-    filters.accountType !== null;
+    (filters.transactionTypes && filters.transactionTypes.length > 0) ||
+    (filters.accountTypes && filters.accountTypes.length > 0);
   
   // Automatically use filters if any filter is active
   const useFilters = hasActiveFilters;

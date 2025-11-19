@@ -23,13 +23,45 @@ export default function DashboardScreen() {
   const filters = useUIStore((state) => state.filters.dashboard);
   const setCurrentFilterContext = useUIStore((state) => state.setCurrentFilterContext);
   const { settings, loadSettings } = useSettingsStore();
-  const [useFilters, setUseFilters] = React.useState(false);
 
   React.useEffect(() => {
     loadSettings();
   }, []);
   
+  // Invalidate queries when filters change
+  const filterKey = React.useMemo(() => 
+    JSON.stringify({
+      accountIds: filters.accountIds,
+      tagIds: filters.tagIds,
+      categoryIds: filters.categoryIds,
+      startDate: filters.startDate,
+      endDate: filters.endDate,
+      transactionTypes: filters.transactionTypes,
+      accountTypes: filters.accountTypes,
+    }),
+    [filters.accountIds, filters.tagIds, filters.categoryIds, filters.startDate, filters.endDate, filters.transactionTypes, filters.accountTypes]
+  );
+  
+  React.useEffect(() => {
+    queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    queryClient.invalidateQueries({ queryKey: ['transactions'] });
+  }, [filterKey, queryClient]);
+  
   const currentMonth = new Date();
+  
+  // Check if any filters are active
+  const hasActiveFilters = 
+    (filters.accountIds && filters.accountIds.length > 0) ||
+    (filters.tagIds && filters.tagIds.length > 0) ||
+    (filters.categoryIds && filters.categoryIds.length > 0) ||
+    filters.startDate !== null ||
+    filters.endDate !== null ||
+    (filters.transactionTypes && filters.transactionTypes.length > 0) ||
+    (filters.accountTypes && filters.accountTypes.length > 0);
+  
+  // Automatically use filters if any filter is active
+  const useFilters = hasActiveFilters;
+  
   const { data: dashboardData, isLoading: dashboardLoading } = useDashboardData(currentMonth, useFilters);
   const { data: categoryData, isLoading: categoryLoading } = useCategoryBreakdown(currentMonth, useFilters);
   
@@ -45,10 +77,16 @@ export default function DashboardScreen() {
     useFilters ? {
       startDate,
       endDate,
+      accountIds: filters.accountIds && filters.accountIds.length > 0 ? filters.accountIds : undefined,
       accountId: filters.accountId || undefined,
+      tagIds: filters.tagIds && filters.tagIds.length > 0 ? filters.tagIds : undefined,
       tagId: filters.tagId || undefined,
+      categoryIds: filters.categoryIds && filters.categoryIds.length > 0 ? filters.categoryIds : undefined,
       categoryId: filters.categoryId || undefined,
+      types: filters.transactionTypes && filters.transactionTypes.length > 0 ? filters.transactionTypes : undefined,
       type: filters.transactionType || undefined,
+      accountTypes: filters.accountTypes && filters.accountTypes.length > 0 ? filters.accountTypes : undefined,
+      accountType: filters.accountType || undefined,
     } : { startDate, endDate }
   );
   
@@ -111,18 +149,9 @@ export default function DashboardScreen() {
   }, [queryClient]);
 
   const handleApplyFilters = () => {
-    setUseFilters(true);
     queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     queryClient.invalidateQueries({ queryKey: ['transactions'] });
   };
-
-  const hasActiveFilters = 
-    filters.accountId !== null ||
-    filters.tagId !== null ||
-    filters.startDate !== null ||
-    filters.endDate !== null ||
-    filters.transactionType !== null ||
-    filters.accountType !== null;
 
   if (dashboardLoading || transactionsLoading) {
     return (

@@ -25,14 +25,51 @@ export default function ExpensesScreen() {
     loadSettings();
   }, []);
   
-  const { data: transactions, isLoading } = useTransactions({
-    accountId: filters.accountId || undefined,
-    tagId: filters.tagId || undefined,
-    categoryId: filters.categoryId || undefined,
-    startDate: filters.startDate || undefined,
-    endDate: filters.endDate || undefined,
-    type: filters.transactionType || undefined,
-  });
+  // Invalidate queries when filters change
+  const filterKey = React.useMemo(() => 
+    JSON.stringify({
+      accountIds: filters.accountIds,
+      tagIds: filters.tagIds,
+      categoryIds: filters.categoryIds,
+      startDate: filters.startDate,
+      endDate: filters.endDate,
+      transactionTypes: filters.transactionTypes,
+      accountTypes: filters.accountTypes,
+    }),
+    [filters.accountIds, filters.tagIds, filters.categoryIds, filters.startDate, filters.endDate, filters.transactionTypes, filters.accountTypes]
+  );
+  
+  React.useEffect(() => {
+    queryClient.invalidateQueries({ queryKey: ['transactions'] });
+  }, [filterKey, queryClient]);
+  
+  // Check if any filters are active
+  const hasActiveFilters = 
+    (filters.accountIds && filters.accountIds.length > 0) ||
+    (filters.tagIds && filters.tagIds.length > 0) ||
+    (filters.categoryIds && filters.categoryIds.length > 0) ||
+    filters.startDate !== null ||
+    filters.endDate !== null ||
+    (filters.transactionTypes && filters.transactionTypes.length > 0) ||
+    (filters.accountTypes && filters.accountTypes.length > 0);
+  
+  // Use filter dates if available, otherwise don't filter by date
+  const { data: transactions, isLoading } = useTransactions(
+    hasActiveFilters ? {
+      accountIds: filters.accountIds && filters.accountIds.length > 0 ? filters.accountIds : undefined,
+      accountId: filters.accountId || undefined,
+      tagIds: filters.tagIds && filters.tagIds.length > 0 ? filters.tagIds : undefined,
+      tagId: filters.tagId || undefined,
+      categoryIds: filters.categoryIds && filters.categoryIds.length > 0 ? filters.categoryIds : undefined,
+      categoryId: filters.categoryId || undefined,
+      startDate: filters.startDate || undefined,
+      endDate: filters.endDate || undefined,
+      types: filters.transactionTypes && filters.transactionTypes.length > 0 ? filters.transactionTypes : undefined,
+      type: filters.transactionType || undefined,
+      accountTypes: filters.accountTypes && filters.accountTypes.length > 0 ? filters.accountTypes : undefined,
+      accountType: filters.accountType || undefined,
+    } : undefined
+  );
   const { data: accounts } = useAccounts();
   const { data: categories } = useCategories();
 
@@ -94,15 +131,6 @@ export default function ExpensesScreen() {
   const handleApplyFilters = () => {
     queryClient.invalidateQueries({ queryKey: ['transactions'] });
   };
-
-  const hasActiveFilters = 
-    filters.accountId !== null ||
-    filters.tagId !== null ||
-    filters.categoryId !== null ||
-    filters.startDate !== null ||
-    filters.endDate !== null ||
-    filters.transactionType !== null ||
-    filters.accountType !== null;
 
   if (isLoading) {
     return (

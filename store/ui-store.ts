@@ -4,14 +4,18 @@ import { AccountType, TransactionType } from '@/db/schema/types';
 import { persistentStorage } from '@/storage/mmkv';
 
 interface FilterState {
-  accountId: number | null;
+  accountId: number | null; // Single account filter (for backward compatibility)
+  accountIds: number[]; // Multiple account filter
   tagId: number | null; // Single tag filter (for backward compatibility)
   tagIds: number[]; // Multiple tag filter
-  categoryId: number | null; // Category filter by ID
+  categoryId: number | null; // Single category filter (for backward compatibility)
+  categoryIds: number[]; // Multiple category filter
   startDate: string | null;
   endDate: string | null;
-  transactionType: TransactionType | null;
-  accountType: AccountType | null;
+  transactionType: TransactionType | null; // Single transaction type filter (for backward compatibility)
+  transactionTypes: TransactionType[]; // Multiple transaction type filter
+  accountType: AccountType | null; // Single account type filter (for backward compatibility)
+  accountTypes: AccountType[]; // Multiple account type filter
 }
 
 export type FilterContext = 'dashboard' | 'reports' | 'expenses';
@@ -24,12 +28,16 @@ interface UIStore {
   currentFilterContext: FilterContext;
   setCurrentFilterContext: (context: FilterContext) => void;
   setAccountFilter: (context: FilterContext, accountId: number | null) => void;
+  setAccountIdsFilter: (context: FilterContext, accountIds: number[]) => void;
   setTagFilter: (context: FilterContext, tagId: number | null) => void;
   setTagIdsFilter: (context: FilterContext, tagIds: number[]) => void;
   setCategoryFilter: (context: FilterContext, categoryId: number | null) => void;
+  setCategoryIdsFilter: (context: FilterContext, categoryIds: number[]) => void;
   setDateRangeFilter: (context: FilterContext, startDate: string | null, endDate: string | null) => void;
   setTransactionTypeFilter: (context: FilterContext, type: TransactionType | null) => void;
+  setTransactionTypesFilter: (context: FilterContext, types: TransactionType[]) => void;
   setAccountTypeFilter: (context: FilterContext, type: AccountType | null) => void;
+  setAccountTypesFilter: (context: FilterContext, types: AccountType[]) => void;
   clearFilters: (context: FilterContext) => void;
 
   // Form state
@@ -49,13 +57,17 @@ interface UIStore {
 
 const createInitialFilterState = (): FilterState => ({
   accountId: null,
+  accountIds: [],
   tagId: null,
   tagIds: [],
   categoryId: null,
+  categoryIds: [],
   startDate: null,
   endDate: null,
   transactionType: null,
+  transactionTypes: [],
   accountType: null,
+  accountTypes: [],
 });
 
 const createInitialFilters = (): FiltersByContext => ({
@@ -105,7 +117,17 @@ export const useUIStore = create<UIStore>()(
       setCurrentFilterContext: (context) => set({ currentFilterContext: context }),
       setAccountFilter: (context, accountId) =>
         set((state) => ({
-          filters: updateFiltersForContext(state.filters, context, { accountId }),
+          filters: updateFiltersForContext(state.filters, context, {
+            accountId,
+            accountIds: accountId ? [accountId] : [],
+          }),
+        })),
+      setAccountIdsFilter: (context, accountIds) =>
+        set((state) => ({
+          filters: updateFiltersForContext(state.filters, context, {
+            accountIds,
+            accountId: accountIds.length === 1 ? accountIds[0] : null,
+          }),
         })),
       setTagFilter: (context, tagId) =>
         set((state) => ({
@@ -123,7 +145,17 @@ export const useUIStore = create<UIStore>()(
         })),
       setCategoryFilter: (context, categoryId) =>
         set((state) => ({
-          filters: updateFiltersForContext(state.filters, context, { categoryId }),
+          filters: updateFiltersForContext(state.filters, context, {
+            categoryId,
+            categoryIds: categoryId ? [categoryId] : [],
+          }),
+        })),
+      setCategoryIdsFilter: (context, categoryIds) =>
+        set((state) => ({
+          filters: updateFiltersForContext(state.filters, context, {
+            categoryIds,
+            categoryId: categoryIds.length === 1 ? categoryIds[0] : null,
+          }),
         })),
       setDateRangeFilter: (context, startDate, endDate) =>
         set((state) => ({
@@ -131,11 +163,31 @@ export const useUIStore = create<UIStore>()(
         })),
       setTransactionTypeFilter: (context, transactionType) =>
         set((state) => ({
-          filters: updateFiltersForContext(state.filters, context, { transactionType }),
+          filters: updateFiltersForContext(state.filters, context, {
+            transactionType,
+            transactionTypes: transactionType ? [transactionType] : [],
+          }),
+        })),
+      setTransactionTypesFilter: (context, transactionTypes) =>
+        set((state) => ({
+          filters: updateFiltersForContext(state.filters, context, {
+            transactionTypes,
+            transactionType: transactionTypes.length === 1 ? transactionTypes[0] : null,
+          }),
         })),
       setAccountTypeFilter: (context, accountType) =>
         set((state) => ({
-          filters: updateFiltersForContext(state.filters, context, { accountType }),
+          filters: updateFiltersForContext(state.filters, context, {
+            accountType,
+            accountTypes: accountType ? [accountType] : [],
+          }),
+        })),
+      setAccountTypesFilter: (context, accountTypes) =>
+        set((state) => ({
+          filters: updateFiltersForContext(state.filters, context, {
+            accountTypes,
+            accountType: accountTypes.length === 1 ? accountTypes[0] : null,
+          }),
         })),
       clearFilters: (context) =>
         set((state) => ({

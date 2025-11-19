@@ -97,10 +97,16 @@ export function useReportSummary(startDate: string, endDate: string, useFilters:
       const filterOptions = useFilters ? {
         startDate: filterStartDate,
         endDate: filterEndDate,
+        accountIds: filters.accountIds && filters.accountIds.length > 0 ? filters.accountIds : undefined,
         accountId: filters.accountId || undefined,
+        tagIds: filters.tagIds && filters.tagIds.length > 0 ? filters.tagIds : undefined,
         tagId: filters.tagId || undefined,
+        categoryIds: filters.categoryIds && filters.categoryIds.length > 0 ? filters.categoryIds : undefined,
         categoryId: filters.categoryId || undefined,
+        types: filters.transactionTypes && filters.transactionTypes.length > 0 ? filters.transactionTypes : undefined,
         type: filters.transactionType || undefined,
+        accountTypes: filters.accountTypes && filters.accountTypes.length > 0 ? filters.accountTypes : undefined,
+        accountType: filters.accountType || undefined,
       } : { startDate: filterStartDate, endDate: filterEndDate };
       
       const transactions = await transactionRepository.findAllWithFilters(filterOptions);
@@ -150,10 +156,16 @@ export function useCategoryReport(startDate: string, endDate: string, useFilters
       const filterOptions = useFilters ? {
         startDate: filterStartDate,
         endDate: filterEndDate,
+        accountIds: filters.accountIds && filters.accountIds.length > 0 ? filters.accountIds : undefined,
         accountId: filters.accountId || undefined,
+        tagIds: filters.tagIds && filters.tagIds.length > 0 ? filters.tagIds : undefined,
         tagId: filters.tagId || undefined,
+        categoryIds: filters.categoryIds && filters.categoryIds.length > 0 ? filters.categoryIds : undefined,
         categoryId: filters.categoryId || undefined,
+        types: filters.transactionTypes && filters.transactionTypes.length > 0 ? filters.transactionTypes : undefined,
         type: filters.transactionType || undefined,
+        accountTypes: filters.accountTypes && filters.accountTypes.length > 0 ? filters.accountTypes : undefined,
+        accountType: filters.accountType || undefined,
       } : { startDate: filterStartDate, endDate: filterEndDate };
       
       const transactions = await transactionRepository.findAllWithFilters(filterOptions);
@@ -237,10 +249,16 @@ export function useAccountReport(startDate: string, endDate: string, useFilters:
       const filterOptions = useFilters ? {
         startDate: filterStartDate,
         endDate: filterEndDate,
+        accountIds: filters.accountIds && filters.accountIds.length > 0 ? filters.accountIds : undefined,
         accountId: filters.accountId || undefined,
+        tagIds: filters.tagIds && filters.tagIds.length > 0 ? filters.tagIds : undefined,
         tagId: filters.tagId || undefined,
+        categoryIds: filters.categoryIds && filters.categoryIds.length > 0 ? filters.categoryIds : undefined,
         categoryId: filters.categoryId || undefined,
+        types: filters.transactionTypes && filters.transactionTypes.length > 0 ? filters.transactionTypes : undefined,
         type: filters.transactionType || undefined,
+        accountTypes: filters.accountTypes && filters.accountTypes.length > 0 ? filters.accountTypes : undefined,
+        accountType: filters.accountType || undefined,
       } : { startDate: filterStartDate, endDate: filterEndDate };
       
       const transactions = await transactionRepository.findAllWithFilters(filterOptions);
@@ -313,10 +331,16 @@ export function usePeriodComparison(startDate: string, endDate: string, useFilte
       const filterOptions = useFilters ? {
         startDate: filterStartDate,
         endDate: filterEndDate,
+        accountIds: filters.accountIds && filters.accountIds.length > 0 ? filters.accountIds : undefined,
         accountId: filters.accountId || undefined,
+        tagIds: filters.tagIds && filters.tagIds.length > 0 ? filters.tagIds : undefined,
         tagId: filters.tagId || undefined,
+        categoryIds: filters.categoryIds && filters.categoryIds.length > 0 ? filters.categoryIds : undefined,
         categoryId: filters.categoryId || undefined,
+        types: filters.transactionTypes && filters.transactionTypes.length > 0 ? filters.transactionTypes : undefined,
         type: filters.transactionType || undefined,
+        accountTypes: filters.accountTypes && filters.accountTypes.length > 0 ? filters.accountTypes : undefined,
+        accountType: filters.accountType || undefined,
       } : { startDate: filterStartDate, endDate: filterEndDate };
 
       const prevFilterOptions = useFilters ? {
@@ -436,10 +460,16 @@ export function useDailyPatterns(startDate: string, endDate: string, useFilters:
       const filterOptions = useFilters ? {
         startDate: filterStartDate,
         endDate: filterEndDate,
+        accountIds: filters.accountIds && filters.accountIds.length > 0 ? filters.accountIds : undefined,
         accountId: filters.accountId || undefined,
+        tagIds: filters.tagIds && filters.tagIds.length > 0 ? filters.tagIds : undefined,
         tagId: filters.tagId || undefined,
+        categoryIds: filters.categoryIds && filters.categoryIds.length > 0 ? filters.categoryIds : undefined,
         categoryId: filters.categoryId || undefined,
+        types: filters.transactionTypes && filters.transactionTypes.length > 0 ? filters.transactionTypes : undefined,
         type: filters.transactionType || undefined,
+        accountTypes: filters.accountTypes && filters.accountTypes.length > 0 ? filters.accountTypes : undefined,
+        accountType: filters.accountType || undefined,
       } : { startDate: filterStartDate, endDate: filterEndDate };
       
       const transactions = await transactionRepository.findAllWithFilters(filterOptions);

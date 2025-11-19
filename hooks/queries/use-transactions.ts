@@ -7,11 +7,17 @@ const QUERY_KEYS = {
   lists: () => [...QUERY_KEYS.all, 'list'] as const,
   list: (filters?: {
     accountId?: number;
+    accountIds?: number[];
     tagId?: number;
+    tagIds?: number[];
     categoryId?: number;
+    categoryIds?: number[];
     startDate?: string;
     endDate?: string;
     type?: Transaction['type'];
+    types?: Transaction['type'][];
+    accountType?: string;
+    accountTypes?: string[];
   }) => [...QUERY_KEYS.lists(), filters] as const,
   details: () => [...QUERY_KEYS.all, 'detail'] as const,
   detail: (id: number) => [...QUERY_KEYS.details(), id] as const,
@@ -22,11 +28,17 @@ const QUERY_KEYS = {
 
 export function useTransactions(filters?: {
   accountId?: number;
+  accountIds?: number[];
   tagId?: number;
+  tagIds?: number[];
   categoryId?: number;
+  categoryIds?: number[];
   startDate?: string;
   endDate?: string;
   type?: Transaction['type'];
+  types?: Transaction['type'][];
+  accountType?: string;
+  accountTypes?: string[];
 }) {
   return useQuery({
     queryKey: QUERY_KEYS.list(filters),
