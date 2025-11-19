@@ -1,4 +1,6 @@
 import { accountRepository } from '@/repositories/account.repository';
+import { categoryRepository } from '@/repositories/category.repository';
+import { tagRepository } from '@/repositories/tag.repository';
 import { transactionTagRepository } from '@/repositories/transaction-tag.repository';
 import { transactionRepository } from '@/repositories/transaction.repository';
 import { useUIStore } from '@/store/ui-store';
@@ -11,6 +13,8 @@ const QUERY_KEYS = {
     [...QUERY_KEYS.all, 'summary', startDate, endDate] as const,
   byCategory: (startDate: string, endDate: string) => 
     [...QUERY_KEYS.all, 'category', startDate, endDate] as const,
+  byTag: (startDate: string, endDate: string) => 
+    [...QUERY_KEYS.all, 'tag', startDate, endDate] as const,
   byAccount: (startDate: string, endDate: string) => 
     [...QUERY_KEYS.all, 'account', startDate, endDate] as const,
   periodComparison: (startDate: string, endDate: string) =>
@@ -31,6 +35,15 @@ export interface ReportSummary {
 }
 
 export interface CategoryReport {
+  categoryId: number;
+  categoryName: string;
+  amount: number;
+  count: number;
+  percentage: number;
+  isDeleted?: boolean;
+}
+
+export interface TagReport {
   tagId: number;
   tagName: string;
   amount: number;
@@ -171,21 +184,113 @@ export function useCategoryReport(startDate: string, endDate: string, useFilters
       const transactions = await transactionRepository.findAllWithFilters(filterOptions);
       const decrypted = await transactionRepository.decryptTransactions(transactions);
 
-      const tagMap = new Map<number, { name: string; amount: number; count: number }>();
+      // Get all transaction categories
+      const categoryMap = new Map<number, { name: string; amount: number; count: number }>();
       let totalExpenses = 0;
 
       for (const transaction of decrypted) {
         if (transaction.type === 'expense') {
           const amount = typeof transaction.amount === 'number' ? transaction.amount : parseFloat(String(transaction.amount)) || 0;
           totalExpenses += amount;
+          
+          if (!transaction.category_id) {
+            // Uncategorized
+            const uncategorized = categoryMap.get(0) || { name: 'Uncategorized', amount: 0, count: 0 };
+            uncategorized.amount += amount;
+            uncategorized.count += 1;
+            categoryMap.set(0, uncategorized);
+          } else {
+            const existing = categoryMap.get(transaction.category_id) || { 
+              name: `Category ${transaction.category_id}`, 
+              amount: 0, 
+              count: 0 
+            };
+            existing.amount += amount;
+            existing.count += 1;
+            categoryMap.set(transaction.category_id, existing);
+          }
+        }
+      }
+
+      // Fetch category names
+      const reports: CategoryReport[] = [];
+
+      for (const [categoryId, data] of categoryMap.entries()) {
+        if (categoryId === 0) {
+          reports.push({
+            categoryId: 0,
+            categoryName: data.name,
+            amount: data.amount,
+            count: data.count,
+            percentage: totalExpenses > 0 ? (data.amount / totalExpenses) * 100 : 0,
+            isDeleted: false,
+          });
+        } else {
+          const category = await categoryRepository.findById(categoryId);
+          const decryptedCategory = category ? await categoryRepository.decryptCategory(category) : null;
+          reports.push({
+            categoryId,
+            categoryName: decryptedCategory?.name || data.name,
+            amount: data.amount,
+            count: data.count,
+            percentage: totalExpenses > 0 ? (data.amount / totalExpenses) * 100 : 0,
+            isDeleted: category?.deleted_at !== null,
+          });
+        }
+      }
+
+      return reports.sort((a, b) => b.amount - a.amount);
+    },
+    enabled: !!filterStartDate && !!filterEndDate,
+  });
+}
+
+export function useTagReport(startDate: string, endDate: string, useFilters: boolean = false) {
+  const filters = useUIStore((state) => state.filters.reports);
+  
+  // Use filter dates if available, otherwise use provided dates
+  const filterStartDate = useFilters && filters.startDate ? filters.startDate : startDate;
+  const filterEndDate = useFilters && filters.endDate ? filters.endDate : endDate;
+
+  return useQuery({
+    queryKey: useFilters 
+      ? [...QUERY_KEYS.byTag(filterStartDate, filterEndDate), 'filters', filters]
+      : QUERY_KEYS.byTag(filterStartDate, filterEndDate),
+    queryFn: async (): Promise<TagReport[]> => {
+      const filterOptions = useFilters ? {
+        startDate: filterStartDate,
+        endDate: filterEndDate,
+        accountIds: filters.accountIds && filters.accountIds.length > 0 ? filters.accountIds : undefined,
+        accountId: filters.accountId || undefined,
+        tagIds: filters.tagIds && filters.tagIds.length > 0 ? filters.tagIds : undefined,
+        tagId: filters.tagId || undefined,
+        categoryIds: filters.categoryIds && filters.categoryIds.length > 0 ? filters.categoryIds : undefined,
+        categoryId: filters.categoryId || undefined,
+        types: filters.transactionTypes && filters.transactionTypes.length > 0 ? filters.transactionTypes : undefined,
+        type: filters.transactionType || undefined,
+        accountTypes: filters.accountTypes && filters.accountTypes.length > 0 ? filters.accountTypes : undefined,
+        accountType: filters.accountType || undefined,
+      } : { startDate: filterStartDate, endDate: filterEndDate };
+      
+      const transactions = await transactionRepository.findAllWithFilters(filterOptions);
+      const decrypted = await transactionRepository.decryptTransactions(transactions);
+
+      const tagMap = new Map<number, { name: string; amount: number; count: number }>();
+      let totalTaggedExpenses = 0; // Total of all tag amounts (may be > totalExpenses due to multi-tag transactions)
+
+      for (const transaction of decrypted) {
+        if (transaction.type === 'expense') {
+          const amount = typeof transaction.amount === 'number' ? transaction.amount : parseFloat(String(transaction.amount)) || 0;
           const tags = await transactionTagRepository.findByTransactionId(transaction.id);
           
           if (tags.length === 0) {
-            const uncategorized = tagMap.get(0) || { name: 'Uncategorized', amount: 0, count: 0 };
-            uncategorized.amount += amount;
-            uncategorized.count += 1;
-            tagMap.set(0, uncategorized);
+            const untagged = tagMap.get(0) || { name: 'Untagged', amount: 0, count: 0 };
+            untagged.amount += amount;
+            untagged.count += 1;
+            totalTaggedExpenses += amount;
+            tagMap.set(0, untagged);
           } else {
+            // For transactions with multiple tags, add full amount to each tag
             for (const tag of tags) {
               const existing = tagMap.get(tag.tag_id) || { 
                 name: `Tag ${tag.tag_id}`, 
@@ -194,14 +299,15 @@ export function useCategoryReport(startDate: string, endDate: string, useFilters
               };
               existing.amount += amount;
               existing.count += 1;
+              totalTaggedExpenses += amount; // Add amount for each tag
               tagMap.set(tag.tag_id, existing);
             }
           }
         }
       }
 
-      const { tagRepository } = await import('@/repositories/tag.repository');
-      const reports: CategoryReport[] = [];
+      // Fetch tag names
+      const reports: TagReport[] = [];
 
       for (const [tagId, data] of tagMap.entries()) {
         if (tagId === 0) {
@@ -210,7 +316,7 @@ export function useCategoryReport(startDate: string, endDate: string, useFilters
             tagName: data.name,
             amount: data.amount,
             count: data.count,
-            percentage: totalExpenses > 0 ? (data.amount / totalExpenses) * 100 : 0,
+            percentage: totalTaggedExpenses > 0 ? (data.amount / totalTaggedExpenses) * 100 : 0,
             isDeleted: false,
           });
         } else {
@@ -222,7 +328,7 @@ export function useCategoryReport(startDate: string, endDate: string, useFilters
             tagName: decryptedTag?.name || data.name,
             amount: data.amount,
             count: data.count,
-            percentage: totalExpenses > 0 ? (data.amount / totalExpenses) * 100 : 0,
+            percentage: totalTaggedExpenses > 0 ? (data.amount / totalTaggedExpenses) * 100 : 0,
             isDeleted: tag?.deleted_at !== null,
           });
         }
