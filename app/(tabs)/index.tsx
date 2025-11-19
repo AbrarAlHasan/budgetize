@@ -1,3 +1,4 @@
+import { AnimatedProgressBar } from '@/components/charts/animated-progress-bar';
 import { ActiveFilterChips } from '@/components/filters/active-filter-chips';
 import { TransactionItem } from '@/components/transaction-item';
 import { Card } from '@/components/ui/card';
@@ -12,10 +13,11 @@ import { useSettingsStore } from '@/store/settings-store';
 import { useUIStore } from '@/store/ui-store';
 import { getCurrencySymbol } from '@/utils/currencies';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
 import { endOfMonth, format, startOfMonth } from 'date-fns';
 import { router } from 'expo-router';
-import React from 'react';
+import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -24,10 +26,17 @@ export default function DashboardScreen() {
   const filters = useUIStore((state) => state.filters.dashboard);
   const setCurrentFilterContext = useUIStore((state) => state.setCurrentFilterContext);
   const { settings, loadSettings } = useSettingsStore();
+  const [chartAnimationKey, setChartAnimationKey] = useState(0);
 
   React.useEffect(() => {
     loadSettings();
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      setChartAnimationKey((prev) => prev + 1);
+    }, [])
+  );
   
   // Invalidate queries when filters change
   const filterKey = React.useMemo(() => 
@@ -313,15 +322,13 @@ export default function DashboardScreen() {
                           </Text>
                         </View>
                       </View>
-                      <View className="h-2.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                        <View
-                          className="h-full rounded-full"
-                          style={{ 
-                            width: `${percentage}%`,
-                            backgroundColor: color,
-                          }}
-                        />
-                      </View>
+                      <AnimatedProgressBar
+                        percentage={percentage}
+                        color={color}
+                        height={10}
+                        animationKey={chartAnimationKey}
+                        index={index}
+                      />
                     </View>
                   );
                 })}

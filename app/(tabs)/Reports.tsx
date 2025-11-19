@@ -1,3 +1,5 @@
+import { AnimatedNumber } from '@/components/charts/animated-number';
+import { AnimatedProgressBar } from '@/components/charts/animated-progress-bar';
 import { SimpleBarChart } from '@/components/charts/simple-bar-chart';
 import { TrendIndicator } from '@/components/charts/trend-indicator';
 import { ActiveFilterChips } from '@/components/filters/active-filter-chips';
@@ -14,6 +16,7 @@ import { useSettingsStore } from '@/store/settings-store';
 import { useUIStore } from '@/store/ui-store';
 import { getCurrencySymbol } from '@/utils/currencies';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
 import { endOfMonth, format, startOfMonth, subMonths } from 'date-fns';
 import { router } from 'expo-router';
@@ -27,10 +30,17 @@ export default function ReportsScreen() {
   const setCurrentFilterContext = useUIStore((state) => state.setCurrentFilterContext);
   const { settings, loadSettings } = useSettingsStore();
   const [refreshing, setRefreshing] = useState(false);
+  const [chartAnimationKey, setChartAnimationKey] = useState(0);
 
   React.useEffect(() => {
     loadSettings();
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      setChartAnimationKey((prev) => prev + 1);
+    }, [])
+  );
 
   // Invalidate queries when filters change
   const filterKey = React.useMemo(() => 
@@ -191,12 +201,12 @@ export default function ReportsScreen() {
                       <Text className="text-xs font-medium text-gray-600">Expense</Text>
                       <Ionicons name="arrow-down" size={16} color="#EF4444" />
                     </View>
-                    <Text className="text-2xl font-bold text-gray-900">
-                      {getCurrencySymbol(settings.currency)}{summary.totalExpenses.toLocaleString(undefined, {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}
-                    </Text>
+                    <AnimatedNumber
+                      value={summary.totalExpenses}
+                      prefix={getCurrencySymbol(settings.currency)}
+                      animationKey={chartAnimationKey}
+                      style={{ fontSize: 24, fontWeight: 'bold', color: '#111827' }}
+                    />
                       {periodComparison && (
                         <View className="mt-2">
                           <TrendIndicator 
@@ -367,6 +377,7 @@ export default function ReportsScreen() {
                       height={180}
                       showValues={true}
                       currencySymbol={getCurrencySymbol(settings.currency)}
+                    animationKey={chartAnimationKey}
                     />
                   ) : (
                     <View className="py-8 items-center">
@@ -392,6 +403,7 @@ export default function ReportsScreen() {
                     height={150}
                     showValues={true}
                     currencySymbol={getCurrencySymbol(settings.currency)}
+                  animationKey={`${chartAnimationKey}-monthly`}
                   />
                 </Card>
               )}
@@ -434,15 +446,13 @@ export default function ReportsScreen() {
                             </Text>
                           </View>
                         </View>
-                        <View className="h-2.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                          <View
-                            className="h-full rounded-full"
-                            style={{ 
-                              width: `${Math.min(category.percentage, 100)}%`,
-                              backgroundColor: color,
-                            }}
-                          />
-                        </View>
+                        <AnimatedProgressBar
+                          percentage={category.percentage}
+                          color={color}
+                          height={10}
+                          animationKey={chartAnimationKey}
+                          index={index}
+                        />
                           <View className="flex-row justify-between items-center mt-1">
                             <Text className="text-xs text-gray-500 dark:text-gray-400">
                               {category.count} transactions
@@ -450,13 +460,13 @@ export default function ReportsScreen() {
                             <Text className="text-xs text-gray-500 dark:text-gray-400">
                               Avg: {getCurrencySymbol(settings.currency)}{(category.amount / category.count).toFixed(2)}
                             </Text>
-                          </View>
                         </View>
-                      );
-                    })}
-                  </View>
-                </Card>
-              )}
+                      </View>
+                    );
+                  })}
+                </View>
+              </Card>
+            )}
 
               {/* Account Report (Enhanced) */}
             {accountReport && accountReport.length > 0 && (
