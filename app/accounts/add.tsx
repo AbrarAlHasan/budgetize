@@ -60,7 +60,7 @@ export default function AddAccountScreen() {
           headerBackTitle: originLabel
         }}
       />
-      <ScrollView className="flex-1 bg-gray-50 dark:bg-gray-900">
+      <ScrollView className="flex-1 bg-gray-50 dark:bg-black">
         <View className="p-4">
           <Card>
             <Input

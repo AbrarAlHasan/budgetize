@@ -116,7 +116,7 @@ export default function AccountDetailScreen() {
 
   if (isLoading) {
     return (
-      <View className="flex-1 justify-center items-center bg-gray-50 dark:bg-gray-900">
+      <View className="flex-1 justify-center items-center bg-gray-50 dark:bg-black">
         <ActivityIndicator size="large" />
       </View>
     );
@@ -124,7 +124,7 @@ export default function AccountDetailScreen() {
 
   if (!account) {
     return (
-      <View className="flex-1 justify-center items-center bg-gray-50 dark:bg-gray-900">
+      <View className="flex-1 justify-center items-center bg-gray-50 dark:bg-black">
         <Text className="text-gray-500 dark:text-gray-400">
           Account not found
         </Text>
@@ -142,7 +142,7 @@ export default function AccountDetailScreen() {
         }}
       />
       <ScrollView
-        className="flex-1 bg-gray-50 dark:bg-gray-900"
+        className="flex-1 bg-gray-50 dark:bg-black"
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }

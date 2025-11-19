@@ -352,7 +352,7 @@ export default function FiltersScreen() {
           </ScrollView>
 
           {/* Footer */}
-          <View className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800" style={{ paddingBottom: 20 }}>
+          <View className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900" style={{ paddingBottom: 20 }}>
             <View className="p-4">
               <View className="flex-row gap-3">
                 <View className="flex-1">

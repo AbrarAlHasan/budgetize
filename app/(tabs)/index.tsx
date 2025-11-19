@@ -126,7 +126,7 @@ export default function DashboardScreen() {
 
   if (dashboardLoading || transactionsLoading) {
     return (
-      <SafeAreaView className="flex-1 bg-gray-50 dark:bg-gray-950" edges={['top']}>
+      <SafeAreaView className="flex-1 bg-gray-50 dark:bg-black" edges={['top']}>
         <View className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" />
         </View>
@@ -135,7 +135,7 @@ export default function DashboardScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50 dark:bg-gray-900" edges={['top']}>
+    <SafeAreaView className="flex-1 bg-gray-50 dark:bg-black" edges={['top']}>
       <ScrollView 
         className="flex-1"
         refreshControl={
@@ -342,7 +342,7 @@ export default function DashboardScreen() {
               />
             ))
           ) : (
-            <View className="bg-white dark:bg-gray-800 rounded-2xl p-8 items-center">
+            <View className="bg-white dark:bg-gray-900 rounded-2xl p-8 items-center">
               <Ionicons name="receipt-outline" size={48} color="#9CA3AF" />
               <Text className="text-gray-500 dark:text-gray-400 text-center mt-4">
                 No transactions this month

@@ -6,6 +6,7 @@ const SETTINGS_STORE_KEY = 'app_settings';
 interface AppSettings {
   incomeCalculationEnabled: boolean;
   currency: string; // Global currency code (e.g., 'USD', 'EUR', 'INR')
+  theme: 'light' | 'dark' | 'auto'; // Theme preference
 }
 
 interface SettingsStore {
@@ -14,11 +15,13 @@ interface SettingsStore {
   loadSettings: () => Promise<void>;
   updateIncomeCalculationEnabled: (enabled: boolean) => Promise<void>;
   updateCurrency: (currency: string) => Promise<void>;
+  updateTheme: (theme: 'light' | 'dark' | 'auto') => Promise<void>;
 }
 
 const defaultSettings: AppSettings = {
   incomeCalculationEnabled: true, // Default to enabled
   currency: 'USD', // Default to USD
+  theme: 'auto', // Default to system preference
 };
 
 export const useSettingsStore = create<SettingsStore>((set, get) => ({
@@ -68,6 +71,22 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
     const newSettings: AppSettings = {
       ...get().settings,
       currency,
+    };
+
+    set({ settings: newSettings });
+
+    // Save to secure store
+    try {
+      await SecureStore.setItemAsync(SETTINGS_STORE_KEY, JSON.stringify(newSettings));
+    } catch (error) {
+      console.error('Error saving settings:', error);
+    }
+  },
+
+  updateTheme: async (theme: 'light' | 'dark' | 'auto') => {
+    const newSettings: AppSettings = {
+      ...get().settings,
+      theme,
     };
 
     set({ settings: newSettings });

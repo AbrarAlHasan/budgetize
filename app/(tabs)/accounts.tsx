@@ -31,7 +31,7 @@ export default function AccountsScreen() {
   if (isLoading) {
     return (
       <SafeAreaView
-        className="flex-1 bg-gray-50 dark:bg-gray-950"
+        className="flex-1 bg-gray-50 dark:bg-black"
         edges={["top"]}
       >
         <View className="flex-1 justify-center items-center">
@@ -43,7 +43,7 @@ export default function AccountsScreen() {
 
   return (
     <SafeAreaView
-      className="flex-1 bg-gray-50 dark:bg-gray-950"
+      className="flex-1 bg-gray-50 dark:bg-black"
       edges={["top"]}
     >
       <ScrollView
@@ -82,7 +82,7 @@ export default function AccountsScreen() {
               <AccountCard key={account.id} account={account} />
             ))
           ) : (
-            <View className="bg-white dark:bg-gray-800 rounded-2xl p-8 items-center">
+            <View className="bg-white dark:bg-gray-900 rounded-2xl p-8 items-center">
               <Ionicons name="wallet-outline" size={48} color="#9CA3AF" />
               <Text className="text-gray-500 dark:text-gray-400 text-center mt-4 mb-6">
                 No accounts yet

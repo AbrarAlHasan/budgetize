@@ -62,7 +62,7 @@ export function TransactionItem({
       activeOpacity={0.6}
       className="mb-3"
     >
-      <View className="bg-white dark:bg-gray-800 rounded-2xl p-4 flex-row items-center"
+      <View className="bg-white dark:bg-gray-900 rounded-2xl p-4 flex-row items-center"
         style={{
           shadowColor: '#000',
           shadowOffset: { width: 0, height: 1 },

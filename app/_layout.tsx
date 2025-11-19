@@ -6,30 +6,121 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 import '../global.css';
 
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { OnboardingScreen } from '@/components/onboarding/onboarding-screen';
 import { queryClient } from '@/hooks/use-query-client';
+import { onboardingStorage } from '@/storage/onboarding';
+import { useSettingsStore } from '@/store/settings-store';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
+import { useColorScheme, colorScheme } from 'nativewind';
+import { useEffect, useState, useRef } from 'react';
+import { ActivityIndicator, View } from 'react-native';
 
 export const unstable_settings = {
   anchor: '(tabs)',
 };
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
+  const nativeWindColorScheme = useColorScheme();
+  const { loadSettings, settings } = useSettingsStore();
+  const [isReady, setIsReady] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [themeSynced, setThemeSynced] = useState(false);
+
+  useEffect(() => {
+    const initializeApp = async () => {
+      try {
+        // Load settings first
+        await loadSettings();
+        
+        // Wait a tick to ensure settings state is updated
+        await new Promise(resolve => setTimeout(resolve, 0));
+        
+        // Get the latest settings after load
+        const { settings: loadedSettings } = useSettingsStore.getState();
+        
+        // Sync stored theme with NativeWind BEFORE rendering
+        if (loadedSettings.theme && loadedSettings.theme !== 'auto') {
+          colorScheme.set(loadedSettings.theme);
+        } else {
+          // Reset to system preference
+          colorScheme.set('system');
+        }
+        
+        // Mark theme as synced
+        setThemeSynced(true);
+        
+        // Wait a bit to ensure NativeWind has processed the colorScheme change
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Then check onboarding
+        const completed = onboardingStorage.isCompleted();
+        setShowOnboarding(!completed);
+      } catch (error) {
+        console.error('Error initializing app:', error);
+        setThemeSynced(true); // Still mark as synced even on error
+      } finally {
+        // Mark as ready regardless of errors
+        setIsReady(true);
+      }
+    };
+    
+    initializeApp();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Sync theme when settings change
+  useEffect(() => {
+    if (settings.theme && settings.theme !== 'auto') {
+      colorScheme.set(settings.theme);
+    } else {
+      colorScheme.set('system');
+    }
+  }, [settings.theme]);
+
+  const handleOnboardingComplete = () => {
+    onboardingStorage.setCompleted();
+    setShowOnboarding(false);
+  };
+
+  // Show loading spinner while initializing or syncing theme
+  if (!isReady || !themeSynced) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFFFFF' }}>
+        <ActivityIndicator size="large" color="#3B82F6" />
+      </View>
+    );
+  }
+
+  // Show onboarding if not completed
+  if (showOnboarding) {
+    return <OnboardingScreen onComplete={handleOnboardingComplete} />;
+  }
+
+  // Determine theme: use stored settings if available, otherwise use NativeWind's colorScheme
+  const effectiveTheme = settings.theme && settings.theme !== 'auto' 
+    ? settings.theme 
+    : (nativeWindColorScheme === 'dark' ? 'dark' : 'light');
+  
+  const normalizedColorScheme = (effectiveTheme === 'dark' ? 'dark' : 'light') as 'light' | 'dark';
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <QueryClientProvider client={queryClient}>
-        <BottomSheetModalProvider>
-          <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-            <Stack>
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-            </Stack>
-            <StatusBar style="auto" />
-          </ThemeProvider>
-        </BottomSheetModalProvider>
-      </QueryClientProvider>
-    </GestureHandlerRootView>
+    <View 
+      style={{ flex: 1 }} 
+      className={normalizedColorScheme === 'dark' ? 'dark' : ''}
+    >
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <QueryClientProvider client={queryClient}>
+          <BottomSheetModalProvider>
+            <ThemeProvider value={normalizedColorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+              <Stack>
+                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+              </Stack>
+              <StatusBar style={normalizedColorScheme === 'dark' ? 'light' : 'dark'} />
+            </ThemeProvider>
+          </BottomSheetModalProvider>
+        </QueryClientProvider>
+      </GestureHandlerRootView>
+    </View>
   );
 }

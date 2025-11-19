@@ -2,6 +2,7 @@ import BottomSheet from "@/components/bottom-sheet";
 import { cn } from "@/utils/cn";
 import { Ionicons } from "@expo/vector-icons";
 import { BottomSheetModalMethods } from "@gorhom/bottom-sheet/lib/typescript/types";
+import { useColorScheme } from "nativewind";
 import {
   forwardRef,
   useCallback,
@@ -47,6 +48,8 @@ export const BottomSheetSelect = forwardRef<
     },
     ref
   ) => {
+    const colorScheme = useColorScheme();
+    const isDark = colorScheme === 'dark';
     const bottomSheetRef = useRef<BottomSheetModalMethods>(null);
     const selectedOption = options.find((opt) => opt.value === value);
 
@@ -121,7 +124,11 @@ export const BottomSheetSelect = forwardRef<
           >
             {selectedOption ? selectedOption.label : placeholder}
           </Text>
-          <Ionicons name="chevron-down" size={20} color="#6B7280" />
+          <Ionicons 
+            name="chevron-down" 
+            size={20} 
+            color={isDark ? "#9CA3AF" : "#6B7280"} 
+          />
         </TouchableOpacity>
         {error && <Text className="mt-1 text-sm text-red-500">{error}</Text>}
 
@@ -136,12 +143,16 @@ export const BottomSheetSelect = forwardRef<
           <View className="bg-white dark:bg-gray-800 rounded-t-3xl flex-1 pb-20">
             {/* Header */}
             <View className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex-row items-center justify-between">
-              <Text className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                {label || "Select an option"}
-              </Text>
-              <TouchableOpacity onPress={handleClose}>
-                <Ionicons name="close" size={24} color="#6B7280" />
-              </TouchableOpacity>
+          <Text className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            {label || "Select an option"}
+          </Text>
+          <TouchableOpacity onPress={handleClose}>
+            <Ionicons 
+              name="close" 
+              size={24} 
+              color={isDark ? "#9CA3AF" : "#6B7280"} 
+            />
+          </TouchableOpacity>
             </View>
 
             {/* Options List */}

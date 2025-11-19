@@ -118,7 +118,7 @@ export default function AddTransactionScreen() {
   };
 
   return (
-    <View className="flex-1 bg-gray-50 dark:bg-gray-900">
+    <View className="flex-1 bg-gray-50 dark:bg-black">
       <Stack.Screen
         options={{
           headerShown: true,

@@ -48,7 +48,7 @@ export default function TagsManagementScreen() {
 
   if (isLoading) {
     return (
-      <SafeAreaView className="flex-1 bg-gray-50 dark:bg-gray-900" edges={['top']}>
+      <SafeAreaView className="flex-1 bg-gray-50 dark:bg-black" edges={['top']}>
         <View className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" />
         </View>
@@ -65,7 +65,7 @@ export default function TagsManagementScreen() {
           headerBackTitle: 'Settings',
         }}
       />
-      <SafeAreaView className="flex-1 bg-gray-50 dark:bg-gray-900" edges={['top']}>
+      <SafeAreaView className="flex-1 bg-gray-50 dark:bg-black" edges={['top']}>
         <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
           <View className="px-5 pt-6 pb-6">
             {/* Header */}

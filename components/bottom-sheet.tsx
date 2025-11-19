@@ -1,15 +1,17 @@
+import { getBackgroundColor, getHandleIndicatorColor } from "@/utils/colors";
 import {
-    BottomSheetBackdrop,
-    BottomSheetBackdropProps,
-    BottomSheetModal,
-    BottomSheetModalProps,
-    BottomSheetScrollView
+  BottomSheetBackdrop,
+  BottomSheetBackdropProps,
+  BottomSheetModal,
+  BottomSheetModalProps,
+  BottomSheetScrollView
 } from "@gorhom/bottom-sheet";
 import { BottomSheetModalMethods } from "@gorhom/bottom-sheet/lib/typescript/types";
-import React, { ReactElement, useCallback } from "react";
+import { useColorScheme } from "nativewind";
+import React, { ReactElement, useCallback, useMemo } from "react";
 import {
-    StyleSheet,
-    ViewStyle
+  StyleSheet,
+  ViewStyle
 } from "react-native";
 
 export interface IBottomSheet extends BottomSheetModalProps {
@@ -34,6 +36,25 @@ const BottomSheet = ({
   renderFooter,
   ...props
 }: IBottomSheet) => {
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === 'dark';
+
+  // NativeWind theme-aware styles using Tailwind color system
+  // Matches: bg-white dark:bg-gray-800
+  const backgroundStyle = useMemo(() => ({
+    backgroundColor: getBackgroundColor(isDark),
+  }), [isDark]);
+
+  // Matches: bg-gray-300 dark:bg-gray-600
+  const handleIndicatorStyle = useMemo(() => ({
+    backgroundColor: getHandleIndicatorColor(isDark),
+  }), [isDark]);
+
+  // Matches: bg-white dark:bg-gray-800
+  const scrollViewStyle = useMemo(() => ({
+    backgroundColor: getBackgroundColor(isDark),
+  }), [isDark]);
+
   const renderBackdrop = useCallback(
     (props: BottomSheetBackdropProps) => (
       <BottomSheetBackdrop
@@ -64,17 +85,17 @@ const BottomSheet = ({
       keyboardBehavior="extend"
       keyboardBlurBehavior="restore"
       android_keyboardInputMode="adjustResize"
+      backgroundStyle={backgroundStyle}
+      handleIndicatorStyle={handleIndicatorStyle}
       {...props}
     >
       <BottomSheetScrollView
         bounces={false}
+        className="flex-1"
         style={[
           styles.contentContainer,
+          scrollViewStyle,
           {
-            backgroundColor: "white",
-            // borderRadius: 32,
-            // borderWidth: 1,
-            // borderColor: Colors[colorScheme ?? "light"].gray,
             shadowColor: "black",
             shadowOffset: { width: 1, height: -3 },
             shadowOpacity: 0.2,
