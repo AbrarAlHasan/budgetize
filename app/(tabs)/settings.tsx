@@ -8,6 +8,7 @@ import { onboardingStorage } from "@/storage/onboarding";
 import { useNotificationStore } from "@/store/notification-store";
 import { useSettingsStore } from "@/store/settings-store";
 import { getCurrencyOptions, getCurrencySymbol } from "@/utils/currencies";
+import { resetAppWithDummyData } from "@/utils/dummy-data";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { colorScheme } from "nativewind";
@@ -33,6 +34,7 @@ export default function SettingsScreen() {
     updateTheme,
   } = useSettingsStore();
   const [permissionGranted, setPermissionGranted] = useState(false);
+  const [isSeedingDummyData, setIsSeedingDummyData] = useState(false);
 
   useEffect(() => {
     loadPreferences();
@@ -113,6 +115,44 @@ export default function SettingsScreen() {
               [{ text: "OK" }]
             );
           },
+        },
+      ]
+    );
+  };
+
+  const runDummyDataSeed = async () => {
+    try {
+      setIsSeedingDummyData(true);
+      const summary = await resetAppWithDummyData();
+      Alert.alert(
+        "Dummy Data Ready",
+        `Generated ${summary.transactions} transactions across ${summary.accounts} accounts.\nPull to refresh to see the latest data.`
+      );
+    } catch (error) {
+      console.error("Failed to seed dummy data:", error);
+      Alert.alert(
+        "Seeding Failed",
+        "Could not generate dummy data. Check the Metro logs for more details."
+      );
+    } finally {
+      setIsSeedingDummyData(false);
+    }
+  };
+
+  const handleSeedDummyData = () => {
+    if (isSeedingDummyData) {
+      return;
+    }
+
+    Alert.alert(
+      "Replace Data with Dummy Set?",
+      "This will erase all existing accounts, categories, tags, and transactions, then seed one year of dummy data.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Do it",
+          style: "destructive",
+          onPress: runDummyDataSeed,
         },
       ]
     );
@@ -339,7 +379,7 @@ export default function SettingsScreen() {
               {/* Reset Onboarding */}
               <TouchableOpacity
                 onPress={handleResetOnboarding}
-                className="flex-row items-center justify-between py-3"
+                className="flex-row items-center justify-between py-3 mb-2"
                 activeOpacity={0.7}
               >
                 <View className="flex-row items-center gap-3 flex-1">
@@ -353,6 +393,35 @@ export default function SettingsScreen() {
                     <Text className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
                       Show welcome screens again
                     </Text>
+                  </View>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+              </TouchableOpacity>
+
+              {/* Seed Dummy Data */}
+              <TouchableOpacity
+                onPress={handleSeedDummyData}
+                className="flex-row items-center justify-between py-3"
+                activeOpacity={0.7}
+                disabled={isSeedingDummyData}
+                style={{ opacity: isSeedingDummyData ? 0.6 : 1 }}
+              >
+                <View className="flex-row items-center gap-3 flex-1">
+                  <View className="bg-red-100 dark:bg-red-900/30 rounded-full p-2">
+                    <Ionicons name="cloud-download" size={20} color="#DC2626" />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-base font-medium text-gray-900 dark:text-gray-100">
+                      Load Dummy Data
+                    </Text>
+                    <Text className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                      Clears DB and injects 12 months of sample data
+                    </Text>
+                    {isSeedingDummyData && (
+                      <Text className="text-xs text-red-500 mt-1">
+                        Seeding dummy data...
+                      </Text>
+                    )}
                   </View>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />

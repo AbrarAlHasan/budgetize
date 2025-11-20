@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { transactionRepository } from '@/repositories/transaction.repository';
 import { CreateTransactionInput, UpdateTransactionInput, Transaction } from '@/db/schema/types';
+import { useSettingsStore } from '@/store/settings-store';
+import { filterTransactionsByIncomePreference, incomePreferenceKey } from '@/utils/income-preference';
 
 const QUERY_KEYS = {
   all: ['transactions'] as const,
@@ -40,11 +42,14 @@ export function useTransactions(filters?: {
   accountType?: string;
   accountTypes?: string[];
 }) {
+  const incomeEnabled = useSettingsStore((state) => state.incomeCalculationEnabled);
+
   return useQuery({
-    queryKey: QUERY_KEYS.list(filters),
+    queryKey: [...QUERY_KEYS.list(filters), incomePreferenceKey(incomeEnabled)],
     queryFn: async () => {
       const transactions = await transactionRepository.findAllWithFilters(filters);
-      return transactionRepository.decryptTransactions(transactions);
+      const decrypted = await transactionRepository.decryptTransactions(transactions);
+      return filterTransactionsByIncomePreference(decrypted, incomeEnabled);
     },
   });
 }
@@ -62,22 +67,28 @@ export function useTransaction(id: number) {
 }
 
 export function useTransactionsByAccount(accountId: number) {
+  const incomeEnabled = useSettingsStore((state) => state.incomeCalculationEnabled);
+
   return useQuery({
-    queryKey: QUERY_KEYS.byAccount(accountId),
+    queryKey: [...QUERY_KEYS.byAccount(accountId), incomePreferenceKey(incomeEnabled)],
     queryFn: async () => {
       const transactions = await transactionRepository.findByAccountId(accountId);
-      return transactionRepository.decryptTransactions(transactions);
+      const decrypted = await transactionRepository.decryptTransactions(transactions);
+      return filterTransactionsByIncomePreference(decrypted, incomeEnabled);
     },
     enabled: !!accountId,
   });
 }
 
 export function useTransactionsByDateRange(startDate: string, endDate: string) {
+  const incomeEnabled = useSettingsStore((state) => state.incomeCalculationEnabled);
+
   return useQuery({
-    queryKey: QUERY_KEYS.byDateRange(startDate, endDate),
+    queryKey: [...QUERY_KEYS.byDateRange(startDate, endDate), incomePreferenceKey(incomeEnabled)],
     queryFn: async () => {
       const transactions = await transactionRepository.findByDateRange(startDate, endDate);
-      return transactionRepository.decryptTransactions(transactions);
+      const decrypted = await transactionRepository.decryptTransactions(transactions);
+      return filterTransactionsByIncomePreference(decrypted, incomeEnabled);
     },
     enabled: !!startDate && !!endDate,
   });

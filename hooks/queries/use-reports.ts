@@ -4,8 +4,10 @@ import { tagRepository } from '@/repositories/tag.repository';
 import { transactionTagRepository } from '@/repositories/transaction-tag.repository';
 import { transactionRepository } from '@/repositories/transaction.repository';
 import { useUIStore } from '@/store/ui-store';
+import { useSettingsStore } from '@/store/settings-store';
 import { useQuery } from '@tanstack/react-query';
 import { differenceInDays, eachMonthOfInterval, endOfMonth, format, startOfMonth, subDays, subMonths } from 'date-fns';
+import { filterTransactionsByIncomePreference, incomePreferenceKey } from '@/utils/income-preference';
 
 const QUERY_KEYS = {
   all: ['reports'] as const,
@@ -97,6 +99,7 @@ export interface MonthlyTrend {
 
 export function useReportSummary(startDate: string, endDate: string, useFilters: boolean = false) {
   const filters = useUIStore((state) => state.filters.reports);
+  const incomeEnabled = useSettingsStore((state) => state.incomeCalculationEnabled);
   
   // Use filter dates if available, otherwise use provided dates
   const filterStartDate = useFilters && filters.startDate ? filters.startDate : startDate;
@@ -104,8 +107,8 @@ export function useReportSummary(startDate: string, endDate: string, useFilters:
 
   return useQuery({
     queryKey: useFilters 
-      ? [...QUERY_KEYS.summary(filterStartDate, filterEndDate), 'filters', filters]
-      : QUERY_KEYS.summary(filterStartDate, filterEndDate),
+      ? [...QUERY_KEYS.summary(filterStartDate, filterEndDate), 'filters', filters, incomePreferenceKey(incomeEnabled)]
+      : [...QUERY_KEYS.summary(filterStartDate, filterEndDate), incomePreferenceKey(incomeEnabled)],
     queryFn: async (): Promise<ReportSummary> => {
       const filterOptions = useFilters ? {
         startDate: filterStartDate,
@@ -124,13 +127,14 @@ export function useReportSummary(startDate: string, endDate: string, useFilters:
       
       const transactions = await transactionRepository.findAllWithFilters(filterOptions);
       const decrypted = await transactionRepository.decryptTransactions(transactions);
+      const visibleTransactions = filterTransactionsByIncomePreference(decrypted, incomeEnabled);
 
       let totalExpenses = 0;
       let totalIncome = 0;
       let expenseCount = 0;
       let incomeCount = 0;
 
-      for (const transaction of decrypted) {
+      for (const transaction of visibleTransactions) {
         const amount = typeof transaction.amount === 'number' ? transaction.amount : parseFloat(String(transaction.amount)) || 0;
         if (transaction.type === 'expense') {
           totalExpenses += amount;
@@ -145,7 +149,7 @@ export function useReportSummary(startDate: string, endDate: string, useFilters:
         totalExpenses,
         totalIncome,
         netAmount: totalIncome - totalExpenses,
-        transactionCount: decrypted.length,
+        transactionCount: visibleTransactions.length,
         averageExpense: expenseCount > 0 ? totalExpenses / expenseCount : 0,
         averageIncome: incomeCount > 0 ? totalIncome / incomeCount : 0,
       };
@@ -156,6 +160,7 @@ export function useReportSummary(startDate: string, endDate: string, useFilters:
 
 export function useCategoryReport(startDate: string, endDate: string, useFilters: boolean = false) {
   const filters = useUIStore((state) => state.filters.reports);
+  const incomeEnabled = useSettingsStore((state) => state.incomeCalculationEnabled);
   
   // Use filter dates if available, otherwise use provided dates
   const filterStartDate = useFilters && filters.startDate ? filters.startDate : startDate;
@@ -163,8 +168,8 @@ export function useCategoryReport(startDate: string, endDate: string, useFilters
 
   return useQuery({
     queryKey: useFilters 
-      ? [...QUERY_KEYS.byCategory(filterStartDate, filterEndDate), 'filters', filters]
-      : QUERY_KEYS.byCategory(filterStartDate, filterEndDate),
+      ? [...QUERY_KEYS.byCategory(filterStartDate, filterEndDate), 'filters', filters, incomePreferenceKey(incomeEnabled)]
+      : [...QUERY_KEYS.byCategory(filterStartDate, filterEndDate), incomePreferenceKey(incomeEnabled)],
     queryFn: async (): Promise<CategoryReport[]> => {
       const filterOptions = useFilters ? {
         startDate: filterStartDate,
@@ -183,12 +188,13 @@ export function useCategoryReport(startDate: string, endDate: string, useFilters
       
       const transactions = await transactionRepository.findAllWithFilters(filterOptions);
       const decrypted = await transactionRepository.decryptTransactions(transactions);
+      const visibleTransactions = filterTransactionsByIncomePreference(decrypted, incomeEnabled);
 
       // Get all transaction categories
       const categoryMap = new Map<number, { name: string; amount: number; count: number }>();
       let totalExpenses = 0;
 
-      for (const transaction of decrypted) {
+      for (const transaction of visibleTransactions) {
         if (transaction.type === 'expense') {
           const amount = typeof transaction.amount === 'number' ? transaction.amount : parseFloat(String(transaction.amount)) || 0;
           totalExpenses += amount;
@@ -247,6 +253,7 @@ export function useCategoryReport(startDate: string, endDate: string, useFilters
 
 export function useTagReport(startDate: string, endDate: string, useFilters: boolean = false) {
   const filters = useUIStore((state) => state.filters.reports);
+  const incomeEnabled = useSettingsStore((state) => state.incomeCalculationEnabled);
   
   // Use filter dates if available, otherwise use provided dates
   const filterStartDate = useFilters && filters.startDate ? filters.startDate : startDate;
@@ -254,8 +261,8 @@ export function useTagReport(startDate: string, endDate: string, useFilters: boo
 
   return useQuery({
     queryKey: useFilters 
-      ? [...QUERY_KEYS.byTag(filterStartDate, filterEndDate), 'filters', filters]
-      : QUERY_KEYS.byTag(filterStartDate, filterEndDate),
+      ? [...QUERY_KEYS.byTag(filterStartDate, filterEndDate), 'filters', filters, incomePreferenceKey(incomeEnabled)]
+      : [...QUERY_KEYS.byTag(filterStartDate, filterEndDate), incomePreferenceKey(incomeEnabled)],
     queryFn: async (): Promise<TagReport[]> => {
       const filterOptions = useFilters ? {
         startDate: filterStartDate,
@@ -274,11 +281,12 @@ export function useTagReport(startDate: string, endDate: string, useFilters: boo
       
       const transactions = await transactionRepository.findAllWithFilters(filterOptions);
       const decrypted = await transactionRepository.decryptTransactions(transactions);
+      const visibleTransactions = filterTransactionsByIncomePreference(decrypted, incomeEnabled);
 
       const tagMap = new Map<number, { name: string; amount: number; count: number }>();
       let totalTaggedExpenses = 0; // Total of all tag amounts (may be > totalExpenses due to multi-tag transactions)
 
-      for (const transaction of decrypted) {
+      for (const transaction of visibleTransactions) {
         if (transaction.type === 'expense') {
           const amount = typeof transaction.amount === 'number' ? transaction.amount : parseFloat(String(transaction.amount)) || 0;
           const tags = await transactionTagRepository.findByTransactionId(transaction.id);
@@ -342,6 +350,7 @@ export function useTagReport(startDate: string, endDate: string, useFilters: boo
 
 export function useAccountReport(startDate: string, endDate: string, useFilters: boolean = false) {
   const filters = useUIStore((state) => state.filters.reports);
+  const incomeEnabled = useSettingsStore((state) => state.incomeCalculationEnabled);
   
   // Use filter dates if available, otherwise use provided dates
   const filterStartDate = useFilters && filters.startDate ? filters.startDate : startDate;
@@ -349,8 +358,8 @@ export function useAccountReport(startDate: string, endDate: string, useFilters:
 
   return useQuery({
     queryKey: useFilters 
-      ? [...QUERY_KEYS.byAccount(filterStartDate, filterEndDate), 'filters', filters]
-      : QUERY_KEYS.byAccount(filterStartDate, filterEndDate),
+      ? [...QUERY_KEYS.byAccount(filterStartDate, filterEndDate), 'filters', filters, incomePreferenceKey(incomeEnabled)]
+      : [...QUERY_KEYS.byAccount(filterStartDate, filterEndDate), incomePreferenceKey(incomeEnabled)],
     queryFn: async (): Promise<AccountReport[]> => {
       const filterOptions = useFilters ? {
         startDate: filterStartDate,
@@ -369,6 +378,7 @@ export function useAccountReport(startDate: string, endDate: string, useFilters:
       
       const transactions = await transactionRepository.findAllWithFilters(filterOptions);
       const decrypted = await transactionRepository.decryptTransactions(transactions);
+      const visibleTransactions = filterTransactionsByIncomePreference(decrypted, incomeEnabled);
       const accounts = await accountRepository.findAll();
       const decryptedAccounts = await accountRepository.decryptAccounts(accounts);
 
@@ -388,7 +398,7 @@ export function useAccountReport(startDate: string, endDate: string, useFilters:
       }
 
       // Aggregate transactions by account
-      for (const transaction of decrypted) {
+      for (const transaction of visibleTransactions) {
         const amount = typeof transaction.amount === 'number' ? transaction.amount : parseFloat(String(transaction.amount)) || 0;
         const report = accountMap.get(transaction.account_id);
         if (report) {
@@ -414,14 +424,15 @@ export function useAccountReport(startDate: string, endDate: string, useFilters:
 
 export function usePeriodComparison(startDate: string, endDate: string, useFilters: boolean = false) {
   const filters = useUIStore((state) => state.filters.reports);
+  const incomeEnabled = useSettingsStore((state) => state.incomeCalculationEnabled);
   
   const filterStartDate = useFilters && filters.startDate ? filters.startDate : startDate;
   const filterEndDate = useFilters && filters.endDate ? filters.endDate : endDate;
 
   return useQuery({
     queryKey: useFilters 
-      ? [...QUERY_KEYS.periodComparison(filterStartDate, filterEndDate), 'filters', filters]
-      : QUERY_KEYS.periodComparison(filterStartDate, filterEndDate),
+      ? [...QUERY_KEYS.periodComparison(filterStartDate, filterEndDate), 'filters', filters, incomePreferenceKey(incomeEnabled)]
+      : [...QUERY_KEYS.periodComparison(filterStartDate, filterEndDate), incomePreferenceKey(incomeEnabled)],
     queryFn: async (): Promise<PeriodComparison> => {
       const start = new Date(filterStartDate);
       const end = new Date(filterEndDate);
@@ -461,14 +472,16 @@ export function usePeriodComparison(startDate: string, endDate: string, useFilte
       // Get current period data
       const currentTransactions = await transactionRepository.findAllWithFilters(filterOptions);
       const currentDecrypted = await transactionRepository.decryptTransactions(currentTransactions);
+      const currentVisible = filterTransactionsByIncomePreference(currentDecrypted, incomeEnabled);
 
       // Get previous period data
       const prevTransactions = await transactionRepository.findAllWithFilters(prevFilterOptions);
       const prevDecrypted = await transactionRepository.decryptTransactions(prevTransactions);
+      const prevVisible = filterTransactionsByIncomePreference(prevDecrypted, incomeEnabled);
 
       // Calculate current period summary
       let currentExpenses = 0, currentIncome = 0, currentExpenseCount = 0, currentIncomeCount = 0;
-      for (const t of currentDecrypted) {
+      for (const t of currentVisible) {
         const amount = typeof t.amount === 'number' ? t.amount : parseFloat(String(t.amount)) || 0;
         if (t.type === 'expense') {
           currentExpenses += amount;
@@ -481,7 +494,7 @@ export function usePeriodComparison(startDate: string, endDate: string, useFilte
 
       // Calculate previous period summary
       let prevExpenses = 0, prevIncome = 0, prevExpenseCount = 0, prevIncomeCount = 0;
-      for (const t of prevDecrypted) {
+      for (const t of prevVisible) {
         const amount = typeof t.amount === 'number' ? t.amount : parseFloat(String(t.amount)) || 0;
         if (t.type === 'expense') {
           prevExpenses += amount;
@@ -496,7 +509,7 @@ export function usePeriodComparison(startDate: string, endDate: string, useFilte
         totalExpenses: currentExpenses,
         totalIncome: currentIncome,
         netAmount: currentIncome - currentExpenses,
-        transactionCount: currentDecrypted.length,
+        transactionCount: currentVisible.length,
         averageExpense: currentExpenseCount > 0 ? currentExpenses / currentExpenseCount : 0,
         averageIncome: currentIncomeCount > 0 ? currentIncome / currentIncomeCount : 0,
       };
@@ -505,7 +518,7 @@ export function usePeriodComparison(startDate: string, endDate: string, useFilte
         totalExpenses: prevExpenses,
         totalIncome: prevIncome,
         netAmount: prevIncome - prevExpenses,
-        transactionCount: prevDecrypted.length,
+        transactionCount: prevVisible.length,
         averageExpense: prevExpenseCount > 0 ? prevExpenses / prevExpenseCount : 0,
         averageIncome: prevIncomeCount > 0 ? prevIncome / prevIncomeCount : 0,
       };
@@ -554,14 +567,15 @@ export function usePeriodComparison(startDate: string, endDate: string, useFilte
 
 export function useDailyPatterns(startDate: string, endDate: string, useFilters: boolean = false) {
   const filters = useUIStore((state) => state.filters.reports);
+  const incomeEnabled = useSettingsStore((state) => state.incomeCalculationEnabled);
   
   const filterStartDate = useFilters && filters.startDate ? filters.startDate : startDate;
   const filterEndDate = useFilters && filters.endDate ? filters.endDate : endDate;
 
   return useQuery({
     queryKey: useFilters 
-      ? [...QUERY_KEYS.dailyPatterns(filterStartDate, filterEndDate), 'filters', filters]
-      : QUERY_KEYS.dailyPatterns(filterStartDate, filterEndDate),
+      ? [...QUERY_KEYS.dailyPatterns(filterStartDate, filterEndDate), 'filters', filters, incomePreferenceKey(incomeEnabled)]
+      : [...QUERY_KEYS.dailyPatterns(filterStartDate, filterEndDate), incomePreferenceKey(incomeEnabled)],
     queryFn: async (): Promise<DailyPattern[]> => {
       const filterOptions = useFilters ? {
         startDate: filterStartDate,
@@ -580,11 +594,12 @@ export function useDailyPatterns(startDate: string, endDate: string, useFilters:
       
       const transactions = await transactionRepository.findAllWithFilters(filterOptions);
       const decrypted = await transactionRepository.decryptTransactions(transactions);
+      const visibleTransactions = filterTransactionsByIncomePreference(decrypted, incomeEnabled);
 
       const dayMap = new Map<number, { total: number; count: number }>();
       const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-      for (const transaction of decrypted) {
+      for (const transaction of visibleTransactions) {
         if (transaction.type === 'expense') {
           const date = new Date(transaction.date);
           const dayIndex = date.getDay();
@@ -619,11 +634,12 @@ export function useDailyPatterns(startDate: string, endDate: string, useFilters:
 
 export function useMonthlyTrends(startDate: string, endDate: string, useFilters: boolean = false) {
   const filters = useUIStore((state) => state.filters.reports);
+  const incomeEnabled = useSettingsStore((state) => state.incomeCalculationEnabled);
 
   return useQuery({
     queryKey: useFilters 
-      ? [...QUERY_KEYS.monthlyTrends(startDate, endDate), 'filters', filters]
-      : QUERY_KEYS.monthlyTrends(startDate, endDate),
+      ? [...QUERY_KEYS.monthlyTrends(startDate, endDate), 'filters', filters, incomePreferenceKey(incomeEnabled)]
+      : [...QUERY_KEYS.monthlyTrends(startDate, endDate), incomePreferenceKey(incomeEnabled)],
     queryFn: async (): Promise<MonthlyTrend[]> => {
       // Always show last 10 months ending with current month
       const currentDate = new Date();
@@ -648,10 +664,11 @@ export function useMonthlyTrends(startDate: string, endDate: string, useFilters:
       
       const transactions = await transactionRepository.findAllWithFilters(filterOptions);
       const decrypted = await transactionRepository.decryptTransactions(transactions);
+      const visibleTransactions = filterTransactionsByIncomePreference(decrypted, incomeEnabled);
 
       const monthMap = new Map<string, { expenses: number; income: number; count: number }>();
 
-      for (const transaction of decrypted) {
+      for (const transaction of visibleTransactions) {
         const date = new Date(transaction.date);
         const monthKey = format(date, 'yyyy-MM');
         const amount = typeof transaction.amount === 'number' ? transaction.amount : parseFloat(String(transaction.amount)) || 0;

@@ -3,6 +3,8 @@ import { tagRepository } from '@/repositories/tag.repository';
 import { transactionRepository } from '@/repositories/transaction.repository';
 import { transactionTagRepository } from '@/repositories/transaction-tag.repository';
 import { CreateTagInput, UpdateTagInput, TransactionType, AccountType } from '@/db/schema/types';
+import { useSettingsStore } from '@/store/settings-store';
+import { filterTransactionsByIncomePreference, incomePreferenceKey } from '@/utils/income-preference';
 
 const QUERY_KEYS = {
   all: ['tags'] as const,
@@ -83,8 +85,10 @@ interface TagsWithTransactionsFilters {
  * only relevant tags.
  */
 export function useTagsWithTransactions(filters: TagsWithTransactionsFilters = {}) {
+  const incomeEnabled = useSettingsStore((state) => state.incomeCalculationEnabled);
+
   return useQuery({
-    queryKey: QUERY_KEYS.withTransactions(filters),
+    queryKey: [...QUERY_KEYS.withTransactions(filters), incomePreferenceKey(incomeEnabled)],
     queryFn: async () => {
       // Build filter options (excluding tagId since we want all tags)
       const filterOptions: any = {};
@@ -96,10 +100,11 @@ export function useTagsWithTransactions(filters: TagsWithTransactionsFilters = {
       
       // Get all transactions matching the filters
       const transactions = await transactionRepository.findAllWithFilters(filterOptions);
+      const filteredTransactions = filterTransactionsByIncomePreference(transactions, incomeEnabled);
       
       // Get unique tag IDs from transactions
       const tagIds = new Set<number>();
-      for (const transaction of transactions) {
+      for (const transaction of filteredTransactions) {
         const transactionTags = await transactionTagRepository.findByTransactionId(transaction.id);
         for (const tt of transactionTags) {
           tagIds.add(tt.tag_id);

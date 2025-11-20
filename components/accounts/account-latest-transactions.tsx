@@ -11,6 +11,7 @@ import { useCategories } from '@/hooks/queries/use-categories';
 import { categoryRepository } from '@/repositories/category.repository';
 import { transactionTagRepository } from '@/repositories/transaction-tag.repository';
 import { tagRepository } from '@/repositories/tag.repository';
+import { useUIStore } from '@/store/ui-store';
 
 interface AccountLatestTransactionsProps {
   accountId: number;
@@ -23,6 +24,9 @@ export function AccountLatestTransactions({ accountId }: AccountLatestTransactio
   });
   const { data: accounts } = useAccounts();
   const { data: categories } = useCategories();
+  const clearFilters = useUIStore((state) => state.clearFilters);
+  const setAccountFilter = useUIStore((state) => state.setAccountFilter);
+  const setCurrentFilterContext = useUIStore((state) => state.setCurrentFilterContext);
 
   const [transactionTags, setTransactionTags] = React.useState<Map<number, Array<{ id: number; name: string }>>>(new Map());
   const [transactionCategories, setTransactionCategories] = React.useState<Map<number, string>>(new Map());
@@ -83,7 +87,12 @@ export function AccountLatestTransactions({ accountId }: AccountLatestTransactio
         </View>
         {transactions && transactions.length > 5 && (
           <TouchableOpacity
-            onPress={() => router.push(`/accounts/${accountId}`)}
+            onPress={() => {
+              clearFilters('expenses');
+              setAccountFilter('expenses', accountId);
+              setCurrentFilterContext('expenses');
+              router.push('/expenses');
+            }}
             className="flex-row items-center gap-1"
             activeOpacity={0.7}
           >

@@ -3,6 +3,8 @@ import { transactionRepository } from '@/repositories/transaction.repository';
 import { categoryRepository } from '@/repositories/category.repository';
 import { startOfMonth, endOfMonth, format } from 'date-fns';
 import { useUIStore } from '@/store/ui-store';
+import { useSettingsStore } from '@/store/settings-store';
+import { filterTransactionsByIncomePreference, incomePreferenceKey } from '@/utils/income-preference';
 
 const QUERY_KEYS = {
   all: ['dashboard'] as const,
@@ -26,6 +28,7 @@ interface CategoryBreakdown {
 
 export function useDashboardData(month?: Date, useFilters: boolean = false) {
   const filters = useUIStore((state) => state.filters.dashboard);
+  const incomeEnabled = useSettingsStore((state) => state.incomeCalculationEnabled);
   const targetMonth = month || new Date();
   const monthKey = format(targetMonth, 'yyyy-MM');
   
@@ -39,8 +42,8 @@ export function useDashboardData(month?: Date, useFilters: boolean = false) {
 
   return useQuery({
     queryKey: useFilters 
-      ? [...QUERY_KEYS.monthly(monthKey), 'filters', filters]
-      : QUERY_KEYS.monthly(monthKey),
+      ? [...QUERY_KEYS.monthly(monthKey), 'filters', filters, incomePreferenceKey(incomeEnabled)]
+      : [...QUERY_KEYS.monthly(monthKey), incomePreferenceKey(incomeEnabled)],
     queryFn: async (): Promise<DashboardData> => {
       const filterOptions = useFilters ? {
         startDate,
@@ -59,11 +62,12 @@ export function useDashboardData(month?: Date, useFilters: boolean = false) {
       
       const transactions = await transactionRepository.findAllWithFilters(filterOptions);
       const decrypted = await transactionRepository.decryptTransactions(transactions);
+      const visibleTransactions = filterTransactionsByIncomePreference(decrypted, incomeEnabled);
 
       let totalSpending = 0;
       let totalIncome = 0;
 
-      for (const transaction of decrypted) {
+      for (const transaction of visibleTransactions) {
         const amount = typeof transaction.amount === 'number' ? transaction.amount : parseFloat(String(transaction.amount)) || 0;
         if (transaction.type === 'expense') {
           totalSpending += amount;
@@ -84,6 +88,7 @@ export function useDashboardData(month?: Date, useFilters: boolean = false) {
 
 export function useCategoryBreakdown(month?: Date, useFilters: boolean = false) {
   const filters = useUIStore((state) => state.filters.dashboard);
+  const incomeEnabled = useSettingsStore((state) => state.incomeCalculationEnabled);
   const targetMonth = month || new Date();
   const monthKey = format(targetMonth, 'yyyy-MM');
   
@@ -97,8 +102,8 @@ export function useCategoryBreakdown(month?: Date, useFilters: boolean = false) 
 
   return useQuery({
     queryKey: useFilters 
-      ? [...QUERY_KEYS.categoryBreakdown(monthKey), 'filters', filters]
-      : QUERY_KEYS.categoryBreakdown(monthKey),
+      ? [...QUERY_KEYS.categoryBreakdown(monthKey), 'filters', filters, incomePreferenceKey(incomeEnabled)]
+      : [...QUERY_KEYS.categoryBreakdown(monthKey), incomePreferenceKey(incomeEnabled)],
     queryFn: async (): Promise<CategoryBreakdown[]> => {
       const filterOptions = useFilters ? {
         startDate,
@@ -117,11 +122,12 @@ export function useCategoryBreakdown(month?: Date, useFilters: boolean = false) 
       
       const transactions = await transactionRepository.findAllWithFilters(filterOptions);
       const decrypted = await transactionRepository.decryptTransactions(transactions);
+      const visibleTransactions = filterTransactionsByIncomePreference(decrypted, incomeEnabled);
 
       // Get all transaction categories
       const categoryMap = new Map<number, { name: string; amount: number; count: number }>();
 
-      for (const transaction of decrypted) {
+      for (const transaction of visibleTransactions) {
         if (transaction.type === 'expense') {
           const amount = typeof transaction.amount === 'number' ? transaction.amount : parseFloat(String(transaction.amount)) || 0;
           
