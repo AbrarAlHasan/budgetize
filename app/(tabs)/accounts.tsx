@@ -1,5 +1,6 @@
-import { AccountCard } from "@/components/account-card";
+import { CreditCardStack } from "@/components/accounts/credit-card-stack";
 import { useAccounts } from "@/hooks/queries/use-accounts";
+import { useAccountBalances } from "@/hooks/queries/use-account-balances";
 import { Ionicons } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
@@ -17,18 +18,24 @@ import { SafeAreaView } from "react-native-safe-area-context";
 export default function AccountsScreen() {
   const queryClient = useQueryClient();
   const { data: accounts, isLoading } = useAccounts();
+  const { data: accountBalances, isLoading: balancesLoading } = useAccountBalances();
   const [refreshing, setRefreshing] = React.useState(false);
 
   const onRefresh = React.useCallback(async () => {
     setRefreshing(true);
     try {
-      await queryClient.invalidateQueries({ queryKey: ["accounts"] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["accounts"] }),
+        queryClient.invalidateQueries({ queryKey: ["account-balances"] }),
+      ]);
     } finally {
       setRefreshing(false);
     }
   }, [queryClient]);
 
-  if (isLoading) {
+  const isLoadingData = isLoading || balancesLoading;
+
+  if (isLoadingData) {
     return (
       <SafeAreaView
         className="flex-1 bg-gray-50 dark:bg-black"
@@ -78,9 +85,10 @@ export default function AccountsScreen() {
           </TouchableOpacity>
 
           {accounts && accounts.length > 0 ? (
-            accounts.map((account) => (
-              <AccountCard key={account.id} account={account} />
-            ))
+            <CreditCardStack 
+              accounts={accounts} 
+              accountBalances={accountBalances}
+            />
           ) : (
             <View className="bg-white dark:bg-gray-900 rounded-2xl p-8 items-center">
               <Ionicons name="wallet-outline" size={48} color="#9CA3AF" />
