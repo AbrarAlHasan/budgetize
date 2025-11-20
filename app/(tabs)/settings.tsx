@@ -9,6 +9,7 @@ import { useNotificationStore } from "@/store/notification-store";
 import { useSettingsStore } from "@/store/settings-store";
 import { getCurrencyOptions, getCurrencySymbol } from "@/utils/currencies";
 import { resetAppWithDummyData } from "@/utils/dummy-data";
+import { backupAppData } from "@/utils/backup";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { colorScheme } from "nativewind";
@@ -35,6 +36,7 @@ export default function SettingsScreen() {
   } = useSettingsStore();
   const [permissionGranted, setPermissionGranted] = useState(false);
   const [isSeedingDummyData, setIsSeedingDummyData] = useState(false);
+  const [isBackingUp, setIsBackingUp] = useState(false);
 
   useEffect(() => {
     loadPreferences();
@@ -156,6 +158,36 @@ export default function SettingsScreen() {
         },
       ]
     );
+  };
+
+  const handleBackupData = async () => {
+    if (isBackingUp) {
+      return;
+    }
+
+    try {
+      setIsBackingUp(true);
+      const zipPath = await backupAppData();
+      if (zipPath) {
+        Alert.alert(
+          "Backup Ready",
+          "backup.zip was generated and the system share dialog opened. Save it to a safe location."
+        );
+      } else {
+        Alert.alert(
+          "Backup Failed",
+          "Could not create the backup. Please try again."
+        );
+      }
+    } catch (error) {
+      console.error("Backup failed:", error);
+      Alert.alert(
+        "Backup Failed",
+        "An unexpected error occurred while creating the backup."
+      );
+    } finally {
+      setIsBackingUp(false);
+    }
   };
 
   return (
@@ -323,6 +355,35 @@ export default function SettingsScreen() {
             <Text className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
               Data Management
             </Text>
+
+            {/* Backup Data */}
+            <TouchableOpacity
+              onPress={handleBackupData}
+              className="flex-row items-center justify-between py-3 mb-3"
+              activeOpacity={0.7}
+              disabled={isBackingUp}
+              style={{ opacity: isBackingUp ? 0.6 : 1 }}
+            >
+              <View className="flex-row items-center gap-3 flex-1">
+                <View className="bg-green-100 dark:bg-green-900/30 rounded-full p-2">
+                  <Ionicons name="cloud-upload" size={20} color="#10B981" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-base font-medium text-gray-900 dark:text-gray-100">
+                    Backup & Export Data
+                  </Text>
+                  <Text className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                    Creates an encrypted ZIP (SQLite, MMKV, metadata) and opens sharing
+                  </Text>
+                  {isBackingUp && (
+                    <Text className="text-xs text-green-600 dark:text-green-400 mt-1">
+                      Preparing backup...
+                    </Text>
+                  )}
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+            </TouchableOpacity>
 
             {/* Manage Categories */}
             <TouchableOpacity
