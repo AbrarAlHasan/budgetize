@@ -7,9 +7,9 @@ import {
 import { onboardingStorage } from "@/storage/onboarding";
 import { useNotificationStore } from "@/store/notification-store";
 import { useSettingsStore } from "@/store/settings-store";
+import { backupSqlLiteData } from "@/utils/backup";
 import { getCurrencyOptions, getCurrencySymbol } from "@/utils/currencies";
 import { resetAppWithDummyData } from "@/utils/dummy-data";
-import { backupAppData } from "@/utils/backup";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { colorScheme } from "nativewind";
@@ -167,7 +167,7 @@ export default function SettingsScreen() {
 
     try {
       setIsBackingUp(true);
-      const zipPath = await backupAppData();
+      const zipPath = await backupSqlLiteData();
       if (zipPath) {
         Alert.alert(
           "Backup Ready",
@@ -191,10 +191,7 @@ export default function SettingsScreen() {
   };
 
   return (
-    <SafeAreaView
-      className="flex-1 bg-gray-50 dark:bg-black"
-      edges={["top"]}
-    >
+    <SafeAreaView className="flex-1 bg-gray-50 dark:bg-black" edges={["top"]}>
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         <View className="px-5 pt-6 pb-6">
           {/* Header */}
@@ -222,14 +219,14 @@ export default function SettingsScreen() {
                 onValueChange={async (value) => {
                   const theme = value as "light" | "dark" | "auto";
                   await updateTheme(theme);
-                  
+
                   // Update NativeWind colorScheme
                   // For 'auto', use 'system' to follow device preference
-                  if (theme !== 'auto') {
+                  if (theme !== "auto") {
                     colorScheme.set(theme);
                   } else {
                     // Reset to system preference
-                    colorScheme.set('system');
+                    colorScheme.set("system");
                   }
                 }}
                 placeholder="Select theme"
@@ -373,7 +370,8 @@ export default function SettingsScreen() {
                     Backup & Export Data
                   </Text>
                   <Text className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                    Creates an encrypted ZIP (SQLite, MMKV, metadata) and opens sharing
+                    Creates an encrypted ZIP (SQLite, MMKV, metadata) and opens
+                    sharing
                   </Text>
                   {isBackingUp && (
                     <Text className="text-xs text-green-600 dark:text-green-400 mt-1">
@@ -431,7 +429,7 @@ export default function SettingsScreen() {
           </Card>
 
           {/* Developer Options */}
-          {__DEV__ && (
+          {true && (
             <Card className="mb-4">
               <Text className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
                 Developer Options
