@@ -6,6 +6,7 @@ import { getCurrencySymbol } from '@/utils/currencies';
 import { useSettingsStore } from '@/store/settings-store';
 import { router } from 'expo-router';
 import { TransactionItem } from '@/components/transaction-item';
+import { RecentTransactionsSkeleton } from '@/components/skeletons';
 import { useAccounts } from '@/hooks/queries/use-accounts';
 import { useCategories } from '@/hooks/queries/use-categories';
 import { categoryRepository } from '@/repositories/category.repository';
@@ -69,10 +70,6 @@ export function AccountLatestTransactions({ accountId }: AccountLatestTransactio
     return accounts?.find((a) => a.id === accountId)?.name || '';
   };
 
-  if (isLoading) {
-    return null;
-  }
-
   // Get latest 5 transactions
   const latestTransactions = transactions ? transactions.slice(0, 5) : [];
 
@@ -85,7 +82,7 @@ export function AccountLatestTransactions({ accountId }: AccountLatestTransactio
             Latest Transactions
           </Text>
         </View>
-        {transactions && transactions.length > 5 && (
+        {!isLoading && transactions && transactions.length > 5 && (
           <TouchableOpacity
             onPress={() => {
               clearFilters('expenses');
@@ -102,7 +99,9 @@ export function AccountLatestTransactions({ accountId }: AccountLatestTransactio
         )}
       </View>
 
-      {latestTransactions.length > 0 ? (
+      {isLoading ? (
+        <RecentTransactionsSkeleton />
+      ) : latestTransactions.length > 0 ? (
         <>
           {latestTransactions.map((transaction) => (
             <TransactionItem

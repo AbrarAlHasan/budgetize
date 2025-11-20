@@ -1,9 +1,10 @@
 import React from 'react';
-import { View, Text, ScrollView, ActivityIndicator, RefreshControl, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTransactions } from '@/hooks/queries/use-transactions';
 import { ActiveFilterChips } from '@/components/filters/active-filter-chips';
 import { TransactionItem } from '@/components/transaction-item';
+import { TransactionsListSkeleton } from '@/components/skeletons';
 import { router } from 'expo-router';
 import { useAccounts } from '@/hooks/queries/use-accounts';
 import { useCategories } from '@/hooks/queries/use-categories';
@@ -133,16 +134,6 @@ export default function ExpensesScreen() {
     queryClient.invalidateQueries({ queryKey: ['transactions'] });
   };
 
-  if (isLoading) {
-    return (
-      <SafeAreaView className="flex-1 bg-gray-50 dark:bg-black" edges={['top']}>
-        <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" />
-        </View>
-      </SafeAreaView>
-    );
-  }
-
   return (
     <SafeAreaView className="flex-1 bg-gray-50 dark:bg-black" edges={['top']}>
       <ScrollView 
@@ -196,7 +187,9 @@ export default function ExpensesScreen() {
             <Text className="text-white font-semibold ml-2">Add Transaction</Text>
           </TouchableOpacity>
 
-        {transactions && transactions.length > 0 ? (
+        {isLoading ? (
+          <TransactionsListSkeleton count={8} />
+        ) : transactions && transactions.length > 0 ? (
           transactions.map((transaction) => (
             <TransactionItem
               key={transaction.id}

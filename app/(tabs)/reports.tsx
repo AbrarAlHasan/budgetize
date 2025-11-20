@@ -4,6 +4,14 @@ import { SimpleBarChart } from '@/components/charts/simple-bar-chart';
 import { TrendIndicator } from '@/components/charts/trend-indicator';
 import { ActiveFilterChips } from '@/components/filters/active-filter-chips';
 import { SpendingVelocity } from '@/components/reports/spending-velocity';
+import {
+  AccountAnalysisSkeleton,
+  ChartSkeleton,
+  EnhancedBreakdownSkeleton,
+  PeriodComparisonSkeleton,
+  ReportsSummaryCardsSkeleton,
+  SpendingVelocitySkeleton,
+} from '@/components/skeletons';
 import { Card } from '@/components/ui/card';
 import {
   useAccountReport,
@@ -14,6 +22,7 @@ import {
   useReportSummary,
   useTagReport
 } from '@/hooks/queries/use-reports';
+import { useSpendingVelocity } from '@/hooks/queries/use-spending-velocity';
 import { useSettingsStore } from '@/store/settings-store';
 import { useUIStore } from '@/store/ui-store';
 import { getCurrencySymbol } from '@/utils/currencies';
@@ -23,7 +32,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { endOfMonth, format, startOfMonth, subMonths } from 'date-fns';
 import { router } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function ReportsScreen() {
@@ -96,8 +105,7 @@ export default function ReportsScreen() {
   const { data: periodComparison, isLoading: comparisonLoading } = usePeriodComparison(startDateStr, endDateStr, useFilters);
   const { data: dailyPatterns, isLoading: dailyLoading } = useDailyPatterns(startDateStr, endDateStr, useFilters);
   const { data: monthlyTrends, isLoading: monthlyLoading } = useMonthlyTrends(trendStartDateStr, endDateStr, useFilters);
-
-  const isLoading = summaryLoading || categoryLoading || tagLoading || accountLoading || comparisonLoading || dailyLoading || monthlyLoading;
+  const { isLoading: velocityLoading } = useSpendingVelocity(startDateStr, endDateStr, useFilters);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -156,14 +164,10 @@ export default function ReportsScreen() {
 
         <ActiveFilterChips context="reports" />
 
-        {isLoading ? (
-          <View className="items-center justify-center py-8">
-            <ActivityIndicator size="large" />
-          </View>
-        ) : (
-          <>
-              {/* Enhanced Summary Cards */}
-            {summary && (
+        {/* Enhanced Summary Cards */}
+        {summaryLoading ? (
+          <ReportsSummaryCardsSkeleton showIncome={settings.incomeCalculationEnabled} />
+        ) : summary ? (
               <View className="mb-6">
                 <View className={`flex-row gap-3 ${settings.incomeCalculationEnabled ? 'mb-3' : ''}`}>
                     {/* Income Card */}
@@ -283,17 +287,23 @@ export default function ReportsScreen() {
                   </Card>
                 )}
               </View>
-            )}
+            ) : null}
 
-            {/* Spending Velocity */}
-            <SpendingVelocity 
-              startDate={startDateStr} 
-              endDate={endDateStr} 
-              useFilters={useFilters} 
-            />
+        {/* Spending Velocity */}
+        {velocityLoading ? (
+          <SpendingVelocitySkeleton />
+        ) : (
+          <SpendingVelocity 
+            startDate={startDateStr} 
+            endDate={endDateStr} 
+            useFilters={useFilters} 
+          />
+        )}
 
-              {/* Period Comparison */}
-              {periodComparison && (
+        {/* Period Comparison */}
+        {comparisonLoading ? (
+          <PeriodComparisonSkeleton />
+        ) : periodComparison ? (
                 <Card className="mb-6">
                   <Text className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">
                     Period Comparison
@@ -368,10 +378,12 @@ export default function ReportsScreen() {
                     </View>
                   </View>
                 </Card>
-              )}
+              ) : null}
 
-              {/* Daily Spending Patterns */}
-              {dailyPatterns && (
+        {/* Daily Spending Patterns */}
+        {dailyLoading ? (
+          <ChartSkeleton title="Daily Spending Patterns" height={180} />
+        ) : dailyPatterns ? (
                 <Card className="mb-6">
                   <Text className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">
                     Daily Spending Patterns
@@ -398,10 +410,12 @@ export default function ReportsScreen() {
                     </View>
                   )}
                 </Card>
-              )}
+              ) : null}
 
-              {/* Monthly Trends */}
-              {monthlyTrends && monthlyTrends.length > 0 && (
+        {/* Monthly Trends */}
+        {monthlyLoading ? (
+          <ChartSkeleton title="Monthly Trends" height={150} />
+        ) : monthlyTrends && monthlyTrends.length > 0 ? (
                 <Card className="mb-6">
                   <Text className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">
                     Monthly Trends
@@ -417,10 +431,12 @@ export default function ReportsScreen() {
                   animationKey={`${chartAnimationKey}-monthly`}
                   />
                 </Card>
-              )}
+              ) : null}
 
-              {/* Category Breakdown (Enhanced) */}
-            {categoryReport && categoryReport.length > 0 && (
+        {/* Category Breakdown (Enhanced) */}
+        {categoryLoading ? (
+          <EnhancedBreakdownSkeleton title="Category Breakdown" />
+        ) : categoryReport && categoryReport.length > 0 ? (
               <Card className="mb-6">
                 <Text className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">
                     Category Breakdown
@@ -477,10 +493,12 @@ export default function ReportsScreen() {
                   })}
                 </View>
               </Card>
-            )}
+            ) : null}
 
-              {/* Tags Breakdown (Enhanced) */}
-            {tagReport && tagReport.length > 0 && (
+        {/* Tags Breakdown (Enhanced) */}
+        {tagLoading ? (
+          <EnhancedBreakdownSkeleton title="Tags Breakdown" />
+        ) : tagReport && tagReport.length > 0 ? (
               <Card className="mb-6">
                 <Text className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">
                     Tags Breakdown
@@ -537,10 +555,12 @@ export default function ReportsScreen() {
                   })}
                 </View>
               </Card>
-            )}
+            ) : null}
 
-              {/* Account Report (Enhanced) */}
-            {accountReport && accountReport.length > 0 && (
+        {/* Account Report (Enhanced) */}
+        {accountLoading ? (
+          <AccountAnalysisSkeleton showIncome={settings.incomeCalculationEnabled} />
+        ) : accountReport && accountReport.length > 0 ? (
               <Card>
                 <Text className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">
                     Account Analysis
@@ -604,9 +624,7 @@ export default function ReportsScreen() {
                   ))}
                 </View>
               </Card>
-            )}
-          </>
-        )}
+            ) : null}
         </View>
       </ScrollView>
     </SafeAreaView>

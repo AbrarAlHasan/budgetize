@@ -1,5 +1,6 @@
 import { AccountLatestTransactions } from "@/components/accounts/account-latest-transactions";
 import { CreditCardStack } from "@/components/accounts/credit-card-stack";
+import { CreditCardStackSkeleton } from "@/components/skeletons";
 import { useAccountBalances } from "@/hooks/queries/use-account-balances";
 import { useAccounts } from "@/hooks/queries/use-accounts";
 import { Ionicons } from "@expo/vector-icons";
@@ -42,21 +43,6 @@ export default function AccountsScreen() {
       setRefreshing(false);
     }
   }, [queryClient]);
-
-  const isLoadingData = isLoading || balancesLoading;
-
-  if (isLoadingData) {
-    return (
-      <SafeAreaView
-        className="flex-1 bg-gray-50 dark:bg-black"
-        edges={["top"]}
-      >
-        <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" />
-        </View>
-      </SafeAreaView>
-    );
-  }
 
   return (
     <SafeAreaView
@@ -132,7 +118,9 @@ export default function AccountsScreen() {
             </View>
           </TouchableOpacity>
 
-          {accounts && accounts.length > 0 ? (
+          {isLoading || balancesLoading ? (
+            <CreditCardStackSkeleton />
+          ) : accounts && accounts.length > 0 ? (
             <>
               <CreditCardStack 
                 accounts={accounts} 

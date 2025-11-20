@@ -1,5 +1,10 @@
 import { AnimatedProgressBar } from "@/components/charts/animated-progress-bar";
 import { ActiveFilterChips } from "@/components/filters/active-filter-chips";
+import {
+  CategoryBreakdownSkeleton,
+  RecentTransactionsSkeleton,
+  SummaryCardsSkeleton,
+} from "@/components/skeletons";
 import { TransactionItem } from "@/components/transaction-item";
 import { Card } from "@/components/ui/card";
 import { useAccounts } from "@/hooks/queries/use-accounts";
@@ -22,7 +27,6 @@ import { endOfMonth, format, startOfMonth } from "date-fns";
 import { router } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
-  ActivityIndicator,
   RefreshControl,
   ScrollView,
   Text,
@@ -224,16 +228,6 @@ export default function DashboardScreen() {
     queryClient.invalidateQueries({ queryKey: ["transactions"] });
   };
 
-  if (dashboardLoading || transactionsLoading) {
-    return (
-      <SafeAreaView className="flex-1 bg-gray-50 dark:bg-black" edges={["top"]}>
-        <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" />
-        </View>
-      </SafeAreaView>
-    );
-  }
-
   return (
     <SafeAreaView className="flex-1 bg-gray-50 dark:bg-black" edges={["top"]}>
       <ScrollView
@@ -281,75 +275,78 @@ export default function DashboardScreen() {
           <ActiveFilterChips context="dashboard" />
 
           {/* Summary Cards */}
-          <View className="mb-6">
-            <View
-              className={`flex-row gap-3 ${
-                settings.incomeCalculationEnabled ? "mb-3" : ""
-              }`}
-            >
-              {/* Income Card - Only show if income calculation is enabled */}
-              {settings.incomeCalculationEnabled && (
+          {dashboardLoading ? (
+            <SummaryCardsSkeleton showIncome={settings.incomeCalculationEnabled} />
+          ) : (
+            <View className="mb-6">
+              <View
+                className={`flex-row gap-3 ${
+                  settings.incomeCalculationEnabled ? "mb-3" : ""
+                }`}
+              >
+                {/* Income Card - Only show if income calculation is enabled */}
+                {settings.incomeCalculationEnabled && (
+                  <View
+                    className="flex-1 rounded-2xl p-4"
+                    style={{ backgroundColor: "#D1FAE5" }}
+                  >
+                    <View className="flex-row items-center justify-between mb-2">
+                      <Text className="text-xs font-medium text-gray-600">
+                        Income
+                      </Text>
+                      <Ionicons name="arrow-up" size={16} color="#10B981" />
+                    </View>
+                    <Text className="text-2xl font-bold text-gray-900">
+                      {getCurrencySymbol(settings.currency)}
+                      {dashboardData?.totalIncome.toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      }) || "0.00"}
+                    </Text>
+                    <Text className="text-xs text-gray-500 mt-1">This month</Text>
+                  </View>
+                )}
+
+                {/* Expense Card */}
                 <View
                   className="flex-1 rounded-2xl p-4"
-                  style={{ backgroundColor: "#D1FAE5" }}
+                  style={{ backgroundColor: "#FEE2E2" }}
                 >
                   <View className="flex-row items-center justify-between mb-2">
                     <Text className="text-xs font-medium text-gray-600">
-                      Income
+                      Expense
                     </Text>
-                    <Ionicons name="arrow-up" size={16} color="#10B981" />
+                    <Ionicons name="arrow-down" size={16} color="#EF4444" />
                   </View>
                   <Text className="text-2xl font-bold text-gray-900">
                     {getCurrencySymbol(settings.currency)}
-                    {dashboardData?.totalIncome.toLocaleString(undefined, {
+                    {dashboardData?.totalSpending.toLocaleString(undefined, {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     }) || "0.00"}
                   </Text>
                   <Text className="text-xs text-gray-500 mt-1">This month</Text>
                 </View>
-              )}
-
-              {/* Expense Card */}
-              <View
-                className="flex-1 rounded-2xl p-4"
-                style={{ backgroundColor: "#FEE2E2" }}
-              >
-                <View className="flex-row items-center justify-between mb-2">
-                  <Text className="text-xs font-medium text-gray-600">
-                    Expense
-                  </Text>
-                  <Ionicons name="arrow-down" size={16} color="#EF4444" />
-                </View>
-                <Text className="text-2xl font-bold text-gray-900">
-                  {getCurrencySymbol(settings.currency)}
-                  {dashboardData?.totalSpending.toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  }) || "0.00"}
-                </Text>
-                <Text className="text-xs text-gray-500 mt-1">This month</Text>
               </View>
-            </View>
 
-            {/* Net Amount Card - Only show if income calculation is enabled */}
-            {settings.incomeCalculationEnabled && (
-              <Card
-                className="bg-gradient-to-r"
-                style={{
-                  backgroundColor:
-                    (dashboardData?.netAmount || 0) >= 0
-                      ? "#F0FDF4"
-                      : "#FEF2F2",
-                }}
-              >
-                <View className="flex-row items-center justify-between">
-                  <View>
-                    <Text className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                      Net Amount
-                    </Text>
-                    <Text
-                      className={`
+              {/* Net Amount Card - Only show if income calculation is enabled */}
+              {settings.incomeCalculationEnabled && (
+                <Card
+                  className="bg-gradient-to-r"
+                  style={{
+                    backgroundColor:
+                      (dashboardData?.netAmount || 0) >= 0
+                        ? "#F0FDF4"
+                        : "#FEF2F2",
+                  }}
+                >
+                  <View className="flex-row items-center justify-between">
+                    <View>
+                      <Text className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+                        Net Amount
+                      </Text>
+                      <Text
+                        className={`
                     text-2xl font-bold
                     ${
                       (dashboardData?.netAmount || 0) >= 0
@@ -357,94 +354,93 @@ export default function DashboardScreen() {
                         : "text-red-600"
                     }
                   `}
-                    >
-                      {getCurrencySymbol(settings.currency)}
-                      {dashboardData?.netAmount.toLocaleString(undefined, {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      }) || "0.00"}
-                    </Text>
+                      >
+                        {getCurrencySymbol(settings.currency)}
+                        {dashboardData?.netAmount.toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        }) || "0.00"}
+                      </Text>
+                    </View>
+                    <Ionicons
+                      name={
+                        (dashboardData?.netAmount || 0) >= 0
+                          ? "trending-up"
+                          : "trending-down"
+                      }
+                      size={32}
+                      color={
+                        (dashboardData?.netAmount || 0) >= 0
+                          ? "#10B981"
+                          : "#EF4444"
+                      }
+                    />
                   </View>
-                  <Ionicons
-                    name={
-                      (dashboardData?.netAmount || 0) >= 0
-                        ? "trending-up"
-                        : "trending-down"
-                    }
-                    size={32}
-                    color={
-                      (dashboardData?.netAmount || 0) >= 0
-                        ? "#10B981"
-                        : "#EF4444"
-                    }
-                  />
-                </View>
-                <Text className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                  {dashboardData?.transactionCount || 0} transactions
-                </Text>
-              </Card>
-            )}
-          </View>
+                  <Text className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                    {dashboardData?.transactionCount || 0} transactions
+                  </Text>
+                </Card>
+              )}
+            </View>
+          )}
 
           {/* Category Breakdown */}
-          {categoryData && categoryData.length > 0 && (
+          {categoryLoading ? (
+            <CategoryBreakdownSkeleton />
+          ) : categoryData && categoryData.length > 0 ? (
             <Card className="mb-6">
               <Text className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">
                 Category Breakdown
               </Text>
-              {categoryLoading ? (
-                <ActivityIndicator />
-              ) : (
-                <View className="gap-3">
-                  {categoryData.map((category, index) => {
-                    const percentage = Math.min(
-                      (category.amount / (dashboardData?.totalSpending || 1)) *
-                        100,
-                      100
-                    );
-                    const colors = [
-                      "#3B82F6",
-                      "#10B981",
-                      "#F59E0B",
-                      "#EF4444",
-                      "#8B5CF6",
-                      "#EC4899",
-                    ];
-                    const color = colors[index % colors.length];
+              <View className="gap-3">
+                {categoryData.map((category, index) => {
+                  const percentage = Math.min(
+                    (category.amount / (dashboardData?.totalSpending || 1)) *
+                      100,
+                    100
+                  );
+                  const colors = [
+                    "#3B82F6",
+                    "#10B981",
+                    "#F59E0B",
+                    "#EF4444",
+                    "#8B5CF6",
+                    "#EC4899",
+                  ];
+                  const color = colors[index % colors.length];
 
-                    return (
-                      <View key={category.categoryId}>
-                        <View className="flex-row justify-between items-center mb-2">
-                          <Text className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                            {category.categoryName}
+                  return (
+                    <View key={category.categoryId}>
+                      <View className="flex-row justify-between items-center mb-2">
+                        <Text className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                          {category.categoryName}
+                        </Text>
+                        <View className="flex-row items-center gap-2">
+                          <Text className="text-sm font-bold text-gray-900 dark:text-gray-100">
+                            {getCurrencySymbol(settings.currency)}
+                            {category.amount.toLocaleString(undefined, {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })}
                           </Text>
-                          <View className="flex-row items-center gap-2">
-                            <Text className="text-sm font-bold text-gray-900 dark:text-gray-100">
-                              {getCurrencySymbol(settings.currency)}
-                              {category.amount.toLocaleString(undefined, {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2,
-                              })}
-                            </Text>
-                            <Text className="text-xs text-gray-500 dark:text-gray-400">
-                              {percentage.toFixed(0)}%
-                            </Text>
-                          </View>
+                          <Text className="text-xs text-gray-500 dark:text-gray-400">
+                            {percentage.toFixed(0)}%
+                          </Text>
                         </View>
-                        <AnimatedProgressBar
-                          percentage={percentage}
-                          color={color}
-                          height={10}
-                          animationKey={chartAnimationKey}
-                          index={index}
-                        />
                       </View>
-                    );
-                  })}
-                </View>
-              )}
+                      <AnimatedProgressBar
+                        percentage={percentage}
+                        color={color}
+                        height={10}
+                        animationKey={chartAnimationKey}
+                        index={index}
+                      />
+                    </View>
+                  );
+                })}
+              </View>
             </Card>
-          )}
+          ) : null}
 
           {/* Quick Actions */}
           <View className="flex-row gap-3 mb-6">
@@ -483,7 +479,9 @@ export default function DashboardScreen() {
             <Text className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">
               Recent Activity
             </Text>
-            {transactions && transactions.length > 0 ? (
+            {transactionsLoading ? (
+              <RecentTransactionsSkeleton />
+            ) : transactions && transactions.length > 0 ? (
               transactions
                 .slice(0, 10)
                 .map((transaction) => (
