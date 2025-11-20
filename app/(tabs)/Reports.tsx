@@ -3,6 +3,7 @@ import { AnimatedProgressBar } from '@/components/charts/animated-progress-bar';
 import { SimpleBarChart } from '@/components/charts/simple-bar-chart';
 import { TrendIndicator } from '@/components/charts/trend-indicator';
 import { ActiveFilterChips } from '@/components/filters/active-filter-chips';
+import { SpendingVelocity } from '@/components/reports/spending-velocity';
 import { Card } from '@/components/ui/card';
 import {
   useAccountReport,
@@ -105,6 +106,7 @@ export default function ReportsScreen() {
         queryClient.invalidateQueries({ queryKey: ['reports'] }),
         queryClient.invalidateQueries({ queryKey: ['transactions'] }),
         queryClient.invalidateQueries({ queryKey: ['accounts'] }),
+        queryClient.invalidateQueries({ queryKey: ['spendingVelocity'] }),
       ]);
     } finally {
       setRefreshing(false);
@@ -282,6 +284,13 @@ export default function ReportsScreen() {
                 )}
               </View>
             )}
+
+            {/* Spending Velocity */}
+            <SpendingVelocity 
+              startDate={startDateStr} 
+              endDate={endDateStr} 
+              useFilters={useFilters} 
+            />
 
               {/* Period Comparison */}
               {periodComparison && (

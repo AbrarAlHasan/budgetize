@@ -1,13 +1,13 @@
+import { AccountLatestTransactions } from "@/components/accounts/account-latest-transactions";
 import { CreditCardStack } from "@/components/accounts/credit-card-stack";
-import { useAccounts } from "@/hooks/queries/use-accounts";
 import { useAccountBalances } from "@/hooks/queries/use-account-balances";
+import { useAccounts } from "@/hooks/queries/use-accounts";
 import { Ionicons } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import React from "react";
 import {
   ActivityIndicator,
-  RefreshControl,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -20,6 +20,14 @@ export default function AccountsScreen() {
   const { data: accounts, isLoading } = useAccounts();
   const { data: accountBalances, isLoading: balancesLoading } = useAccountBalances();
   const [refreshing, setRefreshing] = React.useState(false);
+  const [currentAccountId, setCurrentAccountId] = React.useState<number | null>(null);
+
+  // Set initial account when accounts load
+  React.useEffect(() => {
+    if (accounts && accounts.length > 0 && !currentAccountId) {
+      setCurrentAccountId(accounts[0].id);
+    }
+  }, [accounts, currentAccountId]);
 
   const onRefresh = React.useCallback(async () => {
     setRefreshing(true);
@@ -27,6 +35,8 @@ export default function AccountsScreen() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["accounts"] }),
         queryClient.invalidateQueries({ queryKey: ["account-balances"] }),
+        queryClient.invalidateQueries({ queryKey: ["accountMonthlyData"] }),
+        queryClient.invalidateQueries({ queryKey: ["transactions"] }),
       ]);
     } finally {
       setRefreshing(false);
@@ -55,19 +65,31 @@ export default function AccountsScreen() {
     >
       <ScrollView
         className="flex-1"
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
         showsVerticalScrollIndicator={false}
+        bounces={false}
       >
         <View className="px-5 pt-6 pb-6">
-          <View className="mb-6">
-            <Text className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-1">
-              Accounts
-            </Text>
-            <Text className="text-sm text-gray-500 dark:text-gray-400">
-              Manage your accounts
-            </Text>
+          <View className="mb-6 flex-row items-center justify-between">
+            <View className="flex-1">
+              <Text className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-1">
+                Accounts
+              </Text>
+              <Text className="text-sm text-gray-500 dark:text-gray-400">
+                Manage your accounts
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={onRefresh}
+              disabled={refreshing}
+              className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 items-center justify-center"
+              activeOpacity={0.7}
+            >
+              {refreshing ? (
+                <ActivityIndicator size="small" color="#3B82F6" />
+              ) : (
+                <Ionicons name="refresh" size={20} color="#3B82F6" />
+              )}
+            </TouchableOpacity>
           </View>
 
           <TouchableOpacity
@@ -77,18 +99,50 @@ export default function AccountsScreen() {
                 params: { from: "Accounts" },
               })
             }
-            className="mb-6 bg-blue-600 rounded-2xl py-4 items-center flex-row justify-center"
-            activeOpacity={0.8}
+            className="mb-6 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800"
+            activeOpacity={0.7}
+            style={{
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.05,
+              shadowRadius: 8,
+              elevation: 3,
+            }}
           >
-            <Ionicons name="add-circle" size={24} color="#FFFFFF" />
-            <Text className="text-white font-semibold ml-2">Add Account</Text>
+            <View className="py-4 px-5 flex-row items-center justify-between">
+              <View className="flex-row items-center flex-1">
+                <View className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-900/30 items-center justify-center mr-4">
+                  <Ionicons name="add-circle" size={24} color="#3B82F6" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-gray-900 dark:text-gray-100 font-semibold text-base mb-0.5">
+                    Add New Account
+                  </Text>
+                  <Text className="text-gray-500 dark:text-gray-400 text-sm">
+                    Create a new account to track
+                  </Text>
+                </View>
+              </View>
+              <Ionicons 
+                name="chevron-forward" 
+                size={20} 
+                color="#9CA3AF" 
+                style={{ marginLeft: 8 }}
+              />
+            </View>
           </TouchableOpacity>
 
           {accounts && accounts.length > 0 ? (
-            <CreditCardStack 
-              accounts={accounts} 
-              accountBalances={accountBalances}
-            />
+            <>
+              <CreditCardStack 
+                accounts={accounts} 
+                accountBalances={accountBalances}
+                onCurrentAccountChange={setCurrentAccountId}
+              />
+              {currentAccountId && (
+                <AccountLatestTransactions accountId={currentAccountId} />
+              )}
+            </>
           ) : (
             <View className="bg-white dark:bg-gray-900 rounded-2xl p-8 items-center">
               <Ionicons name="wallet-outline" size={48} color="#9CA3AF" />
@@ -102,12 +156,24 @@ export default function AccountsScreen() {
                     params: { from: "Accounts" },
                   })
                 }
-                className="bg-blue-600 rounded-2xl px-6 py-3"
-                activeOpacity={0.8}
+                className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 px-6 py-4"
+                activeOpacity={0.7}
+                style={{
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.05,
+                  shadowRadius: 8,
+                  elevation: 3,
+                }}
               >
-                <Text className="text-white font-semibold">
-                  Create Your First Account
-                </Text>
+                <View className="flex-row items-center justify-center">
+                  <View className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/30 items-center justify-center mr-3">
+                    <Ionicons name="add-circle" size={20} color="#3B82F6" />
+                  </View>
+                  <Text className="text-gray-900 dark:text-gray-100 font-semibold text-base">
+                    Create Your First Account
+                  </Text>
+                </View>
               </TouchableOpacity>
             </View>
           )}

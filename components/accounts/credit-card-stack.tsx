@@ -17,6 +17,7 @@ import { getCurrencySymbol } from '@/utils/currencies';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useAccountMonthlyData } from '@/hooks/queries/use-account-monthly-data';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH - 40;
@@ -28,6 +29,7 @@ const MAX_VISIBLE_CARDS = 3;
 interface CreditCardStackProps {
   accounts: DecryptedAccount[];
   accountBalances?: Map<number, number>; // Optional: accountId -> balance
+  onCurrentAccountChange?: (accountId: number) => void; // Callback when current account changes
 }
 
 // Colorful gradient colors for different account types
@@ -59,7 +61,7 @@ const getCardGradient = (type: DecryptedAccount['type'], index: number) => {
   return typeGradients[index % typeGradients.length];
 };
 
-export function CreditCardStack({ accounts, accountBalances }: CreditCardStackProps) {
+export function CreditCardStack({ accounts, accountBalances, onCurrentAccountChange }: CreditCardStackProps) {
   const { settings } = useSettingsStore();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isCardAnimatingBehind, setIsCardAnimatingBehind] = useState(false);
@@ -79,12 +81,16 @@ export function CreditCardStack({ accounts, accountBalances }: CreditCardStackPr
     if (accounts && accounts.length > 0) {
       accountsLengthShared.value = accounts.length;
       canSwipeShared.value = accounts.length > 1;
+      // Notify parent of current account change
+      if (onCurrentAccountChange) {
+        onCurrentAccountChange(accounts[currentIndex].id);
+      }
     }
     // Reset animation values when index changes
     translateY.value = 0;
     opacity.value = 1;
     scale.value = 1;
-  }, [currentIndex, accounts, currentIndexShared, accountsLengthShared, canSwipeShared, translateY, opacity, scale]);
+  }, [currentIndex, accounts, currentIndexShared, accountsLengthShared, canSwipeShared, translateY, opacity, scale, onCurrentAccountChange]);
 
   // Helper function to move to next card (must be before early return)
   const moveToNextCard = useCallback((nextIndex: number) => {
@@ -376,35 +382,34 @@ interface CreditCardProps {
 }
 
 function CreditCard({ account, balance, gradient, currency, canSwipe }: CreditCardProps) {
-  // Generate a masked card number based on account ID
-  const generateCardNumber = (accountId: number) => {
-    // Create a consistent card number based on account ID
-    const firstFour = String(accountId).padStart(4, '0').slice(0, 4);
-    const lastFour = String(accountId * 7).padStart(4, '0').slice(-4);
-    return `${firstFour} **** **** ${lastFour}`;
+  const { data: monthlyData } = useAccountMonthlyData(account.id);
+  
+  // Format account name
+  const accountName = account.name.toUpperCase().slice(0, 20);
+  
+  // Format numbers with currency symbol
+  const formatAmount = (amount: number) => {
+    return `${getCurrencySymbol(currency)}${Math.abs(amount).toLocaleString(undefined, {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    })}`;
   };
-
-  // Generate expiration date (default to 2 years from now)
-  const generateExpiryDate = () => {
-    const date = new Date();
-    date.setFullYear(date.getFullYear() + 2);
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const year = String(date.getFullYear()).slice(-2);
-    return `${month}/${year}`;
+  
+  // Compact format for large numbers
+  const formatCompactAmount = (amount: number) => {
+    const absAmount = Math.abs(amount);
+    if (absAmount >= 10000000) {
+      return `${getCurrencySymbol(currency)}${(absAmount / 10000000).toFixed(1)}Cr`;
+    } else if (absAmount >= 100000) {
+      return `${getCurrencySymbol(currency)}${(absAmount / 100000).toFixed(1)}L`;
+    } else if (absAmount >= 1000) {
+      return `${getCurrencySymbol(currency)}${(absAmount / 1000).toFixed(1)}k`;
+    }
+    return formatAmount(amount);
   };
-
-  // Determine card network based on account type or ID
-  const getCardNetwork = () => {
-    const networks = ['VISA', 'MASTERCARD'];
-    return networks[account.id % networks.length];
-  };
-
-  // Format cardholder name (use account name, uppercase)
-  const cardholderName = account.name.toUpperCase().slice(0, 20);
-
-  const cardNumber = generateCardNumber(account.id);
-  const expiryDate = generateExpiryDate();
-  const cardNetwork = getCardNetwork();
+  
+  const currentMonthExpenses = monthlyData?.currentMonthExpenses ?? 0;
+  const todayExpenses = monthlyData?.todayExpenses ?? 0;
 
   return (
     <TouchableOpacity
@@ -425,52 +430,31 @@ function CreditCard({ account, balance, gradient, currency, canSwipe }: CreditCa
              account.type === 'credit' ? 'CREDIT CARD' : 
              account.type.toUpperCase()}
           </Text>
-          {/* Contactless Payment Symbol */}
-          <View style={styles.contactlessContainer}>
-            <View style={styles.contactlessWave} />
-            <View style={[styles.contactlessWave, { marginLeft: -8 }]} />
-            <View style={[styles.contactlessWave, { marginLeft: -16 }]} />
+          {/* Account Name Badge */}
+          <View style={styles.accountNameBadge}>
+            <Text style={styles.accountNameText} numberOfLines={1}>
+              {accountName}
+            </Text>
           </View>
         </View>
 
-        {/* Card Number */}
-        <View style={styles.cardNumberContainer}>
-          <Text style={styles.cardNumber}>{cardNumber}</Text>
-        </View>
-
-        {/* Cardholder Name */}
-        <View style={styles.cardholderContainer}>
-          <Text style={styles.cardholderName} numberOfLines={1}>
-            {cardholderName}
+        {/* Total Spend This Month - Main */}
+        <View style={styles.balanceMainContainer}>
+          <Text style={styles.balanceLabel}>Total Spend This Month</Text>
+          <Text style={styles.balanceMainText}>
+            {formatCompactAmount(currentMonthExpenses)}
           </Text>
         </View>
 
-        {/* Card Footer */}
-        <View style={styles.cardFooter}>
-          <View style={styles.cardDetails}>
-            <View>
-              <Text style={styles.expiryLabel}>Expires</Text>
-              <Text style={styles.expiryDate}>{expiryDate}</Text>
-            </View>
-            <View style={styles.cvvContainer}>
-              <Text style={styles.cvvLabel}>CVV</Text>
-              <Text style={styles.cvvValue}>***</Text>
+        {/* Total Spent Today */}
+        <View style={styles.todaySpendContainer}>
+          <View style={styles.statItem}>
+            <Ionicons name="calendar-outline" size={18} color="#FFFFFF" style={{ opacity: 0.9 }} />
+            <View style={styles.statContent}>
+              <Text style={styles.statLabel}>Total Spent Today</Text>
+              <Text style={styles.statValue}>{formatCompactAmount(todayExpenses)}</Text>
             </View>
           </View>
-          {/* Card Network Logo */}
-          <View style={styles.cardNetworkContainer}>
-            <Text style={styles.cardNetwork}>{cardNetwork}</Text>
-          </View>
-        </View>
-
-        {/* Balance Display (overlay) */}
-        <View style={styles.balanceOverlay}>
-          <Text style={styles.balanceText}>
-            {getCurrencySymbol(currency)}{Math.abs(balance).toLocaleString(undefined, {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}
-          </Text>
         </View>
 
         {/* Swipe Indicator - Only show if there are multiple cards */}
@@ -548,53 +532,75 @@ const styles = StyleSheet.create({
     borderColor: '#FFFFFF',
     opacity: 0.8,
   },
-  cardNumberContainer: {
-    marginBottom: 24,
+  accountNameBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
-  cardNumber: {
+  accountNameText: {
     color: '#FFFFFF',
-    fontSize: 20,
+    fontSize: 10,
     fontWeight: '600',
-    letterSpacing: 3,
-    fontFamily: 'monospace',
+    letterSpacing: 0.5,
   },
-  cardholderContainer: {
+  balanceMainContainer: {
     marginBottom: 20,
   },
-  cardholderName: {
+  balanceLabel: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '500',
+    opacity: 0.8,
+    marginBottom: 6,
+    letterSpacing: 0.5,
+  },
+  balanceMainText: {
+    color: '#FFFFFF',
+    fontSize: 28,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  todaySpendContainer: {
+    marginBottom: 20,
+  },
+  monthlyStatsContainer: {
+    marginBottom: 20,
+    gap: 12,
+  },
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  statContent: {
+    flex: 1,
+  },
+  statLabel: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '500',
+    opacity: 0.8,
+    marginBottom: 2,
+    letterSpacing: 0.3,
+  },
+  statValue: {
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '600',
-    letterSpacing: 1,
-    opacity: 0.95,
+    letterSpacing: 0.5,
   },
   cardFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
   },
-  cardDetails: {
-    flexDirection: 'row',
-    gap: 24,
-  },
-  expiryLabel: {
-    color: '#FFFFFF',
-    fontSize: 9,
-    fontWeight: '500',
-    opacity: 0.7,
-    marginBottom: 4,
-    letterSpacing: 0.5,
-  },
-  expiryDate: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '600',
-    letterSpacing: 1,
-  },
-  cvvContainer: {
+  footerInfo: {
     alignItems: 'flex-start',
   },
-  cvvLabel: {
+  footerLabel: {
     color: '#FFFFFF',
     fontSize: 9,
     fontWeight: '500',
@@ -602,37 +608,10 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     letterSpacing: 0.5,
   },
-  cvvValue: {
+  footerValue: {
     color: '#FFFFFF',
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
-    letterSpacing: 1,
-  },
-  cardNetworkContainer: {
-    alignItems: 'flex-end',
-  },
-  cardNetwork: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '700',
-    letterSpacing: 2,
-    opacity: 0.95,
-  },
-  balanceOverlay: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  balanceText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700',
     letterSpacing: 0.5,
   },
   swipeIndicator: {
