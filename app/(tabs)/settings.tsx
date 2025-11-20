@@ -7,7 +7,7 @@ import {
 import { onboardingStorage } from "@/storage/onboarding";
 import { useNotificationStore } from "@/store/notification-store";
 import { useSettingsStore } from "@/store/settings-store";
-import { backupSqlLiteData } from "@/utils/backup";
+import { backupAppData, restoreAppData } from "@/utils/backup";
 import { getCurrencyOptions, getCurrencySymbol } from "@/utils/currencies";
 import { resetAppWithDummyData } from "@/utils/dummy-data";
 import { Ionicons } from "@expo/vector-icons";
@@ -37,6 +37,7 @@ export default function SettingsScreen() {
   const [permissionGranted, setPermissionGranted] = useState(false);
   const [isSeedingDummyData, setIsSeedingDummyData] = useState(false);
   const [isBackingUp, setIsBackingUp] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
 
   useEffect(() => {
     loadPreferences();
@@ -167,7 +168,7 @@ export default function SettingsScreen() {
 
     try {
       setIsBackingUp(true);
-      const zipPath = await backupSqlLiteData();
+      const zipPath = await backupAppData();
       if (zipPath) {
         Alert.alert(
           "Backup Ready",
@@ -188,6 +189,64 @@ export default function SettingsScreen() {
     } finally {
       setIsBackingUp(false);
     }
+  };
+
+  const runRestoreData = async () => {
+    try {
+      setIsRestoring(true);
+      const success = await restoreAppData();
+      if (success) {
+        // Reload settings and preferences after restore
+        await loadSettings();
+        await loadPreferences();
+
+        Alert.alert(
+          "Restore Complete",
+          "Your data has been successfully restored. The app will now use the restored data.",
+          [
+            {
+              text: "OK",
+              onPress: () => {
+                // Optionally refresh the app or navigate
+                // You might want to reload queries or restart the app
+              },
+            },
+          ]
+        );
+      } else {
+        Alert.alert(
+          "Restore Failed",
+          "Could not restore the backup. Please make sure you selected a valid backup file and try again."
+        );
+      }
+    } catch (error) {
+      console.error("Restore failed:", error);
+      Alert.alert(
+        "Restore Failed",
+        "An unexpected error occurred while restoring the backup."
+      );
+    } finally {
+      setIsRestoring(false);
+    }
+  };
+
+  const handleRestoreData = () => {
+    if (isRestoring) {
+      return;
+    }
+
+    Alert.alert(
+      "Import & Restore Data",
+      "This will replace all existing data (accounts, transactions, categories, tags, and settings) with the data from the backup file. This action cannot be undone.\n\nMake sure you have a recent backup before proceeding.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Import",
+          style: "destructive",
+          onPress: runRestoreData,
+        },
+      ]
+    );
   };
 
   return (
@@ -376,6 +435,35 @@ export default function SettingsScreen() {
                   {isBackingUp && (
                     <Text className="text-xs text-green-600 dark:text-green-400 mt-1">
                       Preparing backup...
+                    </Text>
+                  )}
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+            </TouchableOpacity>
+
+            {/* Import & Restore Data */}
+            <TouchableOpacity
+              onPress={handleRestoreData}
+              className="flex-row items-center justify-between py-3 mb-3"
+              activeOpacity={0.7}
+              disabled={isRestoring}
+              style={{ opacity: isRestoring ? 0.6 : 1 }}
+            >
+              <View className="flex-row items-center gap-3 flex-1">
+                <View className="bg-orange-100 dark:bg-orange-900/30 rounded-full p-2">
+                  <Ionicons name="cloud-download" size={20} color="#F97316" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-base font-medium text-gray-900 dark:text-gray-100">
+                    Import & Restore Data
+                  </Text>
+                  <Text className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                    Restore from a backup file (replaces all existing data)
+                  </Text>
+                  {isRestoring && (
+                    <Text className="text-xs text-orange-600 dark:text-orange-400 mt-1">
+                      Restoring data...
                     </Text>
                   )}
                 </View>
