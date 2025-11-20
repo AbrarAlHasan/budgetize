@@ -244,6 +244,162 @@ export class TransactionRepository extends BaseRepository<Transaction> {
   }
 
   /**
+   * Find transactions with filters and pagination
+   */
+  async findAllWithFiltersPaginated(
+    filters?: {
+      accountId?: number;
+      accountIds?: number[];
+      tagId?: number;
+      tagIds?: number[];
+      categoryId?: number;
+      categoryIds?: number[];
+      startDate?: string;
+      endDate?: string;
+      type?: Transaction['type'];
+      types?: Transaction['type'][];
+      accountType?: string;
+      accountTypes?: string[];
+    },
+    limit: number = 20,
+    offset: number = 0
+  ): Promise<{ transactions: Transaction[]; hasMore: boolean; total: number }> {
+    let query = `SELECT DISTINCT t.* FROM ${this.tableName} t`;
+    const params: any[] = [];
+    const conditions: string[] = ['t.deleted_at IS NULL'];
+    let hasJoin = false;
+
+    // Handle account filters
+    const accountIds = filters?.accountIds || (filters?.accountId ? [filters.accountId] : []);
+    if (accountIds.length > 0) {
+      const placeholders = accountIds.map(() => '?').join(',');
+      conditions.push(`t.account_id IN (${placeholders})`);
+      params.push(...accountIds);
+    }
+
+    // Handle tag filters
+    const tagIds = filters?.tagIds || (filters?.tagId ? [filters.tagId] : []);
+    if (tagIds.length > 0) {
+      if (!hasJoin) {
+        query += ' INNER JOIN transaction_tags tt ON t.id = tt.transaction_id';
+        hasJoin = true;
+      }
+      const placeholders = tagIds.map(() => '?').join(',');
+      conditions.push(`tt.tag_id IN (${placeholders})`);
+      params.push(...tagIds);
+    }
+
+    // Handle category filters
+    const categoryIds = filters?.categoryIds || (filters?.categoryId ? [filters.categoryId] : []);
+    if (categoryIds.length > 0) {
+      const placeholders = categoryIds.map(() => '?').join(',');
+      conditions.push(`t.category_id IN (${placeholders})`);
+      params.push(...categoryIds);
+    }
+
+    if (filters?.startDate) {
+      conditions.push('t.date >= ?');
+      params.push(filters.startDate);
+    }
+
+    if (filters?.endDate) {
+      conditions.push('t.date <= ?');
+      params.push(filters.endDate);
+    }
+
+    // Handle transaction type filters
+    const types = filters?.types || (filters?.type ? [filters.type] : []);
+    if (types.length > 0) {
+      const placeholders = types.map(() => '?').join(',');
+      conditions.push(`t.type IN (${placeholders})`);
+      params.push(...types);
+    }
+
+    // Handle account type filters
+    const accountTypes = filters?.accountTypes || (filters?.accountType ? [filters.accountType] : []);
+    if (accountTypes.length > 0) {
+      if (!hasJoin) {
+        query += ' INNER JOIN accounts a ON t.account_id = a.id';
+        hasJoin = true;
+      } else if (!query.includes('INNER JOIN accounts')) {
+        query += ' INNER JOIN accounts a ON t.account_id = a.id';
+      }
+      const placeholders = accountTypes.map(() => '?').join(',');
+      conditions.push(`a.type IN (${placeholders})`);
+      params.push(...accountTypes);
+    }
+
+    // Get total count - build count query with same joins
+    let countQuery = `SELECT COUNT(DISTINCT t.id) as total FROM ${this.tableName} t`;
+    const countParams: any[] = [];
+    
+    // Rebuild joins for count query
+    let countHasJoin = false;
+    if (tagIds.length > 0) {
+      countQuery += ' INNER JOIN transaction_tags tt ON t.id = tt.transaction_id';
+      countHasJoin = true;
+    }
+    if (accountTypes.length > 0) {
+      if (!countHasJoin || !countQuery.includes('INNER JOIN accounts')) {
+        countQuery += ' INNER JOIN accounts a ON t.account_id = a.id';
+      }
+    }
+    
+    // Rebuild conditions for count (same as main query)
+    const countConditions: string[] = ['t.deleted_at IS NULL'];
+    if (accountIds.length > 0) {
+      const placeholders = accountIds.map(() => '?').join(',');
+      countConditions.push(`t.account_id IN (${placeholders})`);
+      countParams.push(...accountIds);
+    }
+    if (tagIds.length > 0) {
+      const placeholders = tagIds.map(() => '?').join(',');
+      countConditions.push(`tt.tag_id IN (${placeholders})`);
+      countParams.push(...tagIds);
+    }
+    if (categoryIds.length > 0) {
+      const placeholders = categoryIds.map(() => '?').join(',');
+      countConditions.push(`t.category_id IN (${placeholders})`);
+      countParams.push(...categoryIds);
+    }
+    if (filters?.startDate) {
+      countConditions.push('t.date >= ?');
+      countParams.push(filters.startDate);
+    }
+    if (filters?.endDate) {
+      countConditions.push('t.date <= ?');
+      countParams.push(filters.endDate);
+    }
+    if (types.length > 0) {
+      const placeholders = types.map(() => '?').join(',');
+      countConditions.push(`t.type IN (${placeholders})`);
+      countParams.push(...types);
+    }
+    if (accountTypes.length > 0) {
+      const placeholders = accountTypes.map(() => '?').join(',');
+      countConditions.push(`a.type IN (${placeholders})`);
+      countParams.push(...accountTypes);
+    }
+    
+    countQuery += ` WHERE ${countConditions.join(' AND ')}`;
+    const countResult = await this.executeQuery<{ total: number }>(countQuery, countParams);
+    const total = countResult[0]?.total || 0;
+
+    // Get paginated results
+    query += ` WHERE ${conditions.join(' AND ')} ORDER BY t.date DESC, t.created_at DESC LIMIT ? OFFSET ?`;
+    params.push(limit, offset);
+
+    const transactions = await this.executeQuery<Transaction>(query, params);
+    const hasMore = offset + transactions.length < total;
+
+    return {
+      transactions,
+      hasMore,
+      total,
+    };
+  }
+
+  /**
    * Decrypt transaction for display
    */
   async decryptTransaction(transaction: Transaction): Promise<Omit<Transaction, 'amount' | 'note' | 'payment_mode'> & {
@@ -272,6 +428,737 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     payment_mode: string;
   }>> {
     return Promise.all(transactions.map((t) => this.decryptTransaction(t)));
+  }
+
+  /**
+   * Optimized method to calculate summary totals without fetching full transactions
+   * Only fetches and decrypts amounts, not notes or payment_mode
+   */
+  async calculateSummaryTotals(filters?: {
+    accountId?: number;
+    accountIds?: number[];
+    tagId?: number;
+    tagIds?: number[];
+    categoryId?: number;
+    categoryIds?: number[];
+    startDate?: string;
+    endDate?: string;
+    type?: Transaction['type'];
+    types?: Transaction['type'][];
+    accountType?: string;
+    accountTypes?: string[];
+  }): Promise<{
+    totalExpenses: number;
+    totalIncome: number;
+    expenseCount: number;
+    incomeCount: number;
+    transactionCount: number;
+  }> {
+    let query = `SELECT t.id, t.amount, t.type FROM ${this.tableName} t`;
+    const params: any[] = [];
+    const conditions: string[] = ['t.deleted_at IS NULL'];
+    let hasJoin = false;
+
+    // Handle account filters
+    const accountIds = filters?.accountIds || (filters?.accountId ? [filters.accountId] : []);
+    if (accountIds.length > 0) {
+      const placeholders = accountIds.map(() => '?').join(',');
+      conditions.push(`t.account_id IN (${placeholders})`);
+      params.push(...accountIds);
+    }
+
+    // Handle tag filters
+    const tagIds = filters?.tagIds || (filters?.tagId ? [filters.tagId] : []);
+    if (tagIds.length > 0) {
+      if (!hasJoin) {
+        query += ' INNER JOIN transaction_tags tt ON t.id = tt.transaction_id';
+        hasJoin = true;
+      }
+      const placeholders = tagIds.map(() => '?').join(',');
+      conditions.push(`tt.tag_id IN (${placeholders})`);
+      params.push(...tagIds);
+    }
+
+    // Handle category filters
+    const categoryIds = filters?.categoryIds || (filters?.categoryId ? [filters.categoryId] : []);
+    if (categoryIds.length > 0) {
+      const placeholders = categoryIds.map(() => '?').join(',');
+      conditions.push(`t.category_id IN (${placeholders})`);
+      params.push(...categoryIds);
+    }
+
+    if (filters?.startDate) {
+      conditions.push('t.date >= ?');
+      params.push(filters.startDate);
+    }
+
+    if (filters?.endDate) {
+      conditions.push('t.date <= ?');
+      params.push(filters.endDate);
+    }
+
+    // Handle transaction type filters
+    const types = filters?.types || (filters?.type ? [filters.type] : []);
+    if (types.length > 0) {
+      const placeholders = types.map(() => '?').join(',');
+      conditions.push(`t.type IN (${placeholders})`);
+      params.push(...types);
+    }
+
+    // Handle account type filters
+    const accountTypes = filters?.accountTypes || (filters?.accountType ? [filters.accountType] : []);
+    if (accountTypes.length > 0) {
+      if (!hasJoin) {
+        query += ' INNER JOIN accounts a ON t.account_id = a.id';
+        hasJoin = true;
+      } else if (!query.includes('INNER JOIN accounts')) {
+        query += ' INNER JOIN accounts a ON t.account_id = a.id';
+      }
+      const placeholders = accountTypes.map(() => '?').join(',');
+      conditions.push(`a.type IN (${placeholders})`);
+      params.push(...accountTypes);
+    }
+
+    query += ` WHERE ${conditions.join(' AND ')}`;
+
+    // Execute query to get only id, amount, type
+    const results = await this.executeQuery<{ id: number; amount: string; type: Transaction['type'] }>(query, params);
+
+    // Decrypt amounts in parallel (only amounts, not notes/payment_mode)
+    const decryptedAmounts = await Promise.all(
+      results.map(async (row) => ({
+        id: row.id,
+        amount: await decryptAmount(row.amount),
+        type: row.type,
+      }))
+    );
+
+    // Calculate totals
+    let totalExpenses = 0;
+    let totalIncome = 0;
+    let expenseCount = 0;
+    let incomeCount = 0;
+
+    for (const row of decryptedAmounts) {
+      if (row.type === 'expense') {
+        totalExpenses += row.amount;
+        expenseCount += 1;
+      } else {
+        totalIncome += row.amount;
+        incomeCount += 1;
+      }
+    }
+
+    return {
+      totalExpenses,
+      totalIncome,
+      expenseCount,
+      incomeCount,
+      transactionCount: results.length,
+    };
+  }
+
+  /**
+   * Optimized method to calculate category breakdown without fetching full transactions
+   * Only fetches and decrypts amounts with category_id
+   */
+  async calculateCategoryBreakdown(filters?: {
+    accountId?: number;
+    accountIds?: number[];
+    tagId?: number;
+    tagIds?: number[];
+    categoryId?: number;
+    categoryIds?: number[];
+    startDate?: string;
+    endDate?: string;
+    type?: Transaction['type'];
+    types?: Transaction['type'][];
+    accountType?: string;
+    accountTypes?: string[];
+  }): Promise<Array<{ categoryId: number | null; amount: number; count: number }>> {
+    let query = `SELECT t.id, t.amount, t.type, t.category_id FROM ${this.tableName} t`;
+    const params: any[] = [];
+    const conditions: string[] = ['t.deleted_at IS NULL'];
+    let hasJoin = false;
+
+    // Handle account filters
+    const accountIds = filters?.accountIds || (filters?.accountId ? [filters.accountId] : []);
+    if (accountIds.length > 0) {
+      const placeholders = accountIds.map(() => '?').join(',');
+      conditions.push(`t.account_id IN (${placeholders})`);
+      params.push(...accountIds);
+    }
+
+    // Handle tag filters
+    const tagIds = filters?.tagIds || (filters?.tagId ? [filters.tagId] : []);
+    if (tagIds.length > 0) {
+      if (!hasJoin) {
+        query += ' INNER JOIN transaction_tags tt ON t.id = tt.transaction_id';
+        hasJoin = true;
+      }
+      const placeholders = tagIds.map(() => '?').join(',');
+      conditions.push(`tt.tag_id IN (${placeholders})`);
+      params.push(...tagIds);
+    }
+
+    // Handle category filters
+    const categoryIds = filters?.categoryIds || (filters?.categoryId ? [filters.categoryId] : []);
+    if (categoryIds.length > 0) {
+      const placeholders = categoryIds.map(() => '?').join(',');
+      conditions.push(`t.category_id IN (${placeholders})`);
+      params.push(...categoryIds);
+    }
+
+    if (filters?.startDate) {
+      conditions.push('t.date >= ?');
+      params.push(filters.startDate);
+    }
+
+    if (filters?.endDate) {
+      conditions.push('t.date <= ?');
+      params.push(filters.endDate);
+    }
+
+    // Handle transaction type filters - only expenses for category breakdown
+    const types = filters?.types || (filters?.type ? [filters.type] : ['expense']);
+    if (types.length > 0) {
+      const placeholders = types.map(() => '?').join(',');
+      conditions.push(`t.type IN (${placeholders})`);
+      params.push(...types);
+    }
+
+    // Handle account type filters
+    const accountTypes = filters?.accountTypes || (filters?.accountType ? [filters.accountType] : []);
+    if (accountTypes.length > 0) {
+      if (!hasJoin) {
+        query += ' INNER JOIN accounts a ON t.account_id = a.id';
+        hasJoin = true;
+      } else if (!query.includes('INNER JOIN accounts')) {
+        query += ' INNER JOIN accounts a ON t.account_id = a.id';
+      }
+      const placeholders = accountTypes.map(() => '?').join(',');
+      conditions.push(`a.type IN (${placeholders})`);
+      params.push(...accountTypes);
+    }
+
+    query += ` WHERE ${conditions.join(' AND ')}`;
+
+    // Execute query to get only id, amount, type, category_id
+    const results = await this.executeQuery<{ id: number; amount: string; type: Transaction['type']; category_id: number | null }>(query, params);
+
+    // Decrypt amounts in parallel (only amounts, not notes/payment_mode)
+    const decryptedAmounts = await Promise.all(
+      results.map(async (row) => ({
+        id: row.id,
+        amount: await decryptAmount(row.amount),
+        type: row.type,
+        category_id: row.category_id,
+      }))
+    );
+
+    // Group by category
+    const categoryMap = new Map<number | null, { amount: number; count: number }>();
+
+    for (const row of decryptedAmounts) {
+      if (row.type === 'expense') {
+        const categoryId = row.category_id || null;
+        const existing = categoryMap.get(categoryId) || { amount: 0, count: 0 };
+        existing.amount += row.amount;
+        existing.count += 1;
+        categoryMap.set(categoryId, existing);
+      }
+    }
+
+    // Convert to array
+    return Array.from(categoryMap.entries()).map(([categoryId, data]) => ({
+      categoryId,
+      amount: data.amount,
+      count: data.count,
+    }));
+  }
+
+  /**
+   * Optimized method to calculate daily spending patterns without fetching full transactions
+   * Only fetches and decrypts amounts with date and type
+   */
+  async calculateDailyPatterns(filters?: {
+    accountId?: number;
+    accountIds?: number[];
+    tagId?: number;
+    tagIds?: number[];
+    categoryId?: number;
+    categoryIds?: number[];
+    startDate?: string;
+    endDate?: string;
+    type?: Transaction['type'];
+    types?: Transaction['type'][];
+    accountType?: string;
+    accountTypes?: string[];
+  }): Promise<Array<{ dayIndex: number; totalAmount: number; count: number }>> {
+    let query = `SELECT t.id, t.amount, t.type, t.date FROM ${this.tableName} t`;
+    const params: any[] = [];
+    const conditions: string[] = ['t.deleted_at IS NULL'];
+    let hasJoin = false;
+
+    // Handle account filters
+    const accountIds = filters?.accountIds || (filters?.accountId ? [filters.accountId] : []);
+    if (accountIds.length > 0) {
+      const placeholders = accountIds.map(() => '?').join(',');
+      conditions.push(`t.account_id IN (${placeholders})`);
+      params.push(...accountIds);
+    }
+
+    // Handle tag filters
+    const tagIds = filters?.tagIds || (filters?.tagId ? [filters.tagId] : []);
+    if (tagIds.length > 0) {
+      if (!hasJoin) {
+        query += ' INNER JOIN transaction_tags tt ON t.id = tt.transaction_id';
+        hasJoin = true;
+      }
+      const placeholders = tagIds.map(() => '?').join(',');
+      conditions.push(`tt.tag_id IN (${placeholders})`);
+      params.push(...tagIds);
+    }
+
+    // Handle category filters
+    const categoryIds = filters?.categoryIds || (filters?.categoryId ? [filters.categoryId] : []);
+    if (categoryIds.length > 0) {
+      const placeholders = categoryIds.map(() => '?').join(',');
+      conditions.push(`t.category_id IN (${placeholders})`);
+      params.push(...categoryIds);
+    }
+
+    if (filters?.startDate) {
+      conditions.push('t.date >= ?');
+      params.push(filters.startDate);
+    }
+
+    if (filters?.endDate) {
+      conditions.push('t.date <= ?');
+      params.push(filters.endDate);
+    }
+
+    // Handle transaction type filters - only expenses for daily patterns
+    const types = filters?.types || (filters?.type ? [filters.type] : ['expense']);
+    if (types.length > 0) {
+      const placeholders = types.map(() => '?').join(',');
+      conditions.push(`t.type IN (${placeholders})`);
+      params.push(...types);
+    }
+
+    // Handle account type filters
+    const accountTypes = filters?.accountTypes || (filters?.accountType ? [filters.accountType] : []);
+    if (accountTypes.length > 0) {
+      if (!hasJoin) {
+        query += ' INNER JOIN accounts a ON t.account_id = a.id';
+        hasJoin = true;
+      } else if (!query.includes('INNER JOIN accounts')) {
+        query += ' INNER JOIN accounts a ON t.account_id = a.id';
+      }
+      const placeholders = accountTypes.map(() => '?').join(',');
+      conditions.push(`a.type IN (${placeholders})`);
+      params.push(...accountTypes);
+    }
+
+    query += ` WHERE ${conditions.join(' AND ')}`;
+
+    // Execute query to get only id, amount, type, date
+    const results = await this.executeQuery<{ id: number; amount: string; type: Transaction['type']; date: string }>(query, params);
+
+    // Decrypt amounts in parallel (only amounts, not notes/payment_mode)
+    const decryptedAmounts = await Promise.all(
+      results.map(async (row) => ({
+        id: row.id,
+        amount: await decryptAmount(row.amount),
+        type: row.type,
+        date: row.date,
+      }))
+    );
+
+    // Group by day of week
+    const dayMap = new Map<number, { total: number; count: number }>();
+
+    for (const row of decryptedAmounts) {
+      if (row.type === 'expense') {
+        const date = new Date(row.date);
+        const dayIndex = date.getDay();
+        const existing = dayMap.get(dayIndex) || { total: 0, count: 0 };
+        existing.total += row.amount;
+        existing.count += 1;
+        dayMap.set(dayIndex, existing);
+      }
+    }
+
+    // Convert to array
+    return Array.from(dayMap.entries()).map(([dayIndex, data]) => ({
+      dayIndex,
+      totalAmount: data.total,
+      count: data.count,
+    }));
+  }
+
+  /**
+   * Optimized method to calculate monthly trends without fetching full transactions
+   * Only fetches and decrypts amounts with date and type
+   */
+  async calculateMonthlyTrends(filters?: {
+    accountId?: number;
+    accountIds?: number[];
+    tagId?: number;
+    tagIds?: number[];
+    categoryId?: number;
+    categoryIds?: number[];
+    startDate?: string;
+    endDate?: string;
+    type?: Transaction['type'];
+    types?: Transaction['type'][];
+    accountType?: string;
+    accountTypes?: string[];
+  }): Promise<Array<{ monthKey: string; expenses: number; income: number; count: number }>> {
+    let query = `SELECT t.id, t.amount, t.type, t.date FROM ${this.tableName} t`;
+    const params: any[] = [];
+    const conditions: string[] = ['t.deleted_at IS NULL'];
+    let hasJoin = false;
+
+    // Handle account filters
+    const accountIds = filters?.accountIds || (filters?.accountId ? [filters.accountId] : []);
+    if (accountIds.length > 0) {
+      const placeholders = accountIds.map(() => '?').join(',');
+      conditions.push(`t.account_id IN (${placeholders})`);
+      params.push(...accountIds);
+    }
+
+    // Handle tag filters
+    const tagIds = filters?.tagIds || (filters?.tagId ? [filters.tagId] : []);
+    if (tagIds.length > 0) {
+      if (!hasJoin) {
+        query += ' INNER JOIN transaction_tags tt ON t.id = tt.transaction_id';
+        hasJoin = true;
+      }
+      const placeholders = tagIds.map(() => '?').join(',');
+      conditions.push(`tt.tag_id IN (${placeholders})`);
+      params.push(...tagIds);
+    }
+
+    // Handle category filters
+    const categoryIds = filters?.categoryIds || (filters?.categoryId ? [filters.categoryId] : []);
+    if (categoryIds.length > 0) {
+      const placeholders = categoryIds.map(() => '?').join(',');
+      conditions.push(`t.category_id IN (${placeholders})`);
+      params.push(...categoryIds);
+    }
+
+    if (filters?.startDate) {
+      conditions.push('t.date >= ?');
+      params.push(filters.startDate);
+    }
+
+    if (filters?.endDate) {
+      conditions.push('t.date <= ?');
+      params.push(filters.endDate);
+    }
+
+    // Handle transaction type filters - allow both income and expenses for monthly trends
+    const types = filters?.types || (filters?.type ? [filters.type] : undefined);
+    if (types && types.length > 0) {
+      const placeholders = types.map(() => '?').join(',');
+      conditions.push(`t.type IN (${placeholders})`);
+      params.push(...types);
+    }
+
+    // Handle account type filters
+    const accountTypes = filters?.accountTypes || (filters?.accountType ? [filters.accountType] : []);
+    if (accountTypes.length > 0) {
+      if (!hasJoin) {
+        query += ' INNER JOIN accounts a ON t.account_id = a.id';
+        hasJoin = true;
+      } else if (!query.includes('INNER JOIN accounts')) {
+        query += ' INNER JOIN accounts a ON t.account_id = a.id';
+      }
+      const placeholders = accountTypes.map(() => '?').join(',');
+      conditions.push(`a.type IN (${placeholders})`);
+      params.push(...accountTypes);
+    }
+
+    query += ` WHERE ${conditions.join(' AND ')}`;
+
+    // Execute query to get only id, amount, type, date
+    const results = await this.executeQuery<{ id: number; amount: string; type: Transaction['type']; date: string }>(query, params);
+
+    // Decrypt amounts in parallel (only amounts, not notes/payment_mode)
+    const decryptedAmounts = await Promise.all(
+      results.map(async (row) => ({
+        id: row.id,
+        amount: await decryptAmount(row.amount),
+        type: row.type,
+        date: row.date,
+      }))
+    );
+
+    // Group by month
+    const monthMap = new Map<string, { expenses: number; income: number; count: number }>();
+
+    for (const row of decryptedAmounts) {
+      const date = new Date(row.date);
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const existing = monthMap.get(monthKey) || { expenses: 0, income: 0, count: 0 };
+      
+      if (row.type === 'expense') {
+        existing.expenses += row.amount;
+      } else if (row.type === 'income') {
+        existing.income += row.amount;
+      }
+      existing.count += 1;
+      monthMap.set(monthKey, existing);
+    }
+
+    // Convert to array
+    return Array.from(monthMap.entries()).map(([monthKey, data]) => ({
+      monthKey,
+      expenses: data.expenses,
+      income: data.income,
+      count: data.count,
+    }));
+  }
+
+  /**
+   * Optimized method to calculate tag breakdown without fetching full transactions
+   * Only fetches and decrypts amounts with transaction_id for tag joins
+   */
+  async calculateTagBreakdown(filters?: {
+    accountId?: number;
+    accountIds?: number[];
+    tagId?: number;
+    tagIds?: number[];
+    categoryId?: number;
+    categoryIds?: number[];
+    startDate?: string;
+    endDate?: string;
+    type?: Transaction['type'];
+    types?: Transaction['type'][];
+    accountType?: string;
+    accountTypes?: string[];
+  }): Promise<Array<{ tagId: number | null; amount: number; count: number }>> {
+    // Always join with transaction_tags to get tag information
+    let query = `SELECT t.id, t.amount, t.type, tt.tag_id FROM ${this.tableName} t 
+                 LEFT JOIN transaction_tags tt ON t.id = tt.transaction_id`;
+    const params: any[] = [];
+    const conditions: string[] = ['t.deleted_at IS NULL'];
+    let hasJoin = true; // Already have transaction_tags join
+
+    // Handle account filters
+    const accountIds = filters?.accountIds || (filters?.accountId ? [filters.accountId] : []);
+    if (accountIds.length > 0) {
+      const placeholders = accountIds.map(() => '?').join(',');
+      conditions.push(`t.account_id IN (${placeholders})`);
+      params.push(...accountIds);
+    }
+
+    // Handle tag filters - if filtering by specific tags, use INNER JOIN instead
+    const tagIds = filters?.tagIds || (filters?.tagId ? [filters.tagId] : []);
+    if (tagIds.length > 0) {
+      // Change to INNER JOIN when filtering by tags
+      query = `SELECT t.id, t.amount, t.type, tt.tag_id FROM ${this.tableName} t 
+               INNER JOIN transaction_tags tt ON t.id = tt.transaction_id`;
+      const placeholders = tagIds.map(() => '?').join(',');
+      conditions.push(`tt.tag_id IN (${placeholders})`);
+      params.push(...tagIds);
+    }
+
+    // Handle category filters
+    const categoryIds = filters?.categoryIds || (filters?.categoryId ? [filters.categoryId] : []);
+    if (categoryIds.length > 0) {
+      const placeholders = categoryIds.map(() => '?').join(',');
+      conditions.push(`t.category_id IN (${placeholders})`);
+      params.push(...categoryIds);
+    }
+
+    if (filters?.startDate) {
+      conditions.push('t.date >= ?');
+      params.push(filters.startDate);
+    }
+
+    if (filters?.endDate) {
+      conditions.push('t.date <= ?');
+      params.push(filters.endDate);
+    }
+
+    // Handle transaction type filters - only expenses for tag breakdown
+    const types = filters?.types || (filters?.type ? [filters.type] : ['expense']);
+    if (types.length > 0) {
+      const placeholders = types.map(() => '?').join(',');
+      conditions.push(`t.type IN (${placeholders})`);
+      params.push(...types);
+    }
+
+    // Handle account type filters
+    const accountTypes = filters?.accountTypes || (filters?.accountType ? [filters.accountType] : []);
+    if (accountTypes.length > 0) {
+      if (!query.includes('INNER JOIN accounts')) {
+        query += ' INNER JOIN accounts a ON t.account_id = a.id';
+      }
+      const placeholders = accountTypes.map(() => '?').join(',');
+      conditions.push(`a.type IN (${placeholders})`);
+      params.push(...accountTypes);
+    }
+
+    query += ` WHERE ${conditions.join(' AND ')}`;
+
+    // Execute query to get only id, amount, type, tag_id
+    const results = await this.executeQuery<{ id: number; amount: string; type: Transaction['type']; tag_id: number | null }>(query, params);
+
+    // Decrypt amounts in parallel (only amounts, not notes/payment_mode)
+    const decryptedAmounts = await Promise.all(
+      results.map(async (row) => ({
+        id: row.id,
+        amount: await decryptAmount(row.amount),
+        type: row.type,
+        tag_id: row.tag_id,
+      }))
+    );
+
+    // Group by tag (null means untagged)
+    const tagMap = new Map<number | null, { amount: number; count: number }>();
+
+    for (const row of decryptedAmounts) {
+      if (row.type === 'expense') {
+        const tagId = row.tag_id || null;
+        const existing = tagMap.get(tagId) || { amount: 0, count: 0 };
+        existing.amount += row.amount;
+        existing.count += 1;
+        tagMap.set(tagId, existing);
+      }
+    }
+
+    // Convert to array
+    return Array.from(tagMap.entries()).map(([tagId, data]) => ({
+      tagId,
+      amount: data.amount,
+      count: data.count,
+    }));
+  }
+
+  /**
+   * Optimized method to calculate account breakdown without fetching full transactions
+   * Only fetches and decrypts amounts with account_id and type
+   */
+  async calculateAccountBreakdown(filters?: {
+    accountId?: number;
+    accountIds?: number[];
+    tagId?: number;
+    tagIds?: number[];
+    categoryId?: number;
+    categoryIds?: number[];
+    startDate?: string;
+    endDate?: string;
+    type?: Transaction['type'];
+    types?: Transaction['type'][];
+    accountType?: string;
+    accountTypes?: string[];
+  }): Promise<Array<{ accountId: number; expenses: number; income: number; count: number }>> {
+    let query = `SELECT t.id, t.amount, t.type, t.account_id FROM ${this.tableName} t`;
+    const params: any[] = [];
+    const conditions: string[] = ['t.deleted_at IS NULL'];
+    let hasJoin = false;
+
+    // Handle account filters
+    const accountIds = filters?.accountIds || (filters?.accountId ? [filters.accountId] : []);
+    if (accountIds.length > 0) {
+      const placeholders = accountIds.map(() => '?').join(',');
+      conditions.push(`t.account_id IN (${placeholders})`);
+      params.push(...accountIds);
+    }
+
+    // Handle tag filters
+    const tagIds = filters?.tagIds || (filters?.tagId ? [filters.tagId] : []);
+    if (tagIds.length > 0) {
+      if (!hasJoin) {
+        query += ' INNER JOIN transaction_tags tt ON t.id = tt.transaction_id';
+        hasJoin = true;
+      }
+      const placeholders = tagIds.map(() => '?').join(',');
+      conditions.push(`tt.tag_id IN (${placeholders})`);
+      params.push(...tagIds);
+    }
+
+    // Handle category filters
+    const categoryIds = filters?.categoryIds || (filters?.categoryId ? [filters.categoryId] : []);
+    if (categoryIds.length > 0) {
+      const placeholders = categoryIds.map(() => '?').join(',');
+      conditions.push(`t.category_id IN (${placeholders})`);
+      params.push(...categoryIds);
+    }
+
+    if (filters?.startDate) {
+      conditions.push('t.date >= ?');
+      params.push(filters.startDate);
+    }
+
+    if (filters?.endDate) {
+      conditions.push('t.date <= ?');
+      params.push(filters.endDate);
+    }
+
+    // Handle transaction type filters - allow both income and expenses for account breakdown
+    const types = filters?.types || (filters?.type ? [filters.type] : undefined);
+    if (types && types.length > 0) {
+      const placeholders = types.map(() => '?').join(',');
+      conditions.push(`t.type IN (${placeholders})`);
+      params.push(...types);
+    }
+
+    // Handle account type filters
+    const accountTypes = filters?.accountTypes || (filters?.accountType ? [filters.accountType] : []);
+    if (accountTypes.length > 0) {
+      if (!hasJoin) {
+        query += ' INNER JOIN accounts a ON t.account_id = a.id';
+        hasJoin = true;
+      } else if (!query.includes('INNER JOIN accounts')) {
+        query += ' INNER JOIN accounts a ON t.account_id = a.id';
+      }
+      const placeholders = accountTypes.map(() => '?').join(',');
+      conditions.push(`a.type IN (${placeholders})`);
+      params.push(...accountTypes);
+    }
+
+    query += ` WHERE ${conditions.join(' AND ')}`;
+
+    // Execute query to get only id, amount, type, account_id
+    const results = await this.executeQuery<{ id: number; amount: string; type: Transaction['type']; account_id: number }>(query, params);
+
+    // Decrypt amounts in parallel (only amounts, not notes/payment_mode)
+    const decryptedAmounts = await Promise.all(
+      results.map(async (row) => ({
+        id: row.id,
+        amount: await decryptAmount(row.amount),
+        type: row.type,
+        account_id: row.account_id,
+      }))
+    );
+
+    // Group by account
+    const accountMap = new Map<number, { expenses: number; income: number; count: number }>();
+
+    for (const row of decryptedAmounts) {
+      const existing = accountMap.get(row.account_id) || { expenses: 0, income: 0, count: 0 };
+      
+      if (row.type === 'expense') {
+        existing.expenses += row.amount;
+        existing.count += 1;
+      } else if (row.type === 'income') {
+        existing.income += row.amount;
+        existing.count += 1;
+      }
+      accountMap.set(row.account_id, existing);
+    }
+
+    // Convert to array
+    return Array.from(accountMap.entries()).map(([accountId, data]) => ({
+      accountId,
+      expenses: data.expenses,
+      income: data.income,
+      count: data.count,
+    }));
   }
 }
 

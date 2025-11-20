@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { transactionRepository } from '@/repositories/transaction.repository';
 import { categoryRepository } from '@/repositories/category.repository';
+import { Transaction } from '@/db/schema/types';
 import { startOfMonth, endOfMonth, format } from 'date-fns';
 import { useUIStore } from '@/store/ui-store';
 import { useSettingsStore } from '@/store/settings-store';
@@ -45,7 +46,7 @@ export function useDashboardData(month?: Date, useFilters: boolean = false) {
       ? [...QUERY_KEYS.monthly(monthKey), 'filters', filters, incomePreferenceKey(incomeEnabled)]
       : [...QUERY_KEYS.monthly(monthKey), incomePreferenceKey(incomeEnabled)],
     queryFn: async (): Promise<DashboardData> => {
-      const filterOptions = useFilters ? {
+      const baseFilterOptions = useFilters ? {
         startDate,
         endDate,
         accountIds: filters.accountIds && filters.accountIds.length > 0 ? filters.accountIds : undefined,
@@ -60,27 +61,24 @@ export function useDashboardData(month?: Date, useFilters: boolean = false) {
         accountType: filters.accountType || undefined,
       } : { startDate, endDate };
       
-      const transactions = await transactionRepository.findAllWithFilters(filterOptions);
-      const decrypted = await transactionRepository.decryptTransactions(transactions);
-      const visibleTransactions = filterTransactionsByIncomePreference(decrypted, incomeEnabled);
+      // If income is disabled, exclude income transactions from the query
+      const filterOptions = !incomeEnabled && !baseFilterOptions.types
+        ? { ...baseFilterOptions, types: ['expense'] as Transaction['type'][] }
+        : baseFilterOptions;
+      
+      // Use optimized method that only fetches and decrypts amounts
+      const totals = await transactionRepository.calculateSummaryTotals(filterOptions);
 
-      let totalSpending = 0;
-      let totalIncome = 0;
-
-      for (const transaction of visibleTransactions) {
-        const amount = typeof transaction.amount === 'number' ? transaction.amount : parseFloat(String(transaction.amount)) || 0;
-        if (transaction.type === 'expense') {
-          totalSpending += amount;
-        } else {
-          totalIncome += amount;
-        }
-      }
+      // If income is disabled, ensure income totals are zero
+      const finalTotals = !incomeEnabled
+        ? { ...totals, totalIncome: 0, incomeCount: 0 }
+        : totals;
 
       return {
-        totalSpending,
-        totalIncome,
-        netAmount: totalIncome - totalSpending,
-        transactionCount: decrypted.length,
+        totalSpending: finalTotals.totalExpenses,
+        totalIncome: finalTotals.totalIncome,
+        netAmount: finalTotals.totalIncome - finalTotals.totalExpenses,
+        transactionCount: finalTotals.transactionCount,
       };
     },
   });
@@ -105,7 +103,7 @@ export function useCategoryBreakdown(month?: Date, useFilters: boolean = false) 
       ? [...QUERY_KEYS.categoryBreakdown(monthKey), 'filters', filters, incomePreferenceKey(incomeEnabled)]
       : [...QUERY_KEYS.categoryBreakdown(monthKey), incomePreferenceKey(incomeEnabled)],
     queryFn: async (): Promise<CategoryBreakdown[]> => {
-      const filterOptions = useFilters ? {
+      const baseFilterOptions = useFilters ? {
         startDate,
         endDate,
         accountIds: filters.accountIds && filters.accountIds.length > 0 ? filters.accountIds : undefined,
@@ -120,53 +118,49 @@ export function useCategoryBreakdown(month?: Date, useFilters: boolean = false) 
         accountType: filters.accountType || undefined,
       } : { startDate, endDate };
       
-      const transactions = await transactionRepository.findAllWithFilters(filterOptions);
-      const decrypted = await transactionRepository.decryptTransactions(transactions);
-      const visibleTransactions = filterTransactionsByIncomePreference(decrypted, incomeEnabled);
+      // Category breakdown only shows expenses, so filter to expenses
+      const filterOptions = {
+        ...baseFilterOptions,
+        types: baseFilterOptions.types || ['expense'] as Transaction['type'][],
+      };
+      
+      // Use optimized method that only fetches and decrypts amounts with category_id
+      const categoryData = await transactionRepository.calculateCategoryBreakdown(filterOptions);
 
-      // Get all transaction categories
-      const categoryMap = new Map<number, { name: string; amount: number; count: number }>();
-
-      for (const transaction of visibleTransactions) {
-        if (transaction.type === 'expense') {
-          const amount = typeof transaction.amount === 'number' ? transaction.amount : parseFloat(String(transaction.amount)) || 0;
-          
-          if (!transaction.category_id) {
-            // Uncategorized
-            const uncategorized = categoryMap.get(0) || { name: 'Uncategorized', amount: 0, count: 0 };
-            uncategorized.amount += amount;
-            uncategorized.count += 1;
-            categoryMap.set(0, uncategorized);
-          } else {
-            const existing = categoryMap.get(transaction.category_id) || { 
-              name: `Category ${transaction.category_id}`, 
-              amount: 0, 
-              count: 0 
-            };
-            existing.amount += amount;
-            existing.count += 1;
-            categoryMap.set(transaction.category_id, existing);
-          }
-        }
-      }
-
-      // Fetch category names
+      // Fetch category names (only for categories that exist)
       const breakdown: CategoryBreakdown[] = [];
+      const categoryIdsToFetch = categoryData
+        .map((d) => d.categoryId)
+        .filter((id): id is number => id !== null && id !== 0);
 
-      for (const [categoryId, data] of categoryMap.entries()) {
-        if (categoryId === 0) {
+      // Fetch all categories in parallel
+      const categories = await Promise.all(
+        categoryIdsToFetch.map(async (id) => {
+          const category = await categoryRepository.findById(id);
+          return category ? { id, category: await categoryRepository.decryptCategory(category) } : null;
+        })
+      );
+
+      const categoryMap = new Map(
+        categories
+          .filter((c): c is { id: number; category: any } => c !== null)
+          .map((c) => [c.id, c.category])
+      );
+
+      // Build breakdown array
+      for (const data of categoryData) {
+        if (data.categoryId === null || data.categoryId === 0) {
           breakdown.push({
             categoryId: 0,
-            categoryName: data.name,
+            categoryName: 'Uncategorized',
             amount: data.amount,
             count: data.count,
           });
         } else {
-          const category = await categoryRepository.findById(categoryId);
-          const decryptedCategory = category ? await categoryRepository.decryptCategory(category) : null;
+          const category = categoryMap.get(data.categoryId);
           breakdown.push({
-            categoryId,
-            categoryName: decryptedCategory?.name || data.name,
+            categoryId: data.categoryId,
+            categoryName: category?.name || `Category ${data.categoryId}`,
             amount: data.amount,
             count: data.count,
           });

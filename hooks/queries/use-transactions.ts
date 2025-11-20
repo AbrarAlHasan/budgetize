@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
 import { transactionRepository } from '@/repositories/transaction.repository';
 import { CreateTransactionInput, UpdateTransactionInput, Transaction } from '@/db/schema/types';
 import { useSettingsStore } from '@/store/settings-store';
@@ -51,6 +51,46 @@ export function useTransactions(filters?: {
       const decrypted = await transactionRepository.decryptTransactions(transactions);
       return filterTransactionsByIncomePreference(decrypted, incomeEnabled);
     },
+  });
+}
+
+const TRANSACTIONS_PER_PAGE = 20;
+
+export function useTransactionsPaginated(filters?: {
+  accountId?: number;
+  accountIds?: number[];
+  tagId?: number;
+  tagIds?: number[];
+  categoryId?: number;
+  categoryIds?: number[];
+  startDate?: string;
+  endDate?: string;
+  type?: Transaction['type'];
+  types?: Transaction['type'][];
+  accountType?: string;
+  accountTypes?: string[];
+}) {
+  const incomeEnabled = useSettingsStore((state) => state.incomeCalculationEnabled);
+
+  return useInfiniteQuery({
+    queryKey: [...QUERY_KEYS.list(filters), 'paginated', incomePreferenceKey(incomeEnabled)],
+    queryFn: async ({ pageParam = 0 }) => {
+      const result = await transactionRepository.findAllWithFiltersPaginated(
+        filters,
+        TRANSACTIONS_PER_PAGE,
+        pageParam * TRANSACTIONS_PER_PAGE
+      );
+      const decrypted = await transactionRepository.decryptTransactions(result.transactions);
+      const filtered = filterTransactionsByIncomePreference(decrypted, incomeEnabled);
+      
+      return {
+        transactions: filtered,
+        hasMore: result.hasMore,
+        nextPage: result.hasMore ? pageParam + 1 : undefined,
+      };
+    },
+    getNextPageParam: (lastPage) => lastPage.nextPage,
+    initialPageParam: 0,
   });
 }
 

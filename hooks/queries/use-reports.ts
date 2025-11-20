@@ -3,6 +3,7 @@ import { categoryRepository } from '@/repositories/category.repository';
 import { tagRepository } from '@/repositories/tag.repository';
 import { transactionTagRepository } from '@/repositories/transaction-tag.repository';
 import { transactionRepository } from '@/repositories/transaction.repository';
+import { Transaction } from '@/db/schema/types';
 import { useUIStore } from '@/store/ui-store';
 import { useSettingsStore } from '@/store/settings-store';
 import { useQuery } from '@tanstack/react-query';
@@ -110,7 +111,7 @@ export function useReportSummary(startDate: string, endDate: string, useFilters:
       ? [...QUERY_KEYS.summary(filterStartDate, filterEndDate), 'filters', filters, incomePreferenceKey(incomeEnabled)]
       : [...QUERY_KEYS.summary(filterStartDate, filterEndDate), incomePreferenceKey(incomeEnabled)],
     queryFn: async (): Promise<ReportSummary> => {
-      const filterOptions = useFilters ? {
+      const baseFilterOptions = useFilters ? {
         startDate: filterStartDate,
         endDate: filterEndDate,
         accountIds: filters.accountIds && filters.accountIds.length > 0 ? filters.accountIds : undefined,
@@ -125,33 +126,26 @@ export function useReportSummary(startDate: string, endDate: string, useFilters:
         accountType: filters.accountType || undefined,
       } : { startDate: filterStartDate, endDate: filterEndDate };
       
-      const transactions = await transactionRepository.findAllWithFilters(filterOptions);
-      const decrypted = await transactionRepository.decryptTransactions(transactions);
-      const visibleTransactions = filterTransactionsByIncomePreference(decrypted, incomeEnabled);
+      // If income is disabled, exclude income transactions from the query
+      const filterOptions = !incomeEnabled && !baseFilterOptions.types
+        ? { ...baseFilterOptions, types: ['expense'] as Transaction['type'][] }
+        : baseFilterOptions;
+      
+      // Use optimized method that only fetches and decrypts amounts
+      const totals = await transactionRepository.calculateSummaryTotals(filterOptions);
 
-      let totalExpenses = 0;
-      let totalIncome = 0;
-      let expenseCount = 0;
-      let incomeCount = 0;
-
-      for (const transaction of visibleTransactions) {
-        const amount = typeof transaction.amount === 'number' ? transaction.amount : parseFloat(String(transaction.amount)) || 0;
-        if (transaction.type === 'expense') {
-          totalExpenses += amount;
-          expenseCount += 1;
-        } else {
-          totalIncome += amount;
-          incomeCount += 1;
-        }
-      }
+      // If income is disabled, ensure income totals are zero
+      const finalTotals = !incomeEnabled
+        ? { ...totals, totalIncome: 0, incomeCount: 0 }
+        : totals;
 
       return {
-        totalExpenses,
-        totalIncome,
-        netAmount: totalIncome - totalExpenses,
-        transactionCount: visibleTransactions.length,
-        averageExpense: expenseCount > 0 ? totalExpenses / expenseCount : 0,
-        averageIncome: incomeCount > 0 ? totalIncome / incomeCount : 0,
+        totalExpenses: finalTotals.totalExpenses,
+        totalIncome: finalTotals.totalIncome,
+        netAmount: finalTotals.totalIncome - finalTotals.totalExpenses,
+        transactionCount: finalTotals.transactionCount,
+        averageExpense: finalTotals.expenseCount > 0 ? finalTotals.totalExpenses / finalTotals.expenseCount : 0,
+        averageIncome: finalTotals.incomeCount > 0 ? finalTotals.totalIncome / finalTotals.incomeCount : 0,
       };
     },
     enabled: !!filterStartDate && !!filterEndDate,
@@ -186,60 +180,34 @@ export function useCategoryReport(startDate: string, endDate: string, useFilters
         accountType: filters.accountType || undefined,
       } : { startDate: filterStartDate, endDate: filterEndDate };
       
-      const transactions = await transactionRepository.findAllWithFilters(filterOptions);
-      const decrypted = await transactionRepository.decryptTransactions(transactions);
-      const visibleTransactions = filterTransactionsByIncomePreference(decrypted, incomeEnabled);
+      // Use optimized method that only fetches and decrypts amounts with category_id
+      const categoryBreakdown = await transactionRepository.calculateCategoryBreakdown(filterOptions);
 
-      // Get all transaction categories
-      const categoryMap = new Map<number, { name: string; amount: number; count: number }>();
-      let totalExpenses = 0;
-
-      for (const transaction of visibleTransactions) {
-        if (transaction.type === 'expense') {
-          const amount = typeof transaction.amount === 'number' ? transaction.amount : parseFloat(String(transaction.amount)) || 0;
-          totalExpenses += amount;
-          
-          if (!transaction.category_id) {
-            // Uncategorized
-            const uncategorized = categoryMap.get(0) || { name: 'Uncategorized', amount: 0, count: 0 };
-            uncategorized.amount += amount;
-            uncategorized.count += 1;
-            categoryMap.set(0, uncategorized);
-          } else {
-            const existing = categoryMap.get(transaction.category_id) || { 
-              name: `Category ${transaction.category_id}`, 
-              amount: 0, 
-              count: 0 
-            };
-            existing.amount += amount;
-            existing.count += 1;
-            categoryMap.set(transaction.category_id, existing);
-          }
-        }
-      }
+      // Calculate total expenses for percentage calculation
+      const totalExpenses = categoryBreakdown.reduce((sum, item) => sum + item.amount, 0);
 
       // Fetch category names
       const reports: CategoryReport[] = [];
 
-      for (const [categoryId, data] of categoryMap.entries()) {
-        if (categoryId === 0) {
+      for (const item of categoryBreakdown) {
+        if (item.categoryId === null || item.categoryId === 0) {
           reports.push({
             categoryId: 0,
-            categoryName: data.name,
-            amount: data.amount,
-            count: data.count,
-            percentage: totalExpenses > 0 ? (data.amount / totalExpenses) * 100 : 0,
+            categoryName: 'Uncategorized',
+            amount: item.amount,
+            count: item.count,
+            percentage: totalExpenses > 0 ? (item.amount / totalExpenses) * 100 : 0,
             isDeleted: false,
           });
         } else {
-          const category = await categoryRepository.findById(categoryId);
+          const category = await categoryRepository.findById(item.categoryId);
           const decryptedCategory = category ? await categoryRepository.decryptCategory(category) : null;
           reports.push({
-            categoryId,
-            categoryName: decryptedCategory?.name || data.name,
-            amount: data.amount,
-            count: data.count,
-            percentage: totalExpenses > 0 ? (data.amount / totalExpenses) * 100 : 0,
+            categoryId: item.categoryId,
+            categoryName: decryptedCategory?.name || `Category ${item.categoryId}`,
+            amount: item.amount,
+            count: item.count,
+            percentage: totalExpenses > 0 ? (item.amount / totalExpenses) * 100 : 0,
             isDeleted: category?.deleted_at !== null,
           });
         }
@@ -279,64 +247,35 @@ export function useTagReport(startDate: string, endDate: string, useFilters: boo
         accountType: filters.accountType || undefined,
       } : { startDate: filterStartDate, endDate: filterEndDate };
       
-      const transactions = await transactionRepository.findAllWithFilters(filterOptions);
-      const decrypted = await transactionRepository.decryptTransactions(transactions);
-      const visibleTransactions = filterTransactionsByIncomePreference(decrypted, incomeEnabled);
+      // Use optimized method that only fetches and decrypts amounts with tag_id
+      const tagBreakdown = await transactionRepository.calculateTagBreakdown(filterOptions);
 
-      const tagMap = new Map<number, { name: string; amount: number; count: number }>();
-      let totalTaggedExpenses = 0; // Total of all tag amounts (may be > totalExpenses due to multi-tag transactions)
-
-      for (const transaction of visibleTransactions) {
-        if (transaction.type === 'expense') {
-          const amount = typeof transaction.amount === 'number' ? transaction.amount : parseFloat(String(transaction.amount)) || 0;
-          const tags = await transactionTagRepository.findByTransactionId(transaction.id);
-          
-          if (tags.length === 0) {
-            const untagged = tagMap.get(0) || { name: 'Untagged', amount: 0, count: 0 };
-            untagged.amount += amount;
-            untagged.count += 1;
-            totalTaggedExpenses += amount;
-            tagMap.set(0, untagged);
-          } else {
-            // For transactions with multiple tags, add full amount to each tag
-            for (const tag of tags) {
-              const existing = tagMap.get(tag.tag_id) || { 
-                name: `Tag ${tag.tag_id}`, 
-                amount: 0, 
-                count: 0 
-              };
-              existing.amount += amount;
-              existing.count += 1;
-              totalTaggedExpenses += amount; // Add amount for each tag
-              tagMap.set(tag.tag_id, existing);
-            }
-          }
-        }
-      }
+      // Calculate total tagged expenses for percentage (may be > totalExpenses due to multi-tag transactions)
+      const totalTaggedExpenses = tagBreakdown.reduce((sum, item) => sum + item.amount, 0);
 
       // Fetch tag names
       const reports: TagReport[] = [];
 
-      for (const [tagId, data] of tagMap.entries()) {
-        if (tagId === 0) {
+      for (const item of tagBreakdown) {
+        if (item.tagId === null || item.tagId === 0) {
           reports.push({
             tagId: 0,
-            tagName: data.name,
-            amount: data.amount,
-            count: data.count,
-            percentage: totalTaggedExpenses > 0 ? (data.amount / totalTaggedExpenses) * 100 : 0,
+            tagName: 'Untagged',
+            amount: item.amount,
+            count: item.count,
+            percentage: totalTaggedExpenses > 0 ? (item.amount / totalTaggedExpenses) * 100 : 0,
             isDeleted: false,
           });
         } else {
           // Fetch tag including deleted ones for reports
-          const tag = await tagRepository.findByIdIncludingDeleted(tagId);
+          const tag = await tagRepository.findByIdIncludingDeleted(item.tagId);
           const decryptedTag = tag ? await tagRepository.decryptTag(tag) : null;
           reports.push({
-            tagId,
-            tagName: decryptedTag?.name || data.name,
-            amount: data.amount,
-            count: data.count,
-            percentage: totalTaggedExpenses > 0 ? (data.amount / totalTaggedExpenses) * 100 : 0,
+            tagId: item.tagId,
+            tagName: decryptedTag?.name || `Tag ${item.tagId}`,
+            amount: item.amount,
+            count: item.count,
+            percentage: totalTaggedExpenses > 0 ? (item.amount / totalTaggedExpenses) * 100 : 0,
             isDeleted: tag?.deleted_at !== null,
           });
         }
@@ -376,45 +315,43 @@ export function useAccountReport(startDate: string, endDate: string, useFilters:
         accountType: filters.accountType || undefined,
       } : { startDate: filterStartDate, endDate: filterEndDate };
       
-      const transactions = await transactionRepository.findAllWithFilters(filterOptions);
-      const decrypted = await transactionRepository.decryptTransactions(transactions);
-      const visibleTransactions = filterTransactionsByIncomePreference(decrypted, incomeEnabled);
+      // Use optimized method that only fetches and decrypts amounts with account_id and type
+      // Filter by income preference in the query if needed
+      const accountBreakdownFilterOptions = !incomeEnabled 
+        ? { ...filterOptions, types: ['expense'] as Transaction['type'][] }
+        : filterOptions;
+      
+      const accountBreakdown = await transactionRepository.calculateAccountBreakdown(accountBreakdownFilterOptions);
+
+      // Fetch all accounts (not just those with transactions)
       const accounts = await accountRepository.findAll();
       const decryptedAccounts = await accountRepository.decryptAccounts(accounts);
+      
+      // Create a map of account breakdown data by account ID
+      const breakdownMap = new Map(accountBreakdown.map(item => [item.accountId, item]));
 
-      const accountMap = new Map<number, AccountReport>();
-
-      // Initialize account map
-      for (const account of decryptedAccounts) {
-        accountMap.set(account.id, {
+      // Build reports for ALL accounts, including those with no transactions
+      const reports: AccountReport[] = decryptedAccounts.map((account) => {
+        const breakdown = breakdownMap.get(account.id);
+        return {
           accountId: account.id,
           accountName: account.name,
           accountType: account.type,
-          expenses: 0,
-          income: 0,
-          netAmount: 0,
-          transactionCount: 0,
-        });
-      }
+          expenses: breakdown?.expenses || 0,
+          income: breakdown?.income || 0,
+          netAmount: (breakdown?.income || 0) - (breakdown?.expenses || 0),
+          transactionCount: breakdown?.count || 0,
+        };
+      });
 
-      // Aggregate transactions by account
-      for (const transaction of visibleTransactions) {
-        const amount = typeof transaction.amount === 'number' ? transaction.amount : parseFloat(String(transaction.amount)) || 0;
-        const report = accountMap.get(transaction.account_id);
-        if (report) {
-          if (transaction.type === 'expense') {
-            report.expenses += amount;
-          } else {
-            report.income += amount;
-          }
-          report.transactionCount += 1;
-          report.netAmount = report.income - report.expenses;
-        }
-      }
-
-      return Array.from(accountMap.values())
-        .filter((report) => report.transactionCount > 0)
-        .sort((a, b) => Math.abs(b.netAmount) - Math.abs(a.netAmount));
+      // Sort by absolute net amount (accounts with activity first, then by net amount)
+      return reports.sort((a, b) => {
+        // Accounts with transactions come first
+        if (a.transactionCount > 0 && b.transactionCount === 0) return -1;
+        if (a.transactionCount === 0 && b.transactionCount > 0) return 1;
+        // Then sort by absolute net amount
+        return Math.abs(b.netAmount) - Math.abs(a.netAmount);
+      });
     },
     enabled: !!filterStartDate && !!filterEndDate,
   });
@@ -577,7 +514,7 @@ export function useDailyPatterns(startDate: string, endDate: string, useFilters:
       ? [...QUERY_KEYS.dailyPatterns(filterStartDate, filterEndDate), 'filters', filters, incomePreferenceKey(incomeEnabled)]
       : [...QUERY_KEYS.dailyPatterns(filterStartDate, filterEndDate), incomePreferenceKey(incomeEnabled)],
     queryFn: async (): Promise<DailyPattern[]> => {
-      const filterOptions = useFilters ? {
+      const baseFilterOptions = useFilters ? {
         startDate: filterStartDate,
         endDate: filterEndDate,
         accountIds: filters.accountIds && filters.accountIds.length > 0 ? filters.accountIds : undefined,
@@ -592,35 +529,28 @@ export function useDailyPatterns(startDate: string, endDate: string, useFilters:
         accountType: filters.accountType || undefined,
       } : { startDate: filterStartDate, endDate: filterEndDate };
       
-      const transactions = await transactionRepository.findAllWithFilters(filterOptions);
-      const decrypted = await transactionRepository.decryptTransactions(transactions);
-      const visibleTransactions = filterTransactionsByIncomePreference(decrypted, incomeEnabled);
+      // Daily patterns only show expenses, so filter to expenses
+      const filterOptions = {
+        ...baseFilterOptions,
+        types: baseFilterOptions.types || ['expense'] as Transaction['type'][],
+      };
+      
+      // Use optimized method that only fetches and decrypts amounts with date
+      const dayData = await transactionRepository.calculateDailyPatterns(filterOptions);
 
-      const dayMap = new Map<number, { total: number; count: number }>();
+      // Convert to DailyPattern format
       const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-      for (const transaction of visibleTransactions) {
-        if (transaction.type === 'expense') {
-          const date = new Date(transaction.date);
-          const dayIndex = date.getDay();
-          const amount = typeof transaction.amount === 'number' ? transaction.amount : parseFloat(String(transaction.amount)) || 0;
-          
-          const existing = dayMap.get(dayIndex) || { total: 0, count: 0 };
-          existing.total += amount;
-          existing.count += 1;
-          dayMap.set(dayIndex, existing);
-        }
-      }
+      const dayMap = new Map(dayData.map((d) => [d.dayIndex, d]));
 
       const patterns: DailyPattern[] = [];
       for (let i = 0; i < 7; i++) {
-        const data = dayMap.get(i) || { total: 0, count: 0 };
+        const data = dayMap.get(i) || { totalAmount: 0, count: 0 };
         patterns.push({
           dayOfWeek: dayNames[i],
           dayIndex: i,
-          totalAmount: data.total,
+          totalAmount: data.totalAmount,
           transactionCount: data.count,
-          averageAmount: data.count > 0 ? data.total / data.count : 0,
+          averageAmount: data.count > 0 ? data.totalAmount / data.count : 0,
         });
       }
 
@@ -653,34 +583,32 @@ export function useMonthlyTrends(startDate: string, endDate: string, useFilters:
       const filterOptions = useFilters ? {
         startDate: trendStartDate,
         endDate: trendEndDate,
+        accountIds: filters.accountIds && filters.accountIds.length > 0 ? filters.accountIds : undefined,
         accountId: filters.accountId || undefined,
+        tagIds: filters.tagIds && filters.tagIds.length > 0 ? filters.tagIds : undefined,
         tagId: filters.tagId || undefined,
+        categoryIds: filters.categoryIds && filters.categoryIds.length > 0 ? filters.categoryIds : undefined,
         categoryId: filters.categoryId || undefined,
+        types: filters.transactionTypes && filters.transactionTypes.length > 0 ? filters.transactionTypes : undefined,
         type: filters.transactionType || undefined,
+        accountTypes: filters.accountTypes && filters.accountTypes.length > 0 ? filters.accountTypes : undefined,
+        accountType: filters.accountType || undefined,
       } : { 
         startDate: trendStartDate, 
         endDate: trendEndDate 
       };
       
-      const transactions = await transactionRepository.findAllWithFilters(filterOptions);
-      const decrypted = await transactionRepository.decryptTransactions(transactions);
-      const visibleTransactions = filterTransactionsByIncomePreference(decrypted, incomeEnabled);
+      // Use optimized method that only fetches and decrypts amounts with date and type
+      const monthlyData = await transactionRepository.calculateMonthlyTrends(filterOptions);
 
+      // Create a map from the optimized results
       const monthMap = new Map<string, { expenses: number; income: number; count: number }>();
-
-      for (const transaction of visibleTransactions) {
-        const date = new Date(transaction.date);
-        const monthKey = format(date, 'yyyy-MM');
-        const amount = typeof transaction.amount === 'number' ? transaction.amount : parseFloat(String(transaction.amount)) || 0;
-        
-        const existing = monthMap.get(monthKey) || { expenses: 0, income: 0, count: 0 };
-        if (transaction.type === 'expense') {
-          existing.expenses += amount;
-        } else {
-          existing.income += amount;
-        }
-        existing.count += 1;
-        monthMap.set(monthKey, existing);
+      for (const item of monthlyData) {
+        monthMap.set(item.monthKey, {
+          expenses: item.expenses,
+          income: item.income,
+          count: item.count,
+        });
       }
 
       // Generate all 10 months from 9 months ago to current month

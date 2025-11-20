@@ -1,18 +1,16 @@
-import { AnimatedProgressBar } from "@/components/charts/animated-progress-bar";
 import { ActiveFilterChips } from "@/components/filters/active-filter-chips";
 import {
-  CategoryBreakdownSkeleton,
   RecentTransactionsSkeleton,
+  SpendingVelocitySkeleton,
   SummaryCardsSkeleton,
 } from "@/components/skeletons";
+import { SpendingVelocity } from "@/components/reports/spending-velocity";
 import { TransactionItem } from "@/components/transaction-item";
 import { Card } from "@/components/ui/card";
 import { useAccounts } from "@/hooks/queries/use-accounts";
 import { useCategories } from "@/hooks/queries/use-categories";
-import {
-  useCategoryBreakdown,
-  useDashboardData,
-} from "@/hooks/queries/use-dashboard";
+import { useDashboardData } from "@/hooks/queries/use-dashboard";
+import { useSpendingVelocity } from "@/hooks/queries/use-spending-velocity";
 import { useTransactions } from "@/hooks/queries/use-transactions";
 import { categoryRepository } from "@/repositories/category.repository";
 import { tagRepository } from "@/repositories/tag.repository";
@@ -21,11 +19,10 @@ import { useSettingsStore } from "@/store/settings-store";
 import { useUIStore } from "@/store/ui-store";
 import { getCurrencySymbol } from "@/utils/currencies";
 import { Ionicons } from "@expo/vector-icons";
-import { useFocusEffect } from "@react-navigation/native";
 import { useQueryClient } from "@tanstack/react-query";
 import { endOfMonth, format, startOfMonth } from "date-fns";
 import { router } from "expo-router";
-import React, { useCallback, useState } from "react";
+import React, { useCallback } from "react";
 import {
   RefreshControl,
   ScrollView,
@@ -42,17 +39,10 @@ export default function DashboardScreen() {
     (state) => state.setCurrentFilterContext
   );
   const { settings, loadSettings } = useSettingsStore();
-  const [chartAnimationKey, setChartAnimationKey] = useState(0);
 
   React.useEffect(() => {
     loadSettings();
   }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      setChartAnimationKey((prev) => prev + 1);
-    }, [])
-  );
 
   // Invalidate queries when filters change
   const filterKey = React.useMemo(
@@ -101,10 +91,8 @@ export default function DashboardScreen() {
     currentMonth,
     useFilters
   );
-  const { data: categoryData, isLoading: categoryLoading } =
-    useCategoryBreakdown(currentMonth, useFilters);
-
-  // Use filter dates if filters are active, otherwise use current month
+  
+  // Spending Velocity dates
   const startDate =
     useFilters && filters.startDate
       ? filters.startDate
@@ -113,6 +101,8 @@ export default function DashboardScreen() {
     useFilters && filters.endDate
       ? filters.endDate
       : format(endOfMonth(currentMonth), "yyyy-MM-dd");
+  
+  const { isLoading: velocityLoading } = useSpendingVelocity(startDate, endDate, useFilters);
 
   const { data: transactions, isLoading: transactionsLoading } =
     useTransactions(
@@ -384,63 +374,16 @@ export default function DashboardScreen() {
             </View>
           )}
 
-          {/* Category Breakdown */}
-          {categoryLoading ? (
-            <CategoryBreakdownSkeleton />
-          ) : categoryData && categoryData.length > 0 ? (
-            <Card className="mb-6">
-              <Text className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">
-                Category Breakdown
-              </Text>
-              <View className="gap-3">
-                {categoryData.map((category, index) => {
-                  const percentage = Math.min(
-                    (category.amount / (dashboardData?.totalSpending || 1)) *
-                      100,
-                    100
-                  );
-                  const colors = [
-                    "#3B82F6",
-                    "#10B981",
-                    "#F59E0B",
-                    "#EF4444",
-                    "#8B5CF6",
-                    "#EC4899",
-                  ];
-                  const color = colors[index % colors.length];
-
-                  return (
-                    <View key={category.categoryId}>
-                      <View className="flex-row justify-between items-center mb-2">
-                        <Text className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                          {category.categoryName}
-                        </Text>
-                        <View className="flex-row items-center gap-2">
-                          <Text className="text-sm font-bold text-gray-900 dark:text-gray-100">
-                            {getCurrencySymbol(settings.currency)}
-                            {category.amount.toLocaleString(undefined, {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2,
-                            })}
-                          </Text>
-                          <Text className="text-xs text-gray-500 dark:text-gray-400">
-                            {percentage.toFixed(0)}%
-                          </Text>
-                        </View>
-                      </View>
-                      <AnimatedProgressBar
-                        percentage={percentage}
-                        color={color}
-                        height={10}
-                        animationKey={chartAnimationKey}
-                        index={index}
-                      />
-                    </View>
-                  );
-                })}
-              </View>
-            </Card>
-          ) : null}
+          {/* Spending Velocity */}
+          {velocityLoading ? (
+            <SpendingVelocitySkeleton />
+          ) : (
+            <SpendingVelocity 
+              startDate={startDate} 
+              endDate={endDate} 
+              useFilters={useFilters} 
+            />
+          )}
 
           {/* Quick Actions */}
           <View className="flex-row gap-3 mb-6">

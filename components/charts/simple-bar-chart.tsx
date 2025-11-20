@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
@@ -57,8 +57,22 @@ export function SimpleBarChart({
 
   // Animation seed ensures animations restart when data/key change
   const [animationSeed, setAnimationSeed] = useState(0);
+  const previousDataRef = React.useRef<string>('');
+  const previousKeyRef = React.useRef<string | number | undefined>(undefined);
+  
   useEffect(() => {
-    setAnimationSeed((prev) => prev + 1);
+    // Create a stable key from data values (not reference)
+    const dataKey = JSON.stringify(data.map(d => ({ label: d.label, value: d.value })));
+    const keyChanged = animationKey !== previousKeyRef.current;
+    const dataChanged = dataKey !== previousDataRef.current;
+    
+    // Only update animation seed if data values or animation key actually changed
+    if (keyChanged || (dataChanged && previousDataRef.current !== '')) {
+      setAnimationSeed((prev) => prev + 1);
+    }
+    
+    previousDataRef.current = dataKey;
+    previousKeyRef.current = animationKey;
   }, [data, animationKey]);
 
   const chartContent = (
