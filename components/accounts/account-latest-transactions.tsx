@@ -1,9 +1,11 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useTransactions } from '@/hooks/queries/use-transactions';
-import { getCurrencySymbol } from '@/utils/currencies';
+import { useQuery } from '@tanstack/react-query';
+import { transactionRepository } from '@/repositories/transaction.repository';
 import { useSettingsStore } from '@/store/settings-store';
+import { filterTransactionsByIncomePreference } from '@/utils/income-preference';
+import { getCurrencySymbol } from '@/utils/currencies';
 import { router } from 'expo-router';
 import { TransactionItem } from '@/components/transaction-item';
 import { RecentTransactionsSkeleton } from '@/components/skeletons';
@@ -20,8 +22,28 @@ interface AccountLatestTransactionsProps {
 
 export function AccountLatestTransactions({ accountId }: AccountLatestTransactionsProps) {
   const { settings } = useSettingsStore();
-  const { data: transactions, isLoading } = useTransactions({
-    accountIds: [accountId],
+  const incomeCalculationEnabled = useSettingsStore((state) => state.incomeCalculationEnabled);
+  
+  // Use optimized query to fetch only latest 5 transactions
+  const { data: transactions, isLoading } = useQuery({
+    queryKey: ['account-latest-transactions', accountId],
+    queryFn: async () => {
+      const startTime = Date.now();
+      console.log(`[Performance] AccountLatestTransactions query started for account ${accountId}`);
+      
+      // Fetch only latest 5 transactions directly from database
+      const rawTransactions = await transactionRepository.findLatestTransactionsForAccount(accountId, 5);
+      
+      // Decrypt only the transactions we need
+      const decrypted = await transactionRepository.decryptTransactions(rawTransactions);
+      const filtered = filterTransactionsByIncomePreference(decrypted, incomeCalculationEnabled);
+      
+      const endTime = Date.now();
+      console.log(`[Performance] AccountLatestTransactions query completed in ${endTime - startTime}ms (${filtered.length} transactions)`);
+      
+      return filtered;
+    },
+    enabled: !!accountId,
   });
   const { data: accounts } = useAccounts();
   const { data: categories } = useCategories();
@@ -33,10 +55,13 @@ export function AccountLatestTransactions({ accountId }: AccountLatestTransactio
   const [transactionCategories, setTransactionCategories] = React.useState<Map<number, string>>(new Map());
 
   React.useEffect(() => {
-    if (transactions) {
+    // Only load tags and categories for the transactions we actually display (max 5)
+    if (transactions && transactions.length > 0) {
       const loadTagsAndCategories = async () => {
         const tagsMap = new Map<number, Array<{ id: number; name: string }>>();
         const categoriesMap = new Map<number, string>();
+        
+        // Only process the transactions we're displaying (already limited to 5 by pagination)
         for (const transaction of transactions) {
           // Load tags (including deleted ones)
           const tags = await transactionTagRepository.findByTransactionId(transaction.id);
@@ -70,8 +95,8 @@ export function AccountLatestTransactions({ accountId }: AccountLatestTransactio
     return accounts?.find((a) => a.id === accountId)?.name || '';
   };
 
-  // Get latest 5 transactions
-  const latestTransactions = transactions ? transactions.slice(0, 5) : [];
+  // Transactions are already limited to 5 by pagination
+  const latestTransactions = transactions;
 
   return (
     <View className="mt-5 mx-5">
@@ -82,7 +107,7 @@ export function AccountLatestTransactions({ accountId }: AccountLatestTransactio
             Latest Transactions
           </Text>
         </View>
-        {!isLoading && transactions && transactions.length > 5 && (
+        {!isLoading && transactions && transactions.length >= 5 && (
           <TouchableOpacity
             onPress={() => {
               clearFilters('expenses');

@@ -1,13 +1,21 @@
-import { BaseRepository } from './base.repository';
-import { Transaction, CreateTransactionInput, UpdateTransactionInput } from '@/db/schema/types';
-import { encrypt, decrypt, encryptAmount, decryptAmount } from '@/services/encryption';
-import { transactionTagRepository } from './transaction-tag.repository';
-import { getDatabase } from '@/db/sqlite/db';
-import * as SQLite from 'expo-sqlite';
+import {
+  CreateTransactionInput,
+  Transaction,
+  UpdateTransactionInput,
+} from "@/db/schema/types";
+import { getDatabase } from "@/db/sqlite/db";
+import {
+  decrypt,
+  decryptAmount,
+  encrypt,
+  encryptAmount,
+} from "@/services/encryption";
+import { BaseRepository } from "./base.repository";
+import { transactionTagRepository } from "./transaction-tag.repository";
 
 export class TransactionRepository extends BaseRepository<Transaction> {
-  protected tableName = 'transactions';
-  protected primaryKey = 'id';
+  protected tableName = "transactions";
+  protected primaryKey = "id";
 
   async create(input: CreateTransactionInput): Promise<Transaction> {
     // Encrypt sensitive fields
@@ -16,10 +24,10 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     const encryptedPaymentMode = await encrypt(input.payment_mode);
 
     const db = await getDatabase();
-    
+
     // Start transaction
-    await db.execAsync('BEGIN TRANSACTION');
-    
+    await db.execAsync("BEGIN TRANSACTION");
+
     try {
       // Insert transaction
       const now = new Date().toISOString();
@@ -49,37 +57,41 @@ export class TransactionRepository extends BaseRepository<Transaction> {
         }
       }
 
-      await db.execAsync('COMMIT');
+      await db.execAsync("COMMIT");
 
       const transaction = await this.findById(transactionId);
       if (!transaction) {
-        await db.execAsync('ROLLBACK');
-        throw new Error('Failed to create transaction');
+        await db.execAsync("ROLLBACK");
+        throw new Error("Failed to create transaction");
       }
       return transaction;
     } catch (error) {
-      await db.execAsync('ROLLBACK');
-      console.error('Error creating transaction:', error);
-      throw new Error(error instanceof Error ? error.message : 'Failed to create transaction');
+      await db.execAsync("ROLLBACK");
+      console.error("Error creating transaction:", error);
+      throw new Error(
+        error instanceof Error ? error.message : "Failed to create transaction"
+      );
     }
   }
 
   async update(input: UpdateTransactionInput): Promise<Transaction> {
     const db = await getDatabase();
-    await db.execAsync('BEGIN TRANSACTION');
+    await db.execAsync("BEGIN TRANSACTION");
 
     try {
       // Get existing transaction
       const existing = await this.findById(input.id);
       if (!existing) {
-        throw new Error('Transaction not found');
+        throw new Error("Transaction not found");
       }
 
       // Prepare update data
       const updateData: any = {};
-      
-      if (input.account_id !== undefined) updateData.account_id = input.account_id;
-      if (input.category_id !== undefined) updateData.category_id = input.category_id;
+
+      if (input.account_id !== undefined)
+        updateData.account_id = input.account_id;
+      if (input.category_id !== undefined)
+        updateData.category_id = input.category_id;
       if (input.type !== undefined) updateData.type = input.type;
       if (input.date !== undefined) updateData.date = input.date;
 
@@ -98,8 +110,10 @@ export class TransactionRepository extends BaseRepository<Transaction> {
       if (Object.keys(updateData).length > 0) {
         const fields = Object.keys(updateData)
           .map((key) => `${key} = ?`)
-          .join(', ');
-        const values: (string | number | null)[] = Object.values(updateData) as (string | number | null)[];
+          .join(", ");
+        const values: (string | number | null)[] = Object.values(
+          updateData
+        ) as (string | number | null)[];
         const now = new Date().toISOString();
 
         await db.runAsync(
@@ -110,20 +124,25 @@ export class TransactionRepository extends BaseRepository<Transaction> {
 
       // Update tags if provided
       if (input.tag_ids !== undefined) {
-        await transactionTagRepository.setTransactionTags(input.id, input.tag_ids);
+        await transactionTagRepository.setTransactionTags(
+          input.id,
+          input.tag_ids
+        );
       }
 
-      await db.execAsync('COMMIT');
+      await db.execAsync("COMMIT");
 
       const transaction = await this.findById(input.id);
       if (!transaction) {
-        throw new Error('Transaction not found');
+        throw new Error("Transaction not found");
       }
       return transaction;
     } catch (error) {
-      await db.execAsync('ROLLBACK');
-      console.error('Error updating transaction:', error);
-      throw new Error(error instanceof Error ? error.message : 'Failed to update transaction');
+      await db.execAsync("ROLLBACK");
+      console.error("Error updating transaction:", error);
+      throw new Error(
+        error instanceof Error ? error.message : "Failed to update transaction"
+      );
     }
   }
 
@@ -142,7 +161,10 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     );
   }
 
-  async findByDateRange(startDate: string, endDate: string): Promise<Transaction[]> {
+  async findByDateRange(
+    startDate: string,
+    endDate: string
+  ): Promise<Transaction[]> {
     return this.executeQuery<Transaction>(
       `SELECT * FROM ${this.tableName} 
        WHERE date >= ? AND date <= ? AND deleted_at IS NULL 
@@ -151,7 +173,7 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     );
   }
 
-  async findByType(type: Transaction['type']): Promise<Transaction[]> {
+  async findByType(type: Transaction["type"]): Promise<Transaction[]> {
     return this.executeQuery<Transaction>(
       `SELECT * FROM ${this.tableName} WHERE type = ? AND deleted_at IS NULL ORDER BY date DESC`,
       [type]
@@ -167,20 +189,21 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     categoryIds?: number[];
     startDate?: string;
     endDate?: string;
-    type?: Transaction['type'];
-    types?: Transaction['type'][];
+    type?: Transaction["type"];
+    types?: Transaction["type"][];
     accountType?: string;
     accountTypes?: string[];
   }): Promise<Transaction[]> {
     let query = `SELECT DISTINCT t.* FROM ${this.tableName} t`;
     const params: any[] = [];
-    const conditions: string[] = ['t.deleted_at IS NULL'];
+    const conditions: string[] = ["t.deleted_at IS NULL"];
     let hasJoin = false;
 
     // Handle account filters (support both single and array)
-    const accountIds = filters?.accountIds || (filters?.accountId ? [filters.accountId] : []);
+    const accountIds =
+      filters?.accountIds || (filters?.accountId ? [filters.accountId] : []);
     if (accountIds.length > 0) {
-      const placeholders = accountIds.map(() => '?').join(',');
+      const placeholders = accountIds.map(() => "?").join(",");
       conditions.push(`t.account_id IN (${placeholders})`);
       params.push(...accountIds);
     }
@@ -189,56 +212,61 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     const tagIds = filters?.tagIds || (filters?.tagId ? [filters.tagId] : []);
     if (tagIds.length > 0) {
       if (!hasJoin) {
-        query += ' INNER JOIN transaction_tags tt ON t.id = tt.transaction_id';
+        query += " INNER JOIN transaction_tags tt ON t.id = tt.transaction_id";
         hasJoin = true;
       }
-      const placeholders = tagIds.map(() => '?').join(',');
+      const placeholders = tagIds.map(() => "?").join(",");
       conditions.push(`tt.tag_id IN (${placeholders})`);
       params.push(...tagIds);
     }
 
     // Handle category filters (support both single and array)
-    const categoryIds = filters?.categoryIds || (filters?.categoryId ? [filters.categoryId] : []);
+    const categoryIds =
+      filters?.categoryIds || (filters?.categoryId ? [filters.categoryId] : []);
     if (categoryIds.length > 0) {
-      const placeholders = categoryIds.map(() => '?').join(',');
+      const placeholders = categoryIds.map(() => "?").join(",");
       conditions.push(`t.category_id IN (${placeholders})`);
       params.push(...categoryIds);
     }
 
     if (filters?.startDate) {
-      conditions.push('t.date >= ?');
+      conditions.push("t.date >= ?");
       params.push(filters.startDate);
     }
 
     if (filters?.endDate) {
-      conditions.push('t.date <= ?');
+      conditions.push("t.date <= ?");
       params.push(filters.endDate);
     }
 
     // Handle transaction type filters (support both single and array)
     const types = filters?.types || (filters?.type ? [filters.type] : []);
     if (types.length > 0) {
-      const placeholders = types.map(() => '?').join(',');
+      const placeholders = types.map(() => "?").join(",");
       conditions.push(`t.type IN (${placeholders})`);
       params.push(...types);
     }
 
     // Handle account type filters (support both single and array)
     // Note: account type is stored in accounts table, so we need to join
-    const accountTypes = filters?.accountTypes || (filters?.accountType ? [filters.accountType] : []);
+    const accountTypes =
+      filters?.accountTypes ||
+      (filters?.accountType ? [filters.accountType] : []);
     if (accountTypes.length > 0) {
       if (!hasJoin) {
-        query += ' INNER JOIN accounts a ON t.account_id = a.id';
+        query += " INNER JOIN accounts a ON t.account_id = a.id";
         hasJoin = true;
-      } else if (!query.includes('INNER JOIN accounts')) {
-        query += ' INNER JOIN accounts a ON t.account_id = a.id';
+      } else if (!query.includes("INNER JOIN accounts")) {
+        query += " INNER JOIN accounts a ON t.account_id = a.id";
       }
-      const placeholders = accountTypes.map(() => '?').join(',');
+      const placeholders = accountTypes.map(() => "?").join(",");
       conditions.push(`a.type IN (${placeholders})`);
       params.push(...accountTypes);
     }
 
-    query += ` WHERE ${conditions.join(' AND ')} ORDER BY t.date DESC, t.created_at DESC`;
+    query += ` WHERE ${conditions.join(
+      " AND "
+    )} ORDER BY t.date DESC, t.created_at DESC`;
 
     return this.executeQuery<Transaction>(query, params);
   }
@@ -256,8 +284,8 @@ export class TransactionRepository extends BaseRepository<Transaction> {
       categoryIds?: number[];
       startDate?: string;
       endDate?: string;
-      type?: Transaction['type'];
-      types?: Transaction['type'][];
+      type?: Transaction["type"];
+      types?: Transaction["type"][];
       accountType?: string;
       accountTypes?: string[];
     },
@@ -266,13 +294,14 @@ export class TransactionRepository extends BaseRepository<Transaction> {
   ): Promise<{ transactions: Transaction[]; hasMore: boolean; total: number }> {
     let query = `SELECT DISTINCT t.* FROM ${this.tableName} t`;
     const params: any[] = [];
-    const conditions: string[] = ['t.deleted_at IS NULL'];
+    const conditions: string[] = ["t.deleted_at IS NULL"];
     let hasJoin = false;
 
     // Handle account filters
-    const accountIds = filters?.accountIds || (filters?.accountId ? [filters.accountId] : []);
+    const accountIds =
+      filters?.accountIds || (filters?.accountId ? [filters.accountId] : []);
     if (accountIds.length > 0) {
-      const placeholders = accountIds.map(() => '?').join(',');
+      const placeholders = accountIds.map(() => "?").join(",");
       conditions.push(`t.account_id IN (${placeholders})`);
       params.push(...accountIds);
     }
@@ -281,50 +310,53 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     const tagIds = filters?.tagIds || (filters?.tagId ? [filters.tagId] : []);
     if (tagIds.length > 0) {
       if (!hasJoin) {
-        query += ' INNER JOIN transaction_tags tt ON t.id = tt.transaction_id';
+        query += " INNER JOIN transaction_tags tt ON t.id = tt.transaction_id";
         hasJoin = true;
       }
-      const placeholders = tagIds.map(() => '?').join(',');
+      const placeholders = tagIds.map(() => "?").join(",");
       conditions.push(`tt.tag_id IN (${placeholders})`);
       params.push(...tagIds);
     }
 
     // Handle category filters
-    const categoryIds = filters?.categoryIds || (filters?.categoryId ? [filters.categoryId] : []);
+    const categoryIds =
+      filters?.categoryIds || (filters?.categoryId ? [filters.categoryId] : []);
     if (categoryIds.length > 0) {
-      const placeholders = categoryIds.map(() => '?').join(',');
+      const placeholders = categoryIds.map(() => "?").join(",");
       conditions.push(`t.category_id IN (${placeholders})`);
       params.push(...categoryIds);
     }
 
     if (filters?.startDate) {
-      conditions.push('t.date >= ?');
+      conditions.push("t.date >= ?");
       params.push(filters.startDate);
     }
 
     if (filters?.endDate) {
-      conditions.push('t.date <= ?');
+      conditions.push("t.date <= ?");
       params.push(filters.endDate);
     }
 
     // Handle transaction type filters
     const types = filters?.types || (filters?.type ? [filters.type] : []);
     if (types.length > 0) {
-      const placeholders = types.map(() => '?').join(',');
+      const placeholders = types.map(() => "?").join(",");
       conditions.push(`t.type IN (${placeholders})`);
       params.push(...types);
     }
 
     // Handle account type filters
-    const accountTypes = filters?.accountTypes || (filters?.accountType ? [filters.accountType] : []);
+    const accountTypes =
+      filters?.accountTypes ||
+      (filters?.accountType ? [filters.accountType] : []);
     if (accountTypes.length > 0) {
       if (!hasJoin) {
-        query += ' INNER JOIN accounts a ON t.account_id = a.id';
+        query += " INNER JOIN accounts a ON t.account_id = a.id";
         hasJoin = true;
-      } else if (!query.includes('INNER JOIN accounts')) {
-        query += ' INNER JOIN accounts a ON t.account_id = a.id';
+      } else if (!query.includes("INNER JOIN accounts")) {
+        query += " INNER JOIN accounts a ON t.account_id = a.id";
       }
-      const placeholders = accountTypes.map(() => '?').join(',');
+      const placeholders = accountTypes.map(() => "?").join(",");
       conditions.push(`a.type IN (${placeholders})`);
       params.push(...accountTypes);
     }
@@ -332,61 +364,67 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     // Get total count - build count query with same joins
     let countQuery = `SELECT COUNT(DISTINCT t.id) as total FROM ${this.tableName} t`;
     const countParams: any[] = [];
-    
+
     // Rebuild joins for count query
     let countHasJoin = false;
     if (tagIds.length > 0) {
-      countQuery += ' INNER JOIN transaction_tags tt ON t.id = tt.transaction_id';
+      countQuery +=
+        " INNER JOIN transaction_tags tt ON t.id = tt.transaction_id";
       countHasJoin = true;
     }
     if (accountTypes.length > 0) {
-      if (!countHasJoin || !countQuery.includes('INNER JOIN accounts')) {
-        countQuery += ' INNER JOIN accounts a ON t.account_id = a.id';
+      if (!countHasJoin || !countQuery.includes("INNER JOIN accounts")) {
+        countQuery += " INNER JOIN accounts a ON t.account_id = a.id";
       }
     }
-    
+
     // Rebuild conditions for count (same as main query)
-    const countConditions: string[] = ['t.deleted_at IS NULL'];
+    const countConditions: string[] = ["t.deleted_at IS NULL"];
     if (accountIds.length > 0) {
-      const placeholders = accountIds.map(() => '?').join(',');
+      const placeholders = accountIds.map(() => "?").join(",");
       countConditions.push(`t.account_id IN (${placeholders})`);
       countParams.push(...accountIds);
     }
     if (tagIds.length > 0) {
-      const placeholders = tagIds.map(() => '?').join(',');
+      const placeholders = tagIds.map(() => "?").join(",");
       countConditions.push(`tt.tag_id IN (${placeholders})`);
       countParams.push(...tagIds);
     }
     if (categoryIds.length > 0) {
-      const placeholders = categoryIds.map(() => '?').join(',');
+      const placeholders = categoryIds.map(() => "?").join(",");
       countConditions.push(`t.category_id IN (${placeholders})`);
       countParams.push(...categoryIds);
     }
     if (filters?.startDate) {
-      countConditions.push('t.date >= ?');
+      countConditions.push("t.date >= ?");
       countParams.push(filters.startDate);
     }
     if (filters?.endDate) {
-      countConditions.push('t.date <= ?');
+      countConditions.push("t.date <= ?");
       countParams.push(filters.endDate);
     }
     if (types.length > 0) {
-      const placeholders = types.map(() => '?').join(',');
+      const placeholders = types.map(() => "?").join(",");
       countConditions.push(`t.type IN (${placeholders})`);
       countParams.push(...types);
     }
     if (accountTypes.length > 0) {
-      const placeholders = accountTypes.map(() => '?').join(',');
+      const placeholders = accountTypes.map(() => "?").join(",");
       countConditions.push(`a.type IN (${placeholders})`);
       countParams.push(...accountTypes);
     }
-    
-    countQuery += ` WHERE ${countConditions.join(' AND ')}`;
-    const countResult = await this.executeQuery<{ total: number }>(countQuery, countParams);
+
+    countQuery += ` WHERE ${countConditions.join(" AND ")}`;
+    const countResult = await this.executeQuery<{ total: number }>(
+      countQuery,
+      countParams
+    );
     const total = countResult[0]?.total || 0;
 
     // Get paginated results
-    query += ` WHERE ${conditions.join(' AND ')} ORDER BY t.date DESC, t.created_at DESC LIMIT ? OFFSET ?`;
+    query += ` WHERE ${conditions.join(
+      " AND "
+    )} ORDER BY t.date DESC, t.created_at DESC LIMIT ? OFFSET ?`;
     params.push(limit, offset);
 
     const transactions = await this.executeQuery<Transaction>(query, params);
@@ -402,11 +440,13 @@ export class TransactionRepository extends BaseRepository<Transaction> {
   /**
    * Decrypt transaction for display
    */
-  async decryptTransaction(transaction: Transaction): Promise<Omit<Transaction, 'amount' | 'note' | 'payment_mode'> & {
-    amount: number;
-    note: string | null;
-    payment_mode: string;
-  }> {
+  async decryptTransaction(transaction: Transaction): Promise<
+    Omit<Transaction, "amount" | "note" | "payment_mode"> & {
+      amount: number;
+      note: string | null;
+      payment_mode: string;
+    }
+  > {
     const amount = await decryptAmount(transaction.amount);
     const note = transaction.note ? await decrypt(transaction.note) : null;
     const payment_mode = await decrypt(transaction.payment_mode);
@@ -421,13 +461,42 @@ export class TransactionRepository extends BaseRepository<Transaction> {
 
   /**
    * Decrypt multiple transactions
+   * Optimized: Decrypts all amounts in parallel, then all notes, then all payment_modes
+   * This is faster than decrypting each transaction sequentially
    */
-  async decryptTransactions(transactions: Transaction[]): Promise<Array<Omit<Transaction, 'amount' | 'note' | 'payment_mode'> & {
-    amount: number;
-    note: string | null;
-    payment_mode: string;
-  }>> {
-    return Promise.all(transactions.map((t) => this.decryptTransaction(t)));
+  async decryptTransactions(transactions: Transaction[]): Promise<
+    Array<
+      Omit<Transaction, "amount" | "note" | "payment_mode"> & {
+        amount: number;
+        note: string | null;
+        payment_mode: string;
+      }
+    >
+  > {
+    if (transactions.length === 0) return [];
+
+    // Decrypt all amounts in parallel
+    const amounts = await Promise.all(
+      transactions.map((t) => decryptAmount(t.amount))
+    );
+
+    // Decrypt all notes in parallel (only for transactions that have notes)
+    const notes = await Promise.all(
+      transactions.map((t) => (t.note ? decrypt(t.note) : Promise.resolve(null)))
+    );
+
+    // Decrypt all payment_modes in parallel
+    const paymentModes = await Promise.all(
+      transactions.map((t) => decrypt(t.payment_mode))
+    );
+
+    // Combine results
+    return transactions.map((t, index) => ({
+      ...t,
+      amount: amounts[index],
+      note: notes[index],
+      payment_mode: paymentModes[index],
+    }));
   }
 
   /**
@@ -443,8 +512,8 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     categoryIds?: number[];
     startDate?: string;
     endDate?: string;
-    type?: Transaction['type'];
-    types?: Transaction['type'][];
+    type?: Transaction["type"];
+    types?: Transaction["type"][];
     accountType?: string;
     accountTypes?: string[];
   }): Promise<{
@@ -456,13 +525,14 @@ export class TransactionRepository extends BaseRepository<Transaction> {
   }> {
     let query = `SELECT t.id, t.amount, t.type FROM ${this.tableName} t`;
     const params: any[] = [];
-    const conditions: string[] = ['t.deleted_at IS NULL'];
+    const conditions: string[] = ["t.deleted_at IS NULL"];
     let hasJoin = false;
 
     // Handle account filters
-    const accountIds = filters?.accountIds || (filters?.accountId ? [filters.accountId] : []);
+    const accountIds =
+      filters?.accountIds || (filters?.accountId ? [filters.accountId] : []);
     if (accountIds.length > 0) {
-      const placeholders = accountIds.map(() => '?').join(',');
+      const placeholders = accountIds.map(() => "?").join(",");
       conditions.push(`t.account_id IN (${placeholders})`);
       params.push(...accountIds);
     }
@@ -471,58 +541,65 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     const tagIds = filters?.tagIds || (filters?.tagId ? [filters.tagId] : []);
     if (tagIds.length > 0) {
       if (!hasJoin) {
-        query += ' INNER JOIN transaction_tags tt ON t.id = tt.transaction_id';
+        query += " INNER JOIN transaction_tags tt ON t.id = tt.transaction_id";
         hasJoin = true;
       }
-      const placeholders = tagIds.map(() => '?').join(',');
+      const placeholders = tagIds.map(() => "?").join(",");
       conditions.push(`tt.tag_id IN (${placeholders})`);
       params.push(...tagIds);
     }
 
     // Handle category filters
-    const categoryIds = filters?.categoryIds || (filters?.categoryId ? [filters.categoryId] : []);
+    const categoryIds =
+      filters?.categoryIds || (filters?.categoryId ? [filters.categoryId] : []);
     if (categoryIds.length > 0) {
-      const placeholders = categoryIds.map(() => '?').join(',');
+      const placeholders = categoryIds.map(() => "?").join(",");
       conditions.push(`t.category_id IN (${placeholders})`);
       params.push(...categoryIds);
     }
 
     if (filters?.startDate) {
-      conditions.push('t.date >= ?');
+      conditions.push("t.date >= ?");
       params.push(filters.startDate);
     }
 
     if (filters?.endDate) {
-      conditions.push('t.date <= ?');
+      conditions.push("t.date <= ?");
       params.push(filters.endDate);
     }
 
     // Handle transaction type filters
     const types = filters?.types || (filters?.type ? [filters.type] : []);
     if (types.length > 0) {
-      const placeholders = types.map(() => '?').join(',');
+      const placeholders = types.map(() => "?").join(",");
       conditions.push(`t.type IN (${placeholders})`);
       params.push(...types);
     }
 
     // Handle account type filters
-    const accountTypes = filters?.accountTypes || (filters?.accountType ? [filters.accountType] : []);
+    const accountTypes =
+      filters?.accountTypes ||
+      (filters?.accountType ? [filters.accountType] : []);
     if (accountTypes.length > 0) {
       if (!hasJoin) {
-        query += ' INNER JOIN accounts a ON t.account_id = a.id';
+        query += " INNER JOIN accounts a ON t.account_id = a.id";
         hasJoin = true;
-      } else if (!query.includes('INNER JOIN accounts')) {
-        query += ' INNER JOIN accounts a ON t.account_id = a.id';
+      } else if (!query.includes("INNER JOIN accounts")) {
+        query += " INNER JOIN accounts a ON t.account_id = a.id";
       }
-      const placeholders = accountTypes.map(() => '?').join(',');
+      const placeholders = accountTypes.map(() => "?").join(",");
       conditions.push(`a.type IN (${placeholders})`);
       params.push(...accountTypes);
     }
 
-    query += ` WHERE ${conditions.join(' AND ')}`;
+    query += ` WHERE ${conditions.join(" AND ")}`;
 
     // Execute query to get only id, amount, type
-    const results = await this.executeQuery<{ id: number; amount: string; type: Transaction['type'] }>(query, params);
+    const results = await this.executeQuery<{
+      id: number;
+      amount: string;
+      type: Transaction["type"];
+    }>(query, params);
 
     // Decrypt amounts in parallel (only amounts, not notes/payment_mode)
     const decryptedAmounts = await Promise.all(
@@ -540,7 +617,7 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     let incomeCount = 0;
 
     for (const row of decryptedAmounts) {
-      if (row.type === 'expense') {
+      if (row.type === "expense") {
         totalExpenses += row.amount;
         expenseCount += 1;
       } else {
@@ -571,20 +648,23 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     categoryIds?: number[];
     startDate?: string;
     endDate?: string;
-    type?: Transaction['type'];
-    types?: Transaction['type'][];
+    type?: Transaction["type"];
+    types?: Transaction["type"][];
     accountType?: string;
     accountTypes?: string[];
-  }): Promise<Array<{ categoryId: number | null; amount: number; count: number }>> {
+  }): Promise<
+    Array<{ categoryId: number | null; amount: number; count: number }>
+  > {
     let query = `SELECT t.id, t.amount, t.type, t.category_id FROM ${this.tableName} t`;
     const params: any[] = [];
-    const conditions: string[] = ['t.deleted_at IS NULL'];
+    const conditions: string[] = ["t.deleted_at IS NULL"];
     let hasJoin = false;
 
     // Handle account filters
-    const accountIds = filters?.accountIds || (filters?.accountId ? [filters.accountId] : []);
+    const accountIds =
+      filters?.accountIds || (filters?.accountId ? [filters.accountId] : []);
     if (accountIds.length > 0) {
-      const placeholders = accountIds.map(() => '?').join(',');
+      const placeholders = accountIds.map(() => "?").join(",");
       conditions.push(`t.account_id IN (${placeholders})`);
       params.push(...accountIds);
     }
@@ -593,58 +673,67 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     const tagIds = filters?.tagIds || (filters?.tagId ? [filters.tagId] : []);
     if (tagIds.length > 0) {
       if (!hasJoin) {
-        query += ' INNER JOIN transaction_tags tt ON t.id = tt.transaction_id';
+        query += " INNER JOIN transaction_tags tt ON t.id = tt.transaction_id";
         hasJoin = true;
       }
-      const placeholders = tagIds.map(() => '?').join(',');
+      const placeholders = tagIds.map(() => "?").join(",");
       conditions.push(`tt.tag_id IN (${placeholders})`);
       params.push(...tagIds);
     }
 
     // Handle category filters
-    const categoryIds = filters?.categoryIds || (filters?.categoryId ? [filters.categoryId] : []);
+    const categoryIds =
+      filters?.categoryIds || (filters?.categoryId ? [filters.categoryId] : []);
     if (categoryIds.length > 0) {
-      const placeholders = categoryIds.map(() => '?').join(',');
+      const placeholders = categoryIds.map(() => "?").join(",");
       conditions.push(`t.category_id IN (${placeholders})`);
       params.push(...categoryIds);
     }
 
     if (filters?.startDate) {
-      conditions.push('t.date >= ?');
+      conditions.push("t.date >= ?");
       params.push(filters.startDate);
     }
 
     if (filters?.endDate) {
-      conditions.push('t.date <= ?');
+      conditions.push("t.date <= ?");
       params.push(filters.endDate);
     }
 
     // Handle transaction type filters - only expenses for category breakdown
-    const types = filters?.types || (filters?.type ? [filters.type] : ['expense']);
+    const types =
+      filters?.types || (filters?.type ? [filters.type] : ["expense"]);
     if (types.length > 0) {
-      const placeholders = types.map(() => '?').join(',');
+      const placeholders = types.map(() => "?").join(",");
       conditions.push(`t.type IN (${placeholders})`);
       params.push(...types);
     }
 
     // Handle account type filters
-    const accountTypes = filters?.accountTypes || (filters?.accountType ? [filters.accountType] : []);
+    const accountTypes =
+      filters?.accountTypes ||
+      (filters?.accountType ? [filters.accountType] : []);
     if (accountTypes.length > 0) {
       if (!hasJoin) {
-        query += ' INNER JOIN accounts a ON t.account_id = a.id';
+        query += " INNER JOIN accounts a ON t.account_id = a.id";
         hasJoin = true;
-      } else if (!query.includes('INNER JOIN accounts')) {
-        query += ' INNER JOIN accounts a ON t.account_id = a.id';
+      } else if (!query.includes("INNER JOIN accounts")) {
+        query += " INNER JOIN accounts a ON t.account_id = a.id";
       }
-      const placeholders = accountTypes.map(() => '?').join(',');
+      const placeholders = accountTypes.map(() => "?").join(",");
       conditions.push(`a.type IN (${placeholders})`);
       params.push(...accountTypes);
     }
 
-    query += ` WHERE ${conditions.join(' AND ')}`;
+    query += ` WHERE ${conditions.join(" AND ")}`;
 
     // Execute query to get only id, amount, type, category_id
-    const results = await this.executeQuery<{ id: number; amount: string; type: Transaction['type']; category_id: number | null }>(query, params);
+    const results = await this.executeQuery<{
+      id: number;
+      amount: string;
+      type: Transaction["type"];
+      category_id: number | null;
+    }>(query, params);
 
     // Decrypt amounts in parallel (only amounts, not notes/payment_mode)
     const decryptedAmounts = await Promise.all(
@@ -657,10 +746,13 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     );
 
     // Group by category
-    const categoryMap = new Map<number | null, { amount: number; count: number }>();
+    const categoryMap = new Map<
+      number | null,
+      { amount: number; count: number }
+    >();
 
     for (const row of decryptedAmounts) {
-      if (row.type === 'expense') {
+      if (row.type === "expense") {
         const categoryId = row.category_id || null;
         const existing = categoryMap.get(categoryId) || { amount: 0, count: 0 };
         existing.amount += row.amount;
@@ -690,20 +782,21 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     categoryIds?: number[];
     startDate?: string;
     endDate?: string;
-    type?: Transaction['type'];
-    types?: Transaction['type'][];
+    type?: Transaction["type"];
+    types?: Transaction["type"][];
     accountType?: string;
     accountTypes?: string[];
   }): Promise<Array<{ dayIndex: number; totalAmount: number; count: number }>> {
     let query = `SELECT t.id, t.amount, t.type, t.date FROM ${this.tableName} t`;
     const params: any[] = [];
-    const conditions: string[] = ['t.deleted_at IS NULL'];
+    const conditions: string[] = ["t.deleted_at IS NULL"];
     let hasJoin = false;
 
     // Handle account filters
-    const accountIds = filters?.accountIds || (filters?.accountId ? [filters.accountId] : []);
+    const accountIds =
+      filters?.accountIds || (filters?.accountId ? [filters.accountId] : []);
     if (accountIds.length > 0) {
-      const placeholders = accountIds.map(() => '?').join(',');
+      const placeholders = accountIds.map(() => "?").join(",");
       conditions.push(`t.account_id IN (${placeholders})`);
       params.push(...accountIds);
     }
@@ -712,58 +805,67 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     const tagIds = filters?.tagIds || (filters?.tagId ? [filters.tagId] : []);
     if (tagIds.length > 0) {
       if (!hasJoin) {
-        query += ' INNER JOIN transaction_tags tt ON t.id = tt.transaction_id';
+        query += " INNER JOIN transaction_tags tt ON t.id = tt.transaction_id";
         hasJoin = true;
       }
-      const placeholders = tagIds.map(() => '?').join(',');
+      const placeholders = tagIds.map(() => "?").join(",");
       conditions.push(`tt.tag_id IN (${placeholders})`);
       params.push(...tagIds);
     }
 
     // Handle category filters
-    const categoryIds = filters?.categoryIds || (filters?.categoryId ? [filters.categoryId] : []);
+    const categoryIds =
+      filters?.categoryIds || (filters?.categoryId ? [filters.categoryId] : []);
     if (categoryIds.length > 0) {
-      const placeholders = categoryIds.map(() => '?').join(',');
+      const placeholders = categoryIds.map(() => "?").join(",");
       conditions.push(`t.category_id IN (${placeholders})`);
       params.push(...categoryIds);
     }
 
     if (filters?.startDate) {
-      conditions.push('t.date >= ?');
+      conditions.push("t.date >= ?");
       params.push(filters.startDate);
     }
 
     if (filters?.endDate) {
-      conditions.push('t.date <= ?');
+      conditions.push("t.date <= ?");
       params.push(filters.endDate);
     }
 
     // Handle transaction type filters - only expenses for daily patterns
-    const types = filters?.types || (filters?.type ? [filters.type] : ['expense']);
+    const types =
+      filters?.types || (filters?.type ? [filters.type] : ["expense"]);
     if (types.length > 0) {
-      const placeholders = types.map(() => '?').join(',');
+      const placeholders = types.map(() => "?").join(",");
       conditions.push(`t.type IN (${placeholders})`);
       params.push(...types);
     }
 
     // Handle account type filters
-    const accountTypes = filters?.accountTypes || (filters?.accountType ? [filters.accountType] : []);
+    const accountTypes =
+      filters?.accountTypes ||
+      (filters?.accountType ? [filters.accountType] : []);
     if (accountTypes.length > 0) {
       if (!hasJoin) {
-        query += ' INNER JOIN accounts a ON t.account_id = a.id';
+        query += " INNER JOIN accounts a ON t.account_id = a.id";
         hasJoin = true;
-      } else if (!query.includes('INNER JOIN accounts')) {
-        query += ' INNER JOIN accounts a ON t.account_id = a.id';
+      } else if (!query.includes("INNER JOIN accounts")) {
+        query += " INNER JOIN accounts a ON t.account_id = a.id";
       }
-      const placeholders = accountTypes.map(() => '?').join(',');
+      const placeholders = accountTypes.map(() => "?").join(",");
       conditions.push(`a.type IN (${placeholders})`);
       params.push(...accountTypes);
     }
 
-    query += ` WHERE ${conditions.join(' AND ')}`;
+    query += ` WHERE ${conditions.join(" AND ")}`;
 
     // Execute query to get only id, amount, type, date
-    const results = await this.executeQuery<{ id: number; amount: string; type: Transaction['type']; date: string }>(query, params);
+    const results = await this.executeQuery<{
+      id: number;
+      amount: string;
+      type: Transaction["type"];
+      date: string;
+    }>(query, params);
 
     // Decrypt amounts in parallel (only amounts, not notes/payment_mode)
     const decryptedAmounts = await Promise.all(
@@ -779,7 +881,7 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     const dayMap = new Map<number, { total: number; count: number }>();
 
     for (const row of decryptedAmounts) {
-      if (row.type === 'expense') {
+      if (row.type === "expense") {
         const date = new Date(row.date);
         const dayIndex = date.getDay();
         const existing = dayMap.get(dayIndex) || { total: 0, count: 0 };
@@ -810,20 +912,23 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     categoryIds?: number[];
     startDate?: string;
     endDate?: string;
-    type?: Transaction['type'];
-    types?: Transaction['type'][];
+    type?: Transaction["type"];
+    types?: Transaction["type"][];
     accountType?: string;
     accountTypes?: string[];
-  }): Promise<Array<{ monthKey: string; expenses: number; income: number; count: number }>> {
+  }): Promise<
+    Array<{ monthKey: string; expenses: number; income: number; count: number }>
+  > {
     let query = `SELECT t.id, t.amount, t.type, t.date FROM ${this.tableName} t`;
     const params: any[] = [];
-    const conditions: string[] = ['t.deleted_at IS NULL'];
+    const conditions: string[] = ["t.deleted_at IS NULL"];
     let hasJoin = false;
 
     // Handle account filters
-    const accountIds = filters?.accountIds || (filters?.accountId ? [filters.accountId] : []);
+    const accountIds =
+      filters?.accountIds || (filters?.accountId ? [filters.accountId] : []);
     if (accountIds.length > 0) {
-      const placeholders = accountIds.map(() => '?').join(',');
+      const placeholders = accountIds.map(() => "?").join(",");
       conditions.push(`t.account_id IN (${placeholders})`);
       params.push(...accountIds);
     }
@@ -832,58 +937,67 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     const tagIds = filters?.tagIds || (filters?.tagId ? [filters.tagId] : []);
     if (tagIds.length > 0) {
       if (!hasJoin) {
-        query += ' INNER JOIN transaction_tags tt ON t.id = tt.transaction_id';
+        query += " INNER JOIN transaction_tags tt ON t.id = tt.transaction_id";
         hasJoin = true;
       }
-      const placeholders = tagIds.map(() => '?').join(',');
+      const placeholders = tagIds.map(() => "?").join(",");
       conditions.push(`tt.tag_id IN (${placeholders})`);
       params.push(...tagIds);
     }
 
     // Handle category filters
-    const categoryIds = filters?.categoryIds || (filters?.categoryId ? [filters.categoryId] : []);
+    const categoryIds =
+      filters?.categoryIds || (filters?.categoryId ? [filters.categoryId] : []);
     if (categoryIds.length > 0) {
-      const placeholders = categoryIds.map(() => '?').join(',');
+      const placeholders = categoryIds.map(() => "?").join(",");
       conditions.push(`t.category_id IN (${placeholders})`);
       params.push(...categoryIds);
     }
 
     if (filters?.startDate) {
-      conditions.push('t.date >= ?');
+      conditions.push("t.date >= ?");
       params.push(filters.startDate);
     }
 
     if (filters?.endDate) {
-      conditions.push('t.date <= ?');
+      conditions.push("t.date <= ?");
       params.push(filters.endDate);
     }
 
     // Handle transaction type filters - allow both income and expenses for monthly trends
-    const types = filters?.types || (filters?.type ? [filters.type] : undefined);
+    const types =
+      filters?.types || (filters?.type ? [filters.type] : undefined);
     if (types && types.length > 0) {
-      const placeholders = types.map(() => '?').join(',');
+      const placeholders = types.map(() => "?").join(",");
       conditions.push(`t.type IN (${placeholders})`);
       params.push(...types);
     }
 
     // Handle account type filters
-    const accountTypes = filters?.accountTypes || (filters?.accountType ? [filters.accountType] : []);
+    const accountTypes =
+      filters?.accountTypes ||
+      (filters?.accountType ? [filters.accountType] : []);
     if (accountTypes.length > 0) {
       if (!hasJoin) {
-        query += ' INNER JOIN accounts a ON t.account_id = a.id';
+        query += " INNER JOIN accounts a ON t.account_id = a.id";
         hasJoin = true;
-      } else if (!query.includes('INNER JOIN accounts')) {
-        query += ' INNER JOIN accounts a ON t.account_id = a.id';
+      } else if (!query.includes("INNER JOIN accounts")) {
+        query += " INNER JOIN accounts a ON t.account_id = a.id";
       }
-      const placeholders = accountTypes.map(() => '?').join(',');
+      const placeholders = accountTypes.map(() => "?").join(",");
       conditions.push(`a.type IN (${placeholders})`);
       params.push(...accountTypes);
     }
 
-    query += ` WHERE ${conditions.join(' AND ')}`;
+    query += ` WHERE ${conditions.join(" AND ")}`;
 
     // Execute query to get only id, amount, type, date
-    const results = await this.executeQuery<{ id: number; amount: string; type: Transaction['type']; date: string }>(query, params);
+    const results = await this.executeQuery<{
+      id: number;
+      amount: string;
+      type: Transaction["type"];
+      date: string;
+    }>(query, params);
 
     // Decrypt amounts in parallel (only amounts, not notes/payment_mode)
     const decryptedAmounts = await Promise.all(
@@ -896,16 +1010,25 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     );
 
     // Group by month
-    const monthMap = new Map<string, { expenses: number; income: number; count: number }>();
+    const monthMap = new Map<
+      string,
+      { expenses: number; income: number; count: number }
+    >();
 
     for (const row of decryptedAmounts) {
       const date = new Date(row.date);
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-      const existing = monthMap.get(monthKey) || { expenses: 0, income: 0, count: 0 };
-      
-      if (row.type === 'expense') {
+      const monthKey = `${date.getFullYear()}-${String(
+        date.getMonth() + 1
+      ).padStart(2, "0")}`;
+      const existing = monthMap.get(monthKey) || {
+        expenses: 0,
+        income: 0,
+        count: 0,
+      };
+
+      if (row.type === "expense") {
         existing.expenses += row.amount;
-      } else if (row.type === 'income') {
+      } else if (row.type === "income") {
         existing.income += row.amount;
       }
       existing.count += 1;
@@ -934,8 +1057,8 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     categoryIds?: number[];
     startDate?: string;
     endDate?: string;
-    type?: Transaction['type'];
-    types?: Transaction['type'][];
+    type?: Transaction["type"];
+    types?: Transaction["type"][];
     accountType?: string;
     accountTypes?: string[];
   }): Promise<Array<{ tagId: number | null; amount: number; count: number }>> {
@@ -943,13 +1066,14 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     let query = `SELECT t.id, t.amount, t.type, tt.tag_id FROM ${this.tableName} t 
                  LEFT JOIN transaction_tags tt ON t.id = tt.transaction_id`;
     const params: any[] = [];
-    const conditions: string[] = ['t.deleted_at IS NULL'];
+    const conditions: string[] = ["t.deleted_at IS NULL"];
     let hasJoin = true; // Already have transaction_tags join
 
     // Handle account filters
-    const accountIds = filters?.accountIds || (filters?.accountId ? [filters.accountId] : []);
+    const accountIds =
+      filters?.accountIds || (filters?.accountId ? [filters.accountId] : []);
     if (accountIds.length > 0) {
-      const placeholders = accountIds.map(() => '?').join(',');
+      const placeholders = accountIds.map(() => "?").join(",");
       conditions.push(`t.account_id IN (${placeholders})`);
       params.push(...accountIds);
     }
@@ -960,52 +1084,61 @@ export class TransactionRepository extends BaseRepository<Transaction> {
       // Change to INNER JOIN when filtering by tags
       query = `SELECT t.id, t.amount, t.type, tt.tag_id FROM ${this.tableName} t 
                INNER JOIN transaction_tags tt ON t.id = tt.transaction_id`;
-      const placeholders = tagIds.map(() => '?').join(',');
+      const placeholders = tagIds.map(() => "?").join(",");
       conditions.push(`tt.tag_id IN (${placeholders})`);
       params.push(...tagIds);
     }
 
     // Handle category filters
-    const categoryIds = filters?.categoryIds || (filters?.categoryId ? [filters.categoryId] : []);
+    const categoryIds =
+      filters?.categoryIds || (filters?.categoryId ? [filters.categoryId] : []);
     if (categoryIds.length > 0) {
-      const placeholders = categoryIds.map(() => '?').join(',');
+      const placeholders = categoryIds.map(() => "?").join(",");
       conditions.push(`t.category_id IN (${placeholders})`);
       params.push(...categoryIds);
     }
 
     if (filters?.startDate) {
-      conditions.push('t.date >= ?');
+      conditions.push("t.date >= ?");
       params.push(filters.startDate);
     }
 
     if (filters?.endDate) {
-      conditions.push('t.date <= ?');
+      conditions.push("t.date <= ?");
       params.push(filters.endDate);
     }
 
     // Handle transaction type filters - only expenses for tag breakdown
-    const types = filters?.types || (filters?.type ? [filters.type] : ['expense']);
+    const types =
+      filters?.types || (filters?.type ? [filters.type] : ["expense"]);
     if (types.length > 0) {
-      const placeholders = types.map(() => '?').join(',');
+      const placeholders = types.map(() => "?").join(",");
       conditions.push(`t.type IN (${placeholders})`);
       params.push(...types);
     }
 
     // Handle account type filters
-    const accountTypes = filters?.accountTypes || (filters?.accountType ? [filters.accountType] : []);
+    const accountTypes =
+      filters?.accountTypes ||
+      (filters?.accountType ? [filters.accountType] : []);
     if (accountTypes.length > 0) {
-      if (!query.includes('INNER JOIN accounts')) {
-        query += ' INNER JOIN accounts a ON t.account_id = a.id';
+      if (!query.includes("INNER JOIN accounts")) {
+        query += " INNER JOIN accounts a ON t.account_id = a.id";
       }
-      const placeholders = accountTypes.map(() => '?').join(',');
+      const placeholders = accountTypes.map(() => "?").join(",");
       conditions.push(`a.type IN (${placeholders})`);
       params.push(...accountTypes);
     }
 
-    query += ` WHERE ${conditions.join(' AND ')}`;
+    query += ` WHERE ${conditions.join(" AND ")}`;
 
     // Execute query to get only id, amount, type, tag_id
-    const results = await this.executeQuery<{ id: number; amount: string; type: Transaction['type']; tag_id: number | null }>(query, params);
+    const results = await this.executeQuery<{
+      id: number;
+      amount: string;
+      type: Transaction["type"];
+      tag_id: number | null;
+    }>(query, params);
 
     // Decrypt amounts in parallel (only amounts, not notes/payment_mode)
     const decryptedAmounts = await Promise.all(
@@ -1021,7 +1154,7 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     const tagMap = new Map<number | null, { amount: number; count: number }>();
 
     for (const row of decryptedAmounts) {
-      if (row.type === 'expense') {
+      if (row.type === "expense") {
         const tagId = row.tag_id || null;
         const existing = tagMap.get(tagId) || { amount: 0, count: 0 };
         existing.amount += row.amount;
@@ -1051,20 +1184,28 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     categoryIds?: number[];
     startDate?: string;
     endDate?: string;
-    type?: Transaction['type'];
-    types?: Transaction['type'][];
+    type?: Transaction["type"];
+    types?: Transaction["type"][];
     accountType?: string;
     accountTypes?: string[];
-  }): Promise<Array<{ accountId: number; expenses: number; income: number; count: number }>> {
+  }): Promise<
+    Array<{
+      accountId: number;
+      expenses: number;
+      income: number;
+      count: number;
+    }>
+  > {
     let query = `SELECT t.id, t.amount, t.type, t.account_id FROM ${this.tableName} t`;
     const params: any[] = [];
-    const conditions: string[] = ['t.deleted_at IS NULL'];
+    const conditions: string[] = ["t.deleted_at IS NULL"];
     let hasJoin = false;
 
     // Handle account filters
-    const accountIds = filters?.accountIds || (filters?.accountId ? [filters.accountId] : []);
+    const accountIds =
+      filters?.accountIds || (filters?.accountId ? [filters.accountId] : []);
     if (accountIds.length > 0) {
-      const placeholders = accountIds.map(() => '?').join(',');
+      const placeholders = accountIds.map(() => "?").join(",");
       conditions.push(`t.account_id IN (${placeholders})`);
       params.push(...accountIds);
     }
@@ -1073,12 +1214,309 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     const tagIds = filters?.tagIds || (filters?.tagId ? [filters.tagId] : []);
     if (tagIds.length > 0) {
       if (!hasJoin) {
-        query += ' INNER JOIN transaction_tags tt ON t.id = tt.transaction_id';
+        query += " INNER JOIN transaction_tags tt ON t.id = tt.transaction_id";
         hasJoin = true;
       }
-      const placeholders = tagIds.map(() => '?').join(',');
+      const placeholders = tagIds.map(() => "?").join(",");
       conditions.push(`tt.tag_id IN (${placeholders})`);
       params.push(...tagIds);
+    }
+
+    // Handle category filters
+    const categoryIds =
+      filters?.categoryIds || (filters?.categoryId ? [filters.categoryId] : []);
+    if (categoryIds.length > 0) {
+      const placeholders = categoryIds.map(() => "?").join(",");
+      conditions.push(`t.category_id IN (${placeholders})`);
+      params.push(...categoryIds);
+    }
+
+    if (filters?.startDate) {
+      conditions.push("t.date >= ?");
+      params.push(filters.startDate);
+    }
+
+    if (filters?.endDate) {
+      conditions.push("t.date <= ?");
+      params.push(filters.endDate);
+    }
+
+    // Handle transaction type filters - allow both income and expenses for account breakdown
+    const types =
+      filters?.types || (filters?.type ? [filters.type] : undefined);
+    if (types && types.length > 0) {
+      const placeholders = types.map(() => "?").join(",");
+      conditions.push(`t.type IN (${placeholders})`);
+      params.push(...types);
+    }
+
+    // Handle account type filters
+    const accountTypes =
+      filters?.accountTypes ||
+      (filters?.accountType ? [filters.accountType] : []);
+    if (accountTypes.length > 0) {
+      if (!hasJoin) {
+        query += " INNER JOIN accounts a ON t.account_id = a.id";
+        hasJoin = true;
+      } else if (!query.includes("INNER JOIN accounts")) {
+        query += " INNER JOIN accounts a ON t.account_id = a.id";
+      }
+      const placeholders = accountTypes.map(() => "?").join(",");
+      conditions.push(`a.type IN (${placeholders})`);
+      params.push(...accountTypes);
+    }
+
+    query += ` WHERE ${conditions.join(" AND ")}`;
+
+    // Execute query to get only id, amount, type, account_id
+    const results = await this.executeQuery<{
+      id: number;
+      amount: string;
+      type: Transaction["type"];
+      account_id: number;
+    }>(query, params);
+
+    // Decrypt amounts in parallel (only amounts, not notes/payment_mode)
+    const decryptedAmounts = await Promise.all(
+      results.map(async (row) => ({
+        id: row.id,
+        amount: await decryptAmount(row.amount),
+        type: row.type,
+        account_id: row.account_id,
+      }))
+    );
+
+    // Group by account
+    const accountMap = new Map<
+      number,
+      { expenses: number; income: number; count: number }
+    >();
+
+    for (const row of decryptedAmounts) {
+      const existing = accountMap.get(row.account_id) || {
+        expenses: 0,
+        income: 0,
+        count: 0,
+      };
+
+      if (row.type === "expense") {
+        existing.expenses += row.amount;
+        existing.count += 1;
+      } else if (row.type === "income") {
+        existing.income += row.amount;
+        existing.count += 1;
+      }
+      accountMap.set(row.account_id, existing);
+    }
+
+    // Convert to array
+    return Array.from(accountMap.entries()).map(([accountId, data]) => ({
+      accountId,
+      expenses: data.expenses,
+      income: data.income,
+      count: data.count,
+    }));
+  }
+
+  /**
+   * Optimized method to calculate account expenses for a date range
+   * Only fetches and decrypts amounts with account_id and date
+   * Supports filters for accounts, dates, and transaction types
+   */
+  async calculateAccountExpensesForDateRange(filters?: {
+    accountId?: number;
+    accountIds?: number[];
+    startDate?: string;
+    endDate?: string;
+    type?: Transaction['type'];
+    types?: Transaction['type'][];
+  }): Promise<number> {
+    let query = `SELECT t.id, t.amount, t.type FROM ${this.tableName} t`;
+    const params: any[] = [];
+    const conditions: string[] = ['t.deleted_at IS NULL'];
+
+    const accountIds = filters?.accountIds || (filters?.accountId ? [filters.accountId] : []);
+    if (accountIds.length > 0) {
+      const placeholders = accountIds.map(() => '?').join(',');
+      conditions.push(`t.account_id IN (${placeholders})`);
+      params.push(...accountIds);
+    }
+
+    if (filters?.startDate) {
+      conditions.push('t.date >= ?');
+      params.push(filters.startDate);
+    }
+
+    if (filters?.endDate) {
+      conditions.push('t.date <= ?');
+      params.push(filters.endDate);
+    }
+
+    const types = filters?.types || (filters?.type ? [filters.type] : ['expense']); // Default to expense
+    if (types.length > 0) {
+      const placeholders = types.map(() => '?').join(',');
+      conditions.push(`t.type IN (${placeholders})`);
+      params.push(...types);
+    }
+
+    query += ` WHERE ${conditions.join(' AND ')}`;
+
+    const results = await this.executeQuery<{ id: number; amount: string; type: Transaction['type'] }>(query, params);
+
+    // Decrypt amounts in parallel (only amounts, not notes/payment_mode)
+    const decryptedAmounts = await Promise.all(
+      results.map(async (row) => await decryptAmount(row.amount))
+    );
+
+    // Sum all expenses
+    return decryptedAmounts.reduce((sum, amount) => sum + amount, 0);
+  }
+
+  /**
+   * Optimized method to fetch latest N transactions for an account
+   * Only fetches necessary fields and limits results at the database level
+   */
+  async findLatestTransactionsForAccount(
+    accountId: number,
+    limit: number = 5
+  ): Promise<Transaction[]> {
+    const query = `SELECT * FROM ${this.tableName} 
+                   WHERE deleted_at IS NULL 
+                   AND account_id = ? 
+                   ORDER BY date DESC, created_at DESC 
+                   LIMIT ?`;
+
+    return this.executeQuery<Transaction>(query, [accountId, limit]);
+  }
+
+  /**
+   * Optimized method to fetch latest N transactions with filters
+   * Only fetches necessary fields and limits results at the database level
+   */
+  async findLatestTransactionsWithFilters(
+    limit: number = 10,
+    filters?: {
+      accountId?: number;
+      accountIds?: number[];
+      tagId?: number;
+      tagIds?: number[];
+      categoryId?: number;
+      categoryIds?: number[];
+      startDate?: string;
+      endDate?: string;
+      type?: Transaction["type"];
+      types?: Transaction["type"][];
+      accountType?: string;
+      accountTypes?: string[];
+    }
+  ): Promise<Transaction[]> {
+    let query = `SELECT DISTINCT t.* FROM ${this.tableName} t`;
+    const params: any[] = [];
+    const conditions: string[] = ["t.deleted_at IS NULL"];
+    let hasJoin = false;
+
+    // Handle account filters
+    const accountIds =
+      filters?.accountIds || (filters?.accountId ? [filters.accountId] : []);
+    if (accountIds.length > 0) {
+      const placeholders = accountIds.map(() => "?").join(",");
+      conditions.push(`t.account_id IN (${placeholders})`);
+      params.push(...accountIds);
+    }
+
+    // Handle tag filters
+    const tagIds = filters?.tagIds || (filters?.tagId ? [filters.tagId] : []);
+    if (tagIds.length > 0) {
+      if (!hasJoin) {
+        query += " INNER JOIN transaction_tags tt ON t.id = tt.transaction_id";
+        hasJoin = true;
+      }
+      const placeholders = tagIds.map(() => "?").join(",");
+      conditions.push(`tt.tag_id IN (${placeholders})`);
+      params.push(...tagIds);
+    }
+
+    // Handle category filters
+    const categoryIds =
+      filters?.categoryIds || (filters?.categoryId ? [filters.categoryId] : []);
+    if (categoryIds.length > 0) {
+      const placeholders = categoryIds.map(() => "?").join(",");
+      conditions.push(`t.category_id IN (${placeholders})`);
+      params.push(...categoryIds);
+    }
+
+    if (filters?.startDate) {
+      conditions.push("t.date >= ?");
+      params.push(filters.startDate);
+    }
+
+    if (filters?.endDate) {
+      conditions.push("t.date <= ?");
+      params.push(filters.endDate);
+    }
+
+    // Handle transaction type filters
+    const types = filters?.types || (filters?.type ? [filters.type] : []);
+    if (types.length > 0) {
+      const placeholders = types.map(() => "?").join(",");
+      conditions.push(`t.type IN (${placeholders})`);
+      params.push(...types);
+    }
+
+    // Handle account type filters
+    const accountTypes =
+      filters?.accountTypes ||
+      (filters?.accountType ? [filters.accountType] : []);
+    if (accountTypes.length > 0) {
+      if (!hasJoin) {
+        query += " INNER JOIN accounts a ON t.account_id = a.id";
+        hasJoin = true;
+      } else if (!query.includes("INNER JOIN accounts")) {
+        query += " INNER JOIN accounts a ON t.account_id = a.id";
+      }
+      const placeholders = accountTypes.map(() => "?").join(",");
+      conditions.push(`a.type IN (${placeholders})`);
+      params.push(...accountTypes);
+    }
+
+    query += ` WHERE ${conditions.join(
+      " AND "
+    )} ORDER BY t.date DESC, t.created_at DESC LIMIT ?`;
+    params.push(limit);
+
+    console.log({ query, params });
+
+    return this.executeQuery<Transaction>(query, params);
+  }
+
+  /**
+   * Optimized method to get unique tag IDs from transactions matching filters
+   * Uses SQL DISTINCT to get tag IDs directly without fetching all transactions
+   */
+  async findUniqueTagIdsFromTransactions(filters?: {
+    accountId?: number;
+    accountIds?: number[];
+    categoryId?: number;
+    categoryIds?: number[];
+    startDate?: string;
+    endDate?: string;
+    type?: Transaction['type'];
+    types?: Transaction['type'][];
+    accountType?: string;
+    accountTypes?: string[];
+  }): Promise<number[]> {
+    let query = `SELECT DISTINCT tt.tag_id FROM ${this.tableName} t 
+                 INNER JOIN transaction_tags tt ON t.id = tt.transaction_id`;
+    const params: any[] = [];
+    const conditions: string[] = ['t.deleted_at IS NULL'];
+    let hasJoin = true; // Already have transaction_tags join
+
+    // Handle account filters
+    const accountIds = filters?.accountIds || (filters?.accountId ? [filters.accountId] : []);
+    if (accountIds.length > 0) {
+      const placeholders = accountIds.map(() => '?').join(',');
+      conditions.push(`t.account_id IN (${placeholders})`);
+      params.push(...accountIds);
     }
 
     // Handle category filters
@@ -1099,9 +1537,9 @@ export class TransactionRepository extends BaseRepository<Transaction> {
       params.push(filters.endDate);
     }
 
-    // Handle transaction type filters - allow both income and expenses for account breakdown
-    const types = filters?.types || (filters?.type ? [filters.type] : undefined);
-    if (types && types.length > 0) {
+    // Handle transaction type filters
+    const types = filters?.types || (filters?.type ? [filters.type] : []);
+    if (types.length > 0) {
       const placeholders = types.map(() => '?').join(',');
       conditions.push(`t.type IN (${placeholders})`);
       params.push(...types);
@@ -1110,10 +1548,7 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     // Handle account type filters
     const accountTypes = filters?.accountTypes || (filters?.accountType ? [filters.accountType] : []);
     if (accountTypes.length > 0) {
-      if (!hasJoin) {
-        query += ' INNER JOIN accounts a ON t.account_id = a.id';
-        hasJoin = true;
-      } else if (!query.includes('INNER JOIN accounts')) {
+      if (!query.includes('INNER JOIN accounts')) {
         query += ' INNER JOIN accounts a ON t.account_id = a.id';
       }
       const placeholders = accountTypes.map(() => '?').join(',');
@@ -1121,76 +1556,11 @@ export class TransactionRepository extends BaseRepository<Transaction> {
       params.push(...accountTypes);
     }
 
-    query += ` WHERE ${conditions.join(' AND ')}`;
+    query += ` WHERE ${conditions.join(' AND ')} AND tt.tag_id IS NOT NULL`;
 
-    // Execute query to get only id, amount, type, account_id
-    const results = await this.executeQuery<{ id: number; amount: string; type: Transaction['type']; account_id: number }>(query, params);
-
-    // Decrypt amounts in parallel (only amounts, not notes/payment_mode)
-    const decryptedAmounts = await Promise.all(
-      results.map(async (row) => ({
-        id: row.id,
-        amount: await decryptAmount(row.amount),
-        type: row.type,
-        account_id: row.account_id,
-      }))
-    );
-
-    // Group by account
-    const accountMap = new Map<number, { expenses: number; income: number; count: number }>();
-
-    for (const row of decryptedAmounts) {
-      const existing = accountMap.get(row.account_id) || { expenses: 0, income: 0, count: 0 };
-      
-      if (row.type === 'expense') {
-        existing.expenses += row.amount;
-        existing.count += 1;
-      } else if (row.type === 'income') {
-        existing.income += row.amount;
-        existing.count += 1;
-      }
-      accountMap.set(row.account_id, existing);
-    }
-
-    // Convert to array
-    return Array.from(accountMap.entries()).map(([accountId, data]) => ({
-      accountId,
-      expenses: data.expenses,
-      income: data.income,
-      count: data.count,
-    }));
-  }
-
-  /**
-   * Optimized method to calculate account expenses for a date range
-   * Only fetches and decrypts amounts with account_id and date
-   */
-  async calculateAccountExpensesForDateRange(
-    accountId: number,
-    startDate: string,
-    endDate: string
-  ): Promise<number> {
-    const query = `SELECT t.id, t.amount, t.type FROM ${this.tableName} t 
-                   WHERE t.deleted_at IS NULL 
-                   AND t.account_id = ? 
-                   AND t.type = 'expense'
-                   AND t.date >= ? 
-                   AND t.date <= ?`;
-    
-    const results = await this.executeQuery<{ id: number; amount: string; type: Transaction['type'] }>(
-      query,
-      [accountId, startDate, endDate]
-    );
-
-    // Decrypt amounts in parallel (only amounts, not notes/payment_mode)
-    const decryptedAmounts = await Promise.all(
-      results.map(async (row) => await decryptAmount(row.amount))
-    );
-
-    // Sum all expenses
-    return decryptedAmounts.reduce((sum, amount) => sum + amount, 0);
+    const results = await this.executeQuery<{ tag_id: number }>(query, params);
+    return results.map(row => row.tag_id);
   }
 }
 
 export const transactionRepository = new TransactionRepository();
-

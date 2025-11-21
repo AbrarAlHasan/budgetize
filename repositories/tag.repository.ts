@@ -151,11 +151,23 @@ export class TagRepository extends BaseRepository<Tag> {
 
   /**
    * Decrypt multiple tags
+   * Optimized: Decrypts all names in parallel instead of decrypting each tag sequentially
    */
   async decryptTags(tags: Tag[]): Promise<Array<Omit<Tag, 'name'> & {
     name: string;
   }>> {
-    return Promise.all(tags.map((t) => this.decryptTag(t)));
+    if (tags.length === 0) return [];
+
+    // Decrypt all names in parallel
+    const names = await Promise.all(
+      tags.map((t) => decrypt(t.name))
+    );
+
+    // Combine results
+    return tags.map((tag, index) => ({
+      ...tag,
+      name: names[index],
+    }));
   }
 }
 

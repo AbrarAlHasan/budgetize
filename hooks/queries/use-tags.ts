@@ -4,7 +4,7 @@ import { transactionRepository } from '@/repositories/transaction.repository';
 import { transactionTagRepository } from '@/repositories/transaction-tag.repository';
 import { CreateTagInput, UpdateTagInput, TransactionType, AccountType } from '@/db/schema/types';
 import { useSettingsStore } from '@/store/settings-store';
-import { filterTransactionsByIncomePreference, incomePreferenceKey } from '@/utils/income-preference';
+import { incomePreferenceKey } from '@/utils/income-preference';
 
 const QUERY_KEYS = {
   all: ['tags'] as const,
@@ -98,18 +98,14 @@ export function useTagsWithTransactions(filters: TagsWithTransactionsFilters = {
       if (filters.categoryId) filterOptions.categoryId = filters.categoryId;
       if (filters.transactionType) filterOptions.type = filters.transactionType;
       
-      // Get all transactions matching the filters
-      const transactions = await transactionRepository.findAllWithFilters(filterOptions);
-      const filteredTransactions = filterTransactionsByIncomePreference(transactions, incomeEnabled);
-      
-      // Get unique tag IDs from transactions
-      const tagIds = new Set<number>();
-      for (const transaction of filteredTransactions) {
-        const transactionTags = await transactionTagRepository.findByTransactionId(transaction.id);
-        for (const tt of transactionTags) {
-          tagIds.add(tt.tag_id);
-        }
+      // Apply income preference filter at SQL level if needed
+      if (!incomeEnabled) {
+        filterOptions.types = ['expense'];
       }
+      
+      // Use optimized method to get unique tag IDs directly from SQL
+      const tagIdsArray = await transactionRepository.findUniqueTagIdsFromTransactions(filterOptions);
+      const tagIds = new Set(tagIdsArray);
       
       // Fetch all tags (active and deleted) that have transactions
       const tagsWithTransactions = [];

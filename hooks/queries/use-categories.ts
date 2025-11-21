@@ -1,6 +1,6 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { categoryRepository } from '@/repositories/category.repository';
 import { CreateCategoryInput, UpdateCategoryInput } from '@/db/schema/types';
+import { categoryRepository } from '@/repositories/category.repository';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 const QUERY_KEYS = {
   all: ['categories'] as const,
@@ -16,8 +16,15 @@ export function useCategories() {
       const startTime = Date.now();
       console.log('[Performance] useCategories query started');
       
+      const queryStartTime = Date.now();
       const categories = await categoryRepository.findAll();
+      const queryEndTime = Date.now();
+      console.log(`[Performance] useCategories query fetch: ${queryEndTime - queryStartTime}ms (${categories.length} categories)`);
+
+      const decryptStartTime = Date.now();
       const result = await categoryRepository.decryptCategories(categories);
+      const decryptEndTime = Date.now();
+      console.log(`[Performance] useCategories decrypt: ${decryptEndTime - decryptStartTime}ms (${result.length} categories)`);
       
       const endTime = Date.now();
       console.log(`[Performance] useCategories query completed in ${endTime - startTime}ms (${result.length} categories)`);

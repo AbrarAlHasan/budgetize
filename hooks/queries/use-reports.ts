@@ -438,47 +438,37 @@ export function usePeriodComparison(startDate: string, endDate: string, useFilte
         type: filters.transactionType || undefined,
       } : { startDate: prevStartStr, endDate: prevEndStr };
 
-      // Get current period data
-      const currentTransactions = await transactionRepository.findAllWithFilters(filterOptions);
-      const currentDecrypted = await transactionRepository.decryptTransactions(currentTransactions);
-      const currentVisible = filterTransactionsByIncomePreference(currentDecrypted, incomeEnabled);
+      // Use optimized method to calculate summaries for both periods
+      const currentFilterOptions = !incomeEnabled 
+        ? { ...filterOptions, types: ['expense'] as Transaction['type'][] }
+        : filterOptions;
+      
+      const prevFilterOptionsForSummary = !incomeEnabled
+        ? { ...prevFilterOptions, types: ['expense'] as Transaction['type'][] }
+        : prevFilterOptions;
 
-      // Get previous period data
-      const prevTransactions = await transactionRepository.findAllWithFilters(prevFilterOptions);
-      const prevDecrypted = await transactionRepository.decryptTransactions(prevTransactions);
-      const prevVisible = filterTransactionsByIncomePreference(prevDecrypted, incomeEnabled);
+      const [currentSummary, prevSummary] = await Promise.all([
+        transactionRepository.calculateSummaryTotals(currentFilterOptions),
+        transactionRepository.calculateSummaryTotals(prevFilterOptionsForSummary),
+      ]);
 
-      // Calculate current period summary
-      let currentExpenses = 0, currentIncome = 0, currentExpenseCount = 0, currentIncomeCount = 0;
-      for (const t of currentVisible) {
-        const amount = typeof t.amount === 'number' ? t.amount : parseFloat(String(t.amount)) || 0;
-        if (t.type === 'expense') {
-          currentExpenses += amount;
-          currentExpenseCount++;
-        } else {
-          currentIncome += amount;
-          currentIncomeCount++;
-        }
-      }
+      const currentExpenses = currentSummary.totalExpenses;
+      const currentIncome = currentSummary.totalIncome;
+      const currentExpenseCount = currentSummary.expenseCount;
+      const currentIncomeCount = currentSummary.incomeCount;
+      const currentVisible = currentSummary.transactionCount;
 
-      // Calculate previous period summary
-      let prevExpenses = 0, prevIncome = 0, prevExpenseCount = 0, prevIncomeCount = 0;
-      for (const t of prevVisible) {
-        const amount = typeof t.amount === 'number' ? t.amount : parseFloat(String(t.amount)) || 0;
-        if (t.type === 'expense') {
-          prevExpenses += amount;
-          prevExpenseCount++;
-        } else {
-          prevIncome += amount;
-          prevIncomeCount++;
-        }
-      }
+      const prevExpenses = prevSummary.totalExpenses;
+      const prevIncome = prevSummary.totalIncome;
+      const prevExpenseCount = prevSummary.expenseCount;
+      const prevIncomeCount = prevSummary.incomeCount;
+      const prevVisible = prevSummary.transactionCount;
 
       const current: ReportSummary = {
         totalExpenses: currentExpenses,
         totalIncome: currentIncome,
         netAmount: currentIncome - currentExpenses,
-        transactionCount: currentVisible.length,
+        transactionCount: currentVisible,
         averageExpense: currentExpenseCount > 0 ? currentExpenses / currentExpenseCount : 0,
         averageIncome: currentIncomeCount > 0 ? currentIncome / currentIncomeCount : 0,
       };
@@ -487,7 +477,7 @@ export function usePeriodComparison(startDate: string, endDate: string, useFilte
         totalExpenses: prevExpenses,
         totalIncome: prevIncome,
         netAmount: prevIncome - prevExpenses,
-        transactionCount: prevVisible.length,
+        transactionCount: prevVisible,
         averageExpense: prevExpenseCount > 0 ? prevExpenses / prevExpenseCount : 0,
         averageIncome: prevIncomeCount > 0 ? prevIncome / prevIncomeCount : 0,
       };

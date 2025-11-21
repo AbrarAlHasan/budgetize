@@ -17,13 +17,20 @@ export function useAccounts(filters?: { type?: Account['type'] }) {
       const startTime = Date.now();
       console.log('[Performance] useAccounts query started');
       
+      const queryStartTime = Date.now();
       let accounts;
       if (filters?.type) {
         accounts = await accountRepository.findByType(filters.type);
       } else {
         accounts = await accountRepository.findAll();
       }
+      const queryEndTime = Date.now();
+      console.log(`[Performance] useAccounts query fetch: ${queryEndTime - queryStartTime}ms (${accounts.length} accounts)`);
+
+      const decryptStartTime = Date.now();
       const result = await accountRepository.decryptAccounts(accounts);
+      const decryptEndTime = Date.now();
+      console.log(`[Performance] useAccounts decrypt: ${decryptEndTime - decryptStartTime}ms (${result.length} accounts)`);
       
       const endTime = Date.now();
       console.log(`[Performance] useAccounts query completed in ${endTime - startTime}ms`);

@@ -33,16 +33,18 @@ export function useAccountMonthlyData(accountId: number) {
 
       // Use optimized methods that only fetch and decrypt amounts
       const [monthExpenses, todayExpenses] = await Promise.all([
-        transactionRepository.calculateAccountExpensesForDateRange(
-          accountId,
-          monthStartDate,
-          monthEndDate
-        ),
-        transactionRepository.calculateAccountExpensesForDateRange(
-          accountId,
-          dayStartDate,
-          dayEndDate
-        ),
+        transactionRepository.calculateAccountExpensesForDateRange({
+          accountIds: [accountId],
+          startDate: monthStartDate,
+          endDate: monthEndDate,
+          types: ['expense'],
+        }),
+        transactionRepository.calculateAccountExpensesForDateRange({
+          accountIds: [accountId],
+          startDate: dayStartDate,
+          endDate: dayEndDate,
+          types: ['expense'],
+        }),
       ]);
 
       const result = {

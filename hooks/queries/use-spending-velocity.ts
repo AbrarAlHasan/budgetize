@@ -59,17 +59,14 @@ export function useSpendingVelocity(
         types: ['expense'] as const,
       };
 
-      // Fetch expenses
-      const transactions = await transactionRepository.findAllWithFilters(filterOptions);
-      const decrypted = await transactionRepository.decryptTransactions(transactions);
-
-      let currentSpending = 0;
-      for (const transaction of decrypted) {
-        const amount = typeof transaction.amount === 'number' 
-          ? transaction.amount 
-          : parseFloat(String(transaction.amount)) || 0;
-        currentSpending += amount;
-      }
+      // Use optimized method that only fetches and decrypts amounts
+      const currentSpending = await transactionRepository.calculateAccountExpensesForDateRange({
+        accountIds: filterOptions.accountIds,
+        accountId: filterOptions.accountId,
+        startDate: filterOptions.startDate,
+        endDate: filterOptions.endDate,
+        types: ['expense'],
+      });
 
       // Calculate metrics
       const averageDailySpending = daysElapsed > 0 ? currentSpending / daysElapsed : 0;

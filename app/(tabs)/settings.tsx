@@ -11,6 +11,7 @@ import { backupAppData, restoreAppData } from "@/utils/backup";
 import { getCurrencyOptions, getCurrencySymbol } from "@/utils/currencies";
 import { resetAppWithDummyData } from "@/utils/dummy-data";
 import { Ionicons } from "@expo/vector-icons";
+import { Paths } from "expo-file-system";
 import { router } from "expo-router";
 import { colorScheme } from "nativewind";
 import { useEffect, useState } from "react";
@@ -40,6 +41,7 @@ export default function SettingsScreen() {
   const [isRestoring, setIsRestoring] = useState(false);
 
   useEffect(() => {
+    console.log(Paths.document.uri);
     loadPreferences();
     loadSettings();
     checkPermissions();

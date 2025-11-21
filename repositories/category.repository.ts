@@ -157,11 +157,23 @@ export class CategoryRepository extends BaseRepository<Category> {
 
   /**
    * Decrypt multiple categories
+   * Optimized: Decrypts all names in parallel instead of decrypting each category sequentially
    */
   async decryptCategories(categories: Category[]): Promise<Array<Omit<Category, 'name'> & {
     name: string;
   }>> {
-    return Promise.all(categories.map((c) => this.decryptCategory(c)));
+    if (categories.length === 0) return [];
+
+    // Decrypt all names in parallel
+    const names = await Promise.all(
+      categories.map((c) => decrypt(c.name))
+    );
+
+    // Combine results
+    return categories.map((category, index) => ({
+      ...category,
+      name: names[index],
+    }));
   }
 }
 

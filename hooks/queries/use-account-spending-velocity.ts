@@ -36,23 +36,13 @@ export function useAccountSpendingVelocity(accountId: number) {
       const daysElapsed = differenceInDays(now, monthStart) + 1; // +1 to include today
       const daysRemaining = totalDaysInMonth - daysElapsed;
 
-      // Fetch current month expenses
-      const transactions = await transactionRepository.findAllWithFilters({
+      // Use optimized method that only fetches and decrypts amounts
+      const currentMonthSpending = await transactionRepository.calculateAccountExpensesForDateRange({
         accountIds: [accountId],
         startDate: monthStartDate,
         endDate: monthEndDate,
         types: ['expense'],
       });
-      
-      const decrypted = await transactionRepository.decryptTransactions(transactions);
-
-      let currentMonthSpending = 0;
-      for (const transaction of decrypted) {
-        const amount = typeof transaction.amount === 'number' 
-          ? transaction.amount 
-          : parseFloat(String(transaction.amount)) || 0;
-        currentMonthSpending += amount;
-      }
 
       // Calculate metrics
       const averageDailySpending = daysElapsed > 0 ? currentMonthSpending / daysElapsed : 0;

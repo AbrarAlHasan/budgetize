@@ -50,9 +50,20 @@ export function useTransactions(filters?: {
       const startTime = Date.now();
       console.log('[Performance] useTransactions query started', filters ? `with filters: ${JSON.stringify(filters)}` : '');
       
+      const queryStartTime = Date.now();
       const transactions = await transactionRepository.findAllWithFilters(filters);
+      const queryEndTime = Date.now();
+      console.log(`[Performance] useTransactions query fetch: ${queryEndTime - queryStartTime}ms (${transactions.length} transactions)`);
+
+      const decryptStartTime = Date.now();
       const decrypted = await transactionRepository.decryptTransactions(transactions);
+      const decryptEndTime = Date.now();
+      console.log(`[Performance] useTransactions decrypt: ${decryptEndTime - decryptStartTime}ms (${decrypted.length} transactions)`);
+
+      const filterStartTime = Date.now();
       const result = filterTransactionsByIncomePreference(decrypted, incomeEnabled);
+      const filterEndTime = Date.now();
+      console.log(`[Performance] useTransactions filter: ${filterEndTime - filterStartTime}ms`);
       
       const endTime = Date.now();
       console.log(`[Performance] useTransactions query completed in ${endTime - startTime}ms (${result.length} transactions)`);
@@ -86,13 +97,24 @@ export function useTransactionsPaginated(filters?: {
       const startTime = Date.now();
       console.log(`[Performance] useTransactionsPaginated query started (page: ${pageParam})`, filters ? `with filters: ${JSON.stringify(filters)}` : '');
       
+      const queryStartTime = Date.now();
       const result = await transactionRepository.findAllWithFiltersPaginated(
         filters,
         TRANSACTIONS_PER_PAGE,
         pageParam * TRANSACTIONS_PER_PAGE
       );
+      const queryEndTime = Date.now();
+      console.log(`[Performance] useTransactionsPaginated query fetch: ${queryEndTime - queryStartTime}ms (${result.transactions.length} transactions)`);
+
+      const decryptStartTime = Date.now();
       const decrypted = await transactionRepository.decryptTransactions(result.transactions);
+      const decryptEndTime = Date.now();
+      console.log(`[Performance] useTransactionsPaginated decrypt: ${decryptEndTime - decryptStartTime}ms (${decrypted.length} transactions)`);
+
+      const filterStartTime = Date.now();
       const filtered = filterTransactionsByIncomePreference(decrypted, incomeEnabled);
+      const filterEndTime = Date.now();
+      console.log(`[Performance] useTransactionsPaginated filter: ${filterEndTime - filterStartTime}ms`);
       
       const queryResult = {
         transactions: filtered,

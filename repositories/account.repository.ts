@@ -149,9 +149,53 @@ export class AccountRepository extends BaseRepository<Account> {
 
   /**
    * Decrypt multiple accounts
+   * Optimized: Decrypts all names in parallel, then all bank_names, etc.
+   * This is faster than decrypting each account sequentially
    */
   async decryptAccounts(accounts: Account[]): Promise<DecryptedAccount[]> {
-    return Promise.all(accounts.map((a) => this.decryptAccount(a)));
+    if (accounts.length === 0) return [];
+
+    // Decrypt all names in parallel
+    const names = await Promise.all(
+      accounts.map((a) => decrypt(a.name))
+    );
+
+    // Decrypt all bank_names in parallel (only for accounts that have them)
+    const bankNames = await Promise.all(
+      accounts.map((a) => (a.bank_name ? decrypt(a.bank_name) : Promise.resolve(null)))
+    );
+
+    // Decrypt all credit_limits in parallel (only for accounts that have them)
+    const creditLimits = await Promise.all(
+      accounts.map((a) => (a.credit_limit ? decryptAmount(a.credit_limit) : Promise.resolve(null)))
+    );
+
+    // Decrypt all billing_start_dates in parallel (only for accounts that have them)
+    const billingStartDates = await Promise.all(
+      accounts.map((a) => (a.billing_start_date ? decrypt(a.billing_start_date) : Promise.resolve(null)))
+    );
+
+    // Decrypt all billing_end_dates in parallel (only for accounts that have them)
+    const billingEndDates = await Promise.all(
+      accounts.map((a) => (a.billing_end_date ? decrypt(a.billing_end_date) : Promise.resolve(null)))
+    );
+
+    // Decrypt all payment_due_dates in parallel (only for accounts that have them)
+    const paymentDueDates = await Promise.all(
+      accounts.map((a) => (a.payment_due_date ? decrypt(a.payment_due_date) : Promise.resolve(null)))
+    );
+
+    // Combine results
+    return accounts.map((account, index) => ({
+      ...account,
+      name: names[index],
+      currency: account.currency || 'USD',
+      bank_name: bankNames[index],
+      credit_limit: creditLimits[index],
+      billing_start_date: billingStartDates[index],
+      billing_end_date: billingEndDates[index],
+      payment_due_date: paymentDueDates[index],
+    }));
   }
 }
 

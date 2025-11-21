@@ -1,28 +1,31 @@
 import { ActiveFilterChips } from "@/components/filters/active-filter-chips";
+import { SpendingVelocity } from "@/components/reports/spending-velocity";
 import {
   RecentTransactionsSkeleton,
   SpendingVelocitySkeleton,
   SummaryCardsSkeleton,
 } from "@/components/skeletons";
-import { SpendingVelocity } from "@/components/reports/spending-velocity";
 import { TransactionItem } from "@/components/transaction-item";
 import { Card } from "@/components/ui/card";
 import { useAccounts } from "@/hooks/queries/use-accounts";
-import { useCategories } from "@/hooks/queries/use-categories";
 import { useDashboardData } from "@/hooks/queries/use-dashboard";
 import { useSpendingVelocity } from "@/hooks/queries/use-spending-velocity";
-import { useTransactions } from "@/hooks/queries/use-transactions";
 import { categoryRepository } from "@/repositories/category.repository";
 import { tagRepository } from "@/repositories/tag.repository";
 import { transactionTagRepository } from "@/repositories/transaction-tag.repository";
+import { transactionRepository } from "@/repositories/transaction.repository";
 import { useSettingsStore } from "@/store/settings-store";
 import { useUIStore } from "@/store/ui-store";
 import { getCurrencySymbol } from "@/utils/currencies";
+import {
+  filterTransactionsByIncomePreference,
+  incomePreferenceKey,
+} from "@/utils/income-preference";
 import { Ionicons } from "@expo/vector-icons";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { endOfMonth, format, startOfMonth } from "date-fns";
 import { router } from "expo-router";
-import React, { useCallback } from "react";
+import React from "react";
 import {
   RefreshControl,
   ScrollView,
@@ -91,7 +94,7 @@ export default function DashboardScreen() {
     currentMonth,
     useFilters
   );
-  
+
   // Spending Velocity dates
   const startDate =
     useFilters && filters.startDate
@@ -101,12 +104,27 @@ export default function DashboardScreen() {
     useFilters && filters.endDate
       ? filters.endDate
       : format(endOfMonth(currentMonth), "yyyy-MM-dd");
-  
-  const { isLoading: velocityLoading } = useSpendingVelocity(startDate, endDate, useFilters);
 
-  const { data: transactions, isLoading: transactionsLoading } =
-    useTransactions(
-      useFilters
+  const { isLoading: velocityLoading } = useSpendingVelocity(
+    startDate,
+    endDate,
+    useFilters
+  );
+
+  // Use optimized query to fetch only latest 10 transactions instead of all
+  const { data: transactions, isLoading: transactionsLoading } = useQuery({
+    queryKey: [
+      "dashboard-latest-transactions",
+      startDate,
+      endDate,
+      filterKey,
+      incomePreferenceKey(settings.incomeCalculationEnabled),
+    ],
+    queryFn: async () => {
+      const startTime = Date.now();
+      console.log("[Performance] Dashboard latest transactions query started");
+
+      const filterOptions = useFilters
         ? {
             startDate,
             endDate,
@@ -136,11 +154,53 @@ export default function DashboardScreen() {
                 : undefined,
             accountType: filters.accountType || undefined,
           }
-        : { startDate, endDate }
-    );
+        : { startDate, endDate };
+
+      // Fetch only latest 10 transactions directly from database
+      const queryStartTime = Date.now();
+      const rawTransactions =
+        await transactionRepository.findLatestTransactionsWithFilters(
+          10,
+          filterOptions
+        );
+      const queryEndTime = Date.now();
+      console.log(
+        `[Performance] Dashboard query fetch: ${queryEndTime - queryStartTime}ms (${rawTransactions.length} transactions)`
+      );
+
+      // Decrypt only the transactions we need
+      const decryptStartTime = Date.now();
+      const decrypted = await transactionRepository.decryptTransactions(
+        rawTransactions
+      );
+      const decryptEndTime = Date.now();
+      console.log(
+        `[Performance] Dashboard decrypt: ${decryptEndTime - decryptStartTime}ms (${decrypted.length} transactions)`
+      );
+
+      const filterStartTime = Date.now();
+      const filtered = filterTransactionsByIncomePreference(
+        decrypted,
+        settings.incomeCalculationEnabled
+      );
+      const filterEndTime = Date.now();
+      console.log(
+        `[Performance] Dashboard filter: ${filterEndTime - filterStartTime}ms`
+      );
+
+      const endTime = Date.now();
+      console.log(
+        `[Performance] Dashboard latest transactions query completed in ${
+          endTime - startTime
+        }ms (${filtered.length} transactions)`
+      );
+
+      return filtered;
+    },
+    enabled: !!startDate && !!endDate,
+  });
 
   const { data: accounts } = useAccounts();
-  const { data: categories } = useCategories();
 
   const [transactionTags, setTransactionTags] = React.useState<
     Map<number, Array<{ id: number; name: string }>>
@@ -151,10 +211,13 @@ export default function DashboardScreen() {
   const [refreshing, setRefreshing] = React.useState(false);
 
   React.useEffect(() => {
-    if (transactions) {
+    // Only load tags and categories for the transactions we actually display (max 10)
+    if (transactions && transactions.length > 0) {
       const loadTagsAndCategories = async () => {
         const tagsMap = new Map<number, Array<{ id: number; name: string }>>();
         const categoriesMap = new Map<number, string>();
+
+        // Only process the transactions we're displaying (already limited to 10 by query)
         for (const transaction of transactions) {
           // Load tags (including deleted ones)
           const tags = await transactionTagRepository.findByTransactionId(
@@ -266,7 +329,9 @@ export default function DashboardScreen() {
 
           {/* Summary Cards */}
           {dashboardLoading ? (
-            <SummaryCardsSkeleton showIncome={settings.incomeCalculationEnabled} />
+            <SummaryCardsSkeleton
+              showIncome={settings.incomeCalculationEnabled}
+            />
           ) : (
             <View className="mb-6">
               <View
@@ -293,7 +358,9 @@ export default function DashboardScreen() {
                         maximumFractionDigits: 2,
                       }) || "0.00"}
                     </Text>
-                    <Text className="text-xs text-gray-500 mt-1">This month</Text>
+                    <Text className="text-xs text-gray-500 mt-1">
+                      This month
+                    </Text>
                   </View>
                 )}
 
@@ -378,10 +445,10 @@ export default function DashboardScreen() {
           {velocityLoading ? (
             <SpendingVelocitySkeleton />
           ) : (
-            <SpendingVelocity 
-              startDate={startDate} 
-              endDate={endDate} 
-              useFilters={useFilters} 
+            <SpendingVelocity
+              startDate={startDate}
+              endDate={endDate}
+              useFilters={useFilters}
             />
           )}
 
@@ -425,23 +492,21 @@ export default function DashboardScreen() {
             {transactionsLoading ? (
               <RecentTransactionsSkeleton />
             ) : transactions && transactions.length > 0 ? (
-              transactions
-                .slice(0, 10)
-                .map((transaction) => (
-                  <TransactionItem
-                    key={transaction.id}
-                    id={transaction.id}
-                    amount={transaction.amount}
-                    type={transaction.type}
-                    date={transaction.date}
-                    note={transaction.note}
-                    payment_mode={transaction.payment_mode}
-                    accountName={getAccountName(transaction.account_id)}
-                    currencySymbol={getCurrencySymbol(settings.currency)}
-                    tags={transactionTags.get(transaction.id)}
-                    categoryName={transactionCategories.get(transaction.id)}
-                  />
-                ))
+              transactions.map((transaction) => (
+                <TransactionItem
+                  key={transaction.id}
+                  id={transaction.id}
+                  amount={transaction.amount}
+                  type={transaction.type}
+                  date={transaction.date}
+                  note={transaction.note}
+                  payment_mode={transaction.payment_mode}
+                  accountName={getAccountName(transaction.account_id)}
+                  currencySymbol={getCurrencySymbol(settings.currency)}
+                  tags={transactionTags.get(transaction.id)}
+                  categoryName={transactionCategories.get(transaction.id)}
+                />
+              ))
             ) : (
               <View className="bg-white dark:bg-gray-900 rounded-2xl p-8 items-center">
                 <Ionicons name="receipt-outline" size={48} color="#9CA3AF" />
