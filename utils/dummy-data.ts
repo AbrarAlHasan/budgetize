@@ -80,25 +80,88 @@ function buildRandomDateExcludingWeekday(
   excludeWeekday: number | null
 ): string {
   const now = new Date();
+  const currentDate = new Date(now.getFullYear(), now.getMonth() - monthOffset, now.getDate());
+  
+  // For current month (monthOffset = 0), ensure we don't exceed current date
+  // For past months, use the last day of that month
+  const maxDay = monthOffset === 0 
+    ? now.getDate() // Current month: only up to today
+    : 28; // Past months: use day 1-28 (safe for all months)
 
   for (let attempt = 0; attempt < 40; attempt++) {
-    const day = 1 + Math.floor(Math.random() * 28);
+    const day = 1 + Math.floor(Math.random() * maxDay);
     const date = new Date(now.getFullYear(), now.getMonth() - monthOffset, day);
+    
+    // Ensure date doesn't exceed current date/time
+    if (date > now) {
+      continue;
+    }
+    
     if (excludeWeekday !== null && date.getDay() === excludeWeekday) {
       continue;
     }
-    date.setHours(12, 0, 0, 0);
+    
+    // Set random time within the day (but not exceeding current time if it's today)
+    if (monthOffset === 0 && day === now.getDate()) {
+      // For today, use a random time up to current time
+      const maxHours = now.getHours();
+      const maxMinutes = now.getMinutes();
+      const hours = Math.floor(Math.random() * (maxHours + 1));
+      const minutes = hours === maxHours 
+        ? Math.floor(Math.random() * (maxMinutes + 1))
+        : Math.floor(Math.random() * 60);
+      date.setHours(hours, minutes, Math.floor(Math.random() * 60), 0);
+    } else {
+      // For past dates, use random time during the day
+      date.setHours(
+        Math.floor(Math.random() * 24),
+        Math.floor(Math.random() * 60),
+        Math.floor(Math.random() * 60),
+        0
+      );
+    }
+    
     return date.toISOString();
   }
 
-  // Fallback: force a weekday different than excludeWeekday
-  const date = new Date(now.getFullYear(), now.getMonth() - monthOffset, 15);
+  // Fallback: use a safe date (15th of the month, or today if current month)
+  const fallbackDay = monthOffset === 0 
+    ? Math.min(15, now.getDate())
+    : 15;
+  const date = new Date(now.getFullYear(), now.getMonth() - monthOffset, fallbackDay);
+  
+  // Ensure fallback date doesn't exceed current date
+  if (date > now) {
+    // If fallback exceeds current date, use today
+    date.setFullYear(now.getFullYear());
+    date.setMonth(now.getMonth());
+    date.setDate(now.getDate());
+  }
+  
   if (excludeWeekday !== null) {
     while (date.getDay() === excludeWeekday) {
-      date.setDate(date.getDate() + 1);
+      date.setDate(date.getDate() - 1);
+      // Ensure we don't go too far back
+      if (date < new Date(now.getFullYear(), now.getMonth() - monthOffset, 1)) {
+        date.setDate(date.getDate() + 7); // Move forward a week instead
+      }
     }
   }
-  date.setHours(12, 0, 0, 0);
+  
+  // Set time (random for past dates, up to current time for today)
+  if (monthOffset === 0 && date.getDate() === now.getDate()) {
+    const maxHours = now.getHours();
+    const maxMinutes = now.getMinutes();
+    date.setHours(
+      Math.min(12, maxHours),
+      Math.min(30, maxMinutes),
+      0,
+      0
+    );
+  } else {
+    date.setHours(12, 0, 0, 0);
+  }
+  
   return date.toISOString();
 }
 

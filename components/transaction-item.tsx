@@ -87,7 +87,7 @@ export function TransactionItem({
                 {note || payment_mode || 'Transaction'}
               </Text>
               <Text className="text-xs text-gray-500 dark:text-gray-400">
-                {format(new Date(date), 'EEE, dd MMM')} • {format(new Date(date), 'HH:mm')}
+                {format(new Date(date), 'EEE, dd MMM yyyy')}
               </Text>
             </View>
             <View className="items-end">

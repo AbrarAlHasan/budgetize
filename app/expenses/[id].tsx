@@ -110,13 +110,21 @@ export default function TransactionDetailScreen() {
     }
 
     try {
+      // Combine selected date with current time and convert to ISO string
+      const selectedDateWithTime = new Date(date);
+      const now = new Date();
+      selectedDateWithTime.setHours(now.getHours());
+      selectedDateWithTime.setMinutes(now.getMinutes());
+      selectedDateWithTime.setSeconds(now.getSeconds());
+      selectedDateWithTime.setMilliseconds(now.getMilliseconds());
+
       await updateTransaction.mutateAsync({
         id: transactionId,
         account_id: accountId,
         category_id: categoryId,
         amount: amountValue,
         type,
-        date: format(date, 'yyyy-MM-dd'),
+        date: selectedDateWithTime.toISOString(),
         note: note.trim() || null,
         payment_mode: paymentMode.trim(),
         tag_ids: selectedTagIds.length > 0 ? selectedTagIds : undefined,

@@ -172,11 +172,12 @@ export default function ReportsScreen() {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
+      // Force refetch by removing cache and refetching
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['reports'] }),
-        queryClient.invalidateQueries({ queryKey: ['transactions'] }),
-        queryClient.invalidateQueries({ queryKey: ['accounts'] }),
-        queryClient.invalidateQueries({ queryKey: ['spendingVelocity'] }),
+        queryClient.refetchQueries({ queryKey: ['reports'] }),
+        queryClient.refetchQueries({ queryKey: ['transactions'] }),
+        queryClient.refetchQueries({ queryKey: ['accounts'] }),
+        queryClient.refetchQueries({ queryKey: ['spendingVelocity'] }),
       ]);
     } finally {
       setRefreshing(false);

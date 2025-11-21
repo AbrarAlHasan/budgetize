@@ -158,10 +158,12 @@ export default function ExpensesScreen() {
   const onRefresh = React.useCallback(async () => {
     setRefreshing(true);
     try {
-      await refetch();
+      // Force refetch by removing cache and refetching
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['accounts'] }),
-        queryClient.invalidateQueries({ queryKey: ['tags'] }),
+        refetch(), // This will refetch the paginated transactions
+        queryClient.refetchQueries({ queryKey: ['accounts'] }),
+        queryClient.refetchQueries({ queryKey: ['tags'] }),
+        queryClient.refetchQueries({ queryKey: ['categories'] }),
       ]);
     } finally {
       setRefreshing(false);

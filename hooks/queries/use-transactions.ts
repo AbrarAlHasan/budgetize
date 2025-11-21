@@ -178,8 +178,23 @@ export function useCreateTransaction() {
   return useMutation({
     mutationFn: (input: CreateTransactionInput) => transactionRepository.create(input),
     onSuccess: async (data) => {
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.all });
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.detail(data.id) });
+      // Invalidate all transaction-related queries
+      await Promise.all([
+        // All transaction queries
+        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.all }),
+        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.detail(data.id) }),
+        // Dashboard queries
+        queryClient.invalidateQueries({ queryKey: ['dashboard'] }),
+        queryClient.invalidateQueries({ queryKey: ['dashboard-latest-transactions'] }),
+        // Reports queries
+        queryClient.invalidateQueries({ queryKey: ['reports'] }),
+        queryClient.invalidateQueries({ queryKey: ['spendingVelocity'] }),
+        queryClient.invalidateQueries({ queryKey: ['accountSpendingVelocity'] }),
+        // Account queries
+        queryClient.invalidateQueries({ queryKey: ['account-balances'] }),
+        queryClient.invalidateQueries({ queryKey: ['accountMonthlyData'] }),
+        queryClient.invalidateQueries({ queryKey: ['account-latest-transactions'] }),
+      ]);
     },
   });
 }
@@ -190,8 +205,23 @@ export function useUpdateTransaction() {
   return useMutation({
     mutationFn: (input: UpdateTransactionInput) => transactionRepository.update(input),
     onSuccess: async (data) => {
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.all });
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.detail(data.id) });
+      // Invalidate all transaction-related queries
+      await Promise.all([
+        // All transaction queries
+        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.all }),
+        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.detail(data.id) }),
+        // Dashboard queries
+        queryClient.invalidateQueries({ queryKey: ['dashboard'] }),
+        queryClient.invalidateQueries({ queryKey: ['dashboard-latest-transactions'] }),
+        // Reports queries
+        queryClient.invalidateQueries({ queryKey: ['reports'] }),
+        queryClient.invalidateQueries({ queryKey: ['spendingVelocity'] }),
+        queryClient.invalidateQueries({ queryKey: ['accountSpendingVelocity'] }),
+        // Account queries
+        queryClient.invalidateQueries({ queryKey: ['account-balances'] }),
+        queryClient.invalidateQueries({ queryKey: ['accountMonthlyData'] }),
+        queryClient.invalidateQueries({ queryKey: ['account-latest-transactions'] }),
+      ]);
     },
   });
 }
@@ -201,8 +231,23 @@ export function useDeleteTransaction() {
 
   return useMutation({
     mutationFn: (id: number) => transactionRepository.delete(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.all });
+    onSuccess: async () => {
+      // Invalidate all transaction-related queries
+      await Promise.all([
+        // All transaction queries
+        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.all }),
+        // Dashboard queries
+        queryClient.invalidateQueries({ queryKey: ['dashboard'] }),
+        queryClient.invalidateQueries({ queryKey: ['dashboard-latest-transactions'] }),
+        // Reports queries
+        queryClient.invalidateQueries({ queryKey: ['reports'] }),
+        queryClient.invalidateQueries({ queryKey: ['spendingVelocity'] }),
+        queryClient.invalidateQueries({ queryKey: ['accountSpendingVelocity'] }),
+        // Account queries
+        queryClient.invalidateQueries({ queryKey: ['account-balances'] }),
+        queryClient.invalidateQueries({ queryKey: ['accountMonthlyData'] }),
+        queryClient.invalidateQueries({ queryKey: ['account-latest-transactions'] }),
+      ]);
     },
   });
 }

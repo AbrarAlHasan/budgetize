@@ -266,10 +266,13 @@ export default function DashboardScreen() {
   const onRefresh = React.useCallback(async () => {
     setRefreshing(true);
     try {
+      // Force refetch by removing cache and refetching
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["dashboard"] }),
-        queryClient.invalidateQueries({ queryKey: ["transactions"] }),
-        queryClient.invalidateQueries({ queryKey: ["accounts"] }),
+        queryClient.refetchQueries({ queryKey: ["dashboard"] }),
+        queryClient.refetchQueries({ queryKey: ["transactions"] }),
+        queryClient.refetchQueries({ queryKey: ["dashboard-latest-transactions"] }),
+        queryClient.refetchQueries({ queryKey: ["accounts"] }),
+        queryClient.refetchQueries({ queryKey: ["spendingVelocity"] }),
       ]);
     } finally {
       setRefreshing(false);

@@ -33,11 +33,14 @@ export default function AccountsScreen() {
   const onRefresh = React.useCallback(async () => {
     setRefreshing(true);
     try {
+      // Force refetch by removing cache and refetching
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["accounts"] }),
-        queryClient.invalidateQueries({ queryKey: ["account-balances"] }),
-        queryClient.invalidateQueries({ queryKey: ["accountMonthlyData"] }),
-        queryClient.invalidateQueries({ queryKey: ["transactions"] }),
+        queryClient.refetchQueries({ queryKey: ["accounts"] }),
+        queryClient.refetchQueries({ queryKey: ["account-balances"] }),
+        queryClient.refetchQueries({ queryKey: ["accountMonthlyData"] }),
+        queryClient.refetchQueries({ queryKey: ["accountSpendingVelocity"] }),
+        queryClient.refetchQueries({ queryKey: ["account-latest-transactions"] }),
+        queryClient.refetchQueries({ queryKey: ["transactions"] }),
       ]);
     } finally {
       setRefreshing(false);
