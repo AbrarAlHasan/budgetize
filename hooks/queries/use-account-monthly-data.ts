@@ -14,6 +14,9 @@ export function useAccountMonthlyData(accountId: number) {
   return useQuery({
     queryKey: [...QUERY_KEY, accountId],
     queryFn: async (): Promise<AccountMonthlyData> => {
+      const startTime = Date.now();
+      console.log(`[Performance] useAccountMonthlyData(${accountId}) query started`);
+      
       const now = new Date();
       
       // Get current month range
@@ -28,47 +31,30 @@ export function useAccountMonthlyData(accountId: number) {
       const dayStartDate = format(dayStart, 'yyyy-MM-dd');
       const dayEndDate = format(dayEnd, 'yyyy-MM-dd');
 
-      // Fetch monthly expenses
-      const monthTransactions = await transactionRepository.findAllWithFilters({
-        accountIds: [accountId],
-        startDate: monthStartDate,
-        endDate: monthEndDate,
-        types: ['expense'],
-      });
-      
-      // Fetch today's expenses
-      const todayTransactions = await transactionRepository.findAllWithFilters({
-        accountIds: [accountId],
-        startDate: dayStartDate,
-        endDate: dayEndDate,
-        types: ['expense'],
-      });
-      
-      const decryptedMonth = await transactionRepository.decryptTransactions(monthTransactions);
-      const decryptedToday = await transactionRepository.decryptTransactions(todayTransactions);
+      // Use optimized methods that only fetch and decrypt amounts
+      const [monthExpenses, todayExpenses] = await Promise.all([
+        transactionRepository.calculateAccountExpensesForDateRange(
+          accountId,
+          monthStartDate,
+          monthEndDate
+        ),
+        transactionRepository.calculateAccountExpensesForDateRange(
+          accountId,
+          dayStartDate,
+          dayEndDate
+        ),
+      ]);
 
-      let monthExpenses = 0;
-      let todayExpenses = 0;
-
-      for (const transaction of decryptedMonth) {
-        const amount = typeof transaction.amount === 'number' 
-          ? transaction.amount 
-          : parseFloat(String(transaction.amount)) || 0;
-        monthExpenses += amount;
-      }
-
-      for (const transaction of decryptedToday) {
-        const amount = typeof transaction.amount === 'number' 
-          ? transaction.amount 
-          : parseFloat(String(transaction.amount)) || 0;
-        todayExpenses += amount;
-      }
-
-      return {
+      const result = {
         accountId,
         currentMonthExpenses: monthExpenses,
         todayExpenses: todayExpenses,
       };
+      
+      const endTime = Date.now();
+      console.log(`[Performance] useAccountMonthlyData(${accountId}) query completed in ${endTime - startTime}ms`);
+
+      return result;
     },
     enabled: !!accountId,
     staleTime: 2 * 60 * 1000, // 2 minutes

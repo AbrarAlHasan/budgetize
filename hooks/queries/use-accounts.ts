@@ -14,13 +14,21 @@ export function useAccounts(filters?: { type?: Account['type'] }) {
   return useQuery<DecryptedAccount[]>({
     queryKey: QUERY_KEYS.list(filters),
     queryFn: async () => {
+      const startTime = Date.now();
+      console.log('[Performance] useAccounts query started');
+      
       let accounts;
       if (filters?.type) {
         accounts = await accountRepository.findByType(filters.type);
       } else {
         accounts = await accountRepository.findAll();
       }
-      return accountRepository.decryptAccounts(accounts);
+      const result = await accountRepository.decryptAccounts(accounts);
+      
+      const endTime = Date.now();
+      console.log(`[Performance] useAccounts query completed in ${endTime - startTime}ms`);
+      
+      return result;
     },
   });
 }
@@ -29,9 +37,21 @@ export function useAccount(id: number) {
   return useQuery<DecryptedAccount | null>({
     queryKey: QUERY_KEYS.detail(id),
     queryFn: async () => {
+      const startTime = Date.now();
+      console.log(`[Performance] useAccount(${id}) query started`);
+      
       const account = await accountRepository.findById(id);
-      if (!account) return null;
-      return accountRepository.decryptAccount(account);
+      if (!account) {
+        const endTime = Date.now();
+        console.log(`[Performance] useAccount(${id}) query completed in ${endTime - startTime}ms (not found)`);
+        return null;
+      }
+      const result = await accountRepository.decryptAccount(account);
+      
+      const endTime = Date.now();
+      console.log(`[Performance] useAccount(${id}) query completed in ${endTime - startTime}ms`);
+      
+      return result;
     },
     enabled: !!id,
   });

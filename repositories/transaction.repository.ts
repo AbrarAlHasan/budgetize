@@ -1160,6 +1160,36 @@ export class TransactionRepository extends BaseRepository<Transaction> {
       count: data.count,
     }));
   }
+
+  /**
+   * Optimized method to calculate account expenses for a date range
+   * Only fetches and decrypts amounts with account_id and date
+   */
+  async calculateAccountExpensesForDateRange(
+    accountId: number,
+    startDate: string,
+    endDate: string
+  ): Promise<number> {
+    const query = `SELECT t.id, t.amount, t.type FROM ${this.tableName} t 
+                   WHERE t.deleted_at IS NULL 
+                   AND t.account_id = ? 
+                   AND t.type = 'expense'
+                   AND t.date >= ? 
+                   AND t.date <= ?`;
+    
+    const results = await this.executeQuery<{ id: number; amount: string; type: Transaction['type'] }>(
+      query,
+      [accountId, startDate, endDate]
+    );
+
+    // Decrypt amounts in parallel (only amounts, not notes/payment_mode)
+    const decryptedAmounts = await Promise.all(
+      results.map(async (row) => await decryptAmount(row.amount))
+    );
+
+    // Sum all expenses
+    return decryptedAmounts.reduce((sum, amount) => sum + amount, 0);
+  }
 }
 
 export const transactionRepository = new TransactionRepository();

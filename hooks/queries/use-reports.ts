@@ -111,6 +111,9 @@ export function useReportSummary(startDate: string, endDate: string, useFilters:
       ? [...QUERY_KEYS.summary(filterStartDate, filterEndDate), 'filters', filters, incomePreferenceKey(incomeEnabled)]
       : [...QUERY_KEYS.summary(filterStartDate, filterEndDate), incomePreferenceKey(incomeEnabled)],
     queryFn: async (): Promise<ReportSummary> => {
+      const startTime = Date.now();
+      console.log('[Performance] ReportSummary query started');
+      
       const baseFilterOptions = useFilters ? {
         startDate: filterStartDate,
         endDate: filterEndDate,
@@ -139,7 +142,7 @@ export function useReportSummary(startDate: string, endDate: string, useFilters:
         ? { ...totals, totalIncome: 0, incomeCount: 0 }
         : totals;
 
-      return {
+      const result = {
         totalExpenses: finalTotals.totalExpenses,
         totalIncome: finalTotals.totalIncome,
         netAmount: finalTotals.totalIncome - finalTotals.totalExpenses,
@@ -147,6 +150,11 @@ export function useReportSummary(startDate: string, endDate: string, useFilters:
         averageExpense: finalTotals.expenseCount > 0 ? finalTotals.totalExpenses / finalTotals.expenseCount : 0,
         averageIncome: finalTotals.incomeCount > 0 ? finalTotals.totalIncome / finalTotals.incomeCount : 0,
       };
+      
+      const endTime = Date.now();
+      console.log(`[Performance] ReportSummary query completed in ${endTime - startTime}ms`);
+      
+      return result;
     },
     enabled: !!filterStartDate && !!filterEndDate,
   });
@@ -165,6 +173,9 @@ export function useCategoryReport(startDate: string, endDate: string, useFilters
       ? [...QUERY_KEYS.byCategory(filterStartDate, filterEndDate), 'filters', filters, incomePreferenceKey(incomeEnabled)]
       : [...QUERY_KEYS.byCategory(filterStartDate, filterEndDate), incomePreferenceKey(incomeEnabled)],
     queryFn: async (): Promise<CategoryReport[]> => {
+      const startTime = Date.now();
+      console.log('[Performance] CategoryReport query started');
+      
       const filterOptions = useFilters ? {
         startDate: filterStartDate,
         endDate: filterEndDate,
@@ -213,7 +224,12 @@ export function useCategoryReport(startDate: string, endDate: string, useFilters
         }
       }
 
-      return reports.sort((a, b) => b.amount - a.amount);
+      const result = reports.sort((a, b) => b.amount - a.amount);
+      
+      const endTime = Date.now();
+      console.log(`[Performance] CategoryReport query completed in ${endTime - startTime}ms`);
+      
+      return result;
     },
     enabled: !!filterStartDate && !!filterEndDate,
   });
@@ -232,6 +248,9 @@ export function useTagReport(startDate: string, endDate: string, useFilters: boo
       ? [...QUERY_KEYS.byTag(filterStartDate, filterEndDate), 'filters', filters, incomePreferenceKey(incomeEnabled)]
       : [...QUERY_KEYS.byTag(filterStartDate, filterEndDate), incomePreferenceKey(incomeEnabled)],
     queryFn: async (): Promise<TagReport[]> => {
+      const startTime = Date.now();
+      console.log('[Performance] TagReport query started');
+      
       const filterOptions = useFilters ? {
         startDate: filterStartDate,
         endDate: filterEndDate,
@@ -281,7 +300,12 @@ export function useTagReport(startDate: string, endDate: string, useFilters: boo
         }
       }
 
-      return reports.sort((a, b) => b.amount - a.amount);
+      const result = reports.sort((a, b) => b.amount - a.amount);
+      
+      const endTime = Date.now();
+      console.log(`[Performance] TagReport query completed in ${endTime - startTime}ms`);
+      
+      return result;
     },
     enabled: !!filterStartDate && !!filterEndDate,
   });
@@ -300,6 +324,9 @@ export function useAccountReport(startDate: string, endDate: string, useFilters:
       ? [...QUERY_KEYS.byAccount(filterStartDate, filterEndDate), 'filters', filters, incomePreferenceKey(incomeEnabled)]
       : [...QUERY_KEYS.byAccount(filterStartDate, filterEndDate), incomePreferenceKey(incomeEnabled)],
     queryFn: async (): Promise<AccountReport[]> => {
+      const startTime = Date.now();
+      console.log('[Performance] AccountReport query started');
+      
       const filterOptions = useFilters ? {
         startDate: filterStartDate,
         endDate: filterEndDate,
@@ -345,13 +372,18 @@ export function useAccountReport(startDate: string, endDate: string, useFilters:
       });
 
       // Sort by absolute net amount (accounts with activity first, then by net amount)
-      return reports.sort((a, b) => {
+      const result = reports.sort((a, b) => {
         // Accounts with transactions come first
         if (a.transactionCount > 0 && b.transactionCount === 0) return -1;
         if (a.transactionCount === 0 && b.transactionCount > 0) return 1;
         // Then sort by absolute net amount
         return Math.abs(b.netAmount) - Math.abs(a.netAmount);
       });
+      
+      const endTime = Date.now();
+      console.log(`[Performance] AccountReport query completed in ${endTime - startTime}ms`);
+      
+      return result;
     },
     enabled: !!filterStartDate && !!filterEndDate,
   });
@@ -514,6 +546,9 @@ export function useDailyPatterns(startDate: string, endDate: string, useFilters:
       ? [...QUERY_KEYS.dailyPatterns(filterStartDate, filterEndDate), 'filters', filters, incomePreferenceKey(incomeEnabled)]
       : [...QUERY_KEYS.dailyPatterns(filterStartDate, filterEndDate), incomePreferenceKey(incomeEnabled)],
     queryFn: async (): Promise<DailyPattern[]> => {
+      const startTime = Date.now();
+      console.log('[Performance] DailyPatterns query started');
+      
       const baseFilterOptions = useFilters ? {
         startDate: filterStartDate,
         endDate: filterEndDate,
@@ -554,6 +589,9 @@ export function useDailyPatterns(startDate: string, endDate: string, useFilters:
         });
       }
 
+      const endTime = Date.now();
+      console.log(`[Performance] DailyPatterns query completed in ${endTime - startTime}ms`);
+      
       return patterns;
     },
     enabled: !!filterStartDate && !!filterEndDate,
@@ -571,6 +609,9 @@ export function useMonthlyTrends(startDate: string, endDate: string, useFilters:
       ? [...QUERY_KEYS.monthlyTrends(startDate, endDate), 'filters', filters, incomePreferenceKey(incomeEnabled)]
       : [...QUERY_KEYS.monthlyTrends(startDate, endDate), incomePreferenceKey(incomeEnabled)],
     queryFn: async (): Promise<MonthlyTrend[]> => {
+      const startTime = Date.now();
+      console.log('[Performance] MonthlyTrends query started');
+      
       // Always show last 10 months ending with current month
       const currentDate = new Date();
       const currentMonthEnd = endOfMonth(currentDate);
@@ -630,6 +671,9 @@ export function useMonthlyTrends(startDate: string, endDate: string, useFilters:
         };
       });
 
+      const endTime = Date.now();
+      console.log(`[Performance] MonthlyTrends query completed in ${endTime - startTime}ms`);
+      
       return trends;
     },
     enabled: !!startDate && !!endDate,

@@ -13,8 +13,16 @@ export function useCategories() {
   return useQuery({
     queryKey: QUERY_KEYS.lists(),
     queryFn: async () => {
+      const startTime = Date.now();
+      console.log('[Performance] useCategories query started');
+      
       const categories = await categoryRepository.findAll();
-      return categoryRepository.decryptCategories(categories);
+      const result = await categoryRepository.decryptCategories(categories);
+      
+      const endTime = Date.now();
+      console.log(`[Performance] useCategories query completed in ${endTime - startTime}ms (${result.length} categories)`);
+      
+      return result;
     },
   });
 }
@@ -23,9 +31,21 @@ export function useCategory(id: number) {
   return useQuery({
     queryKey: QUERY_KEYS.detail(id),
     queryFn: async () => {
+      const startTime = Date.now();
+      console.log(`[Performance] useCategory(${id}) query started`);
+      
       const category = await categoryRepository.findById(id);
-      if (!category) return null;
-      return categoryRepository.decryptCategory(category);
+      if (!category) {
+        const endTime = Date.now();
+        console.log(`[Performance] useCategory(${id}) query completed in ${endTime - startTime}ms (not found)`);
+        return null;
+      }
+      const result = await categoryRepository.decryptCategory(category);
+      
+      const endTime = Date.now();
+      console.log(`[Performance] useCategory(${id}) query completed in ${endTime - startTime}ms`);
+      
+      return result;
     },
     enabled: !!id,
   });

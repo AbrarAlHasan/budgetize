@@ -47,9 +47,17 @@ export function useTransactions(filters?: {
   return useQuery({
     queryKey: [...QUERY_KEYS.list(filters), incomePreferenceKey(incomeEnabled)],
     queryFn: async () => {
+      const startTime = Date.now();
+      console.log('[Performance] useTransactions query started', filters ? `with filters: ${JSON.stringify(filters)}` : '');
+      
       const transactions = await transactionRepository.findAllWithFilters(filters);
       const decrypted = await transactionRepository.decryptTransactions(transactions);
-      return filterTransactionsByIncomePreference(decrypted, incomeEnabled);
+      const result = filterTransactionsByIncomePreference(decrypted, incomeEnabled);
+      
+      const endTime = Date.now();
+      console.log(`[Performance] useTransactions query completed in ${endTime - startTime}ms (${result.length} transactions)`);
+      
+      return result;
     },
   });
 }
@@ -75,6 +83,9 @@ export function useTransactionsPaginated(filters?: {
   return useInfiniteQuery({
     queryKey: [...QUERY_KEYS.list(filters), 'paginated', incomePreferenceKey(incomeEnabled)],
     queryFn: async ({ pageParam = 0 }) => {
+      const startTime = Date.now();
+      console.log(`[Performance] useTransactionsPaginated query started (page: ${pageParam})`, filters ? `with filters: ${JSON.stringify(filters)}` : '');
+      
       const result = await transactionRepository.findAllWithFiltersPaginated(
         filters,
         TRANSACTIONS_PER_PAGE,
@@ -83,11 +94,16 @@ export function useTransactionsPaginated(filters?: {
       const decrypted = await transactionRepository.decryptTransactions(result.transactions);
       const filtered = filterTransactionsByIncomePreference(decrypted, incomeEnabled);
       
-      return {
+      const queryResult = {
         transactions: filtered,
         hasMore: result.hasMore,
         nextPage: result.hasMore ? pageParam + 1 : undefined,
       };
+      
+      const endTime = Date.now();
+      console.log(`[Performance] useTransactionsPaginated query completed in ${endTime - startTime}ms (page: ${pageParam}, ${filtered.length} transactions, hasMore: ${result.hasMore})`);
+      
+      return queryResult;
     },
     getNextPageParam: (lastPage) => lastPage.nextPage,
     initialPageParam: 0,

@@ -20,6 +20,9 @@ export function useAccountSpendingVelocity(accountId: number) {
   return useQuery({
     queryKey: [...QUERY_KEY, accountId],
     queryFn: async (): Promise<AccountSpendingVelocity> => {
+      const startTime = Date.now();
+      console.log(`[Performance] useAccountSpendingVelocity(${accountId}) query started`);
+      
       const now = new Date();
       
       // Get current month range
@@ -59,7 +62,7 @@ export function useAccountSpendingVelocity(accountId: number) {
         ? (currentMonthSpending / projectedMonthEndSpending) * 100 
         : 0;
 
-      return {
+      const result = {
         accountId,
         currentMonthSpending,
         daysElapsed,
@@ -70,6 +73,11 @@ export function useAccountSpendingVelocity(accountId: number) {
         spendingRate,
         spendingProgress,
       };
+      
+      const endTime = Date.now();
+      console.log(`[Performance] useAccountSpendingVelocity(${accountId}) query completed in ${endTime - startTime}ms`);
+
+      return result;
     },
     enabled: !!accountId,
     staleTime: 5 * 60 * 1000, // 5 minutes
