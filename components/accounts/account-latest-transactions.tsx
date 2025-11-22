@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, FadeIn, FadeOut } from 'react-native-reanimated';
 import { transactionRepository } from '@/repositories/transaction.repository';
 import { useSettingsStore } from '@/store/settings-store';
 import { filterTransactionsByIncomePreference } from '@/utils/income-preference';
@@ -23,9 +24,11 @@ interface AccountLatestTransactionsProps {
 export function AccountLatestTransactions({ accountId }: AccountLatestTransactionsProps) {
   const { settings } = useSettingsStore();
   const incomeCalculationEnabled = useSettingsStore((state) => state.incomeCalculationEnabled);
+  const opacity = useSharedValue(1);
+  const previousAccountId = React.useRef<number | null>(null);
   
-  // Use optimized query to fetch only latest 5 transactions
-  const { data: transactions, isLoading } = useQuery({
+  // Use optimized query to fetch only latest 5 transactions with keepPreviousData
+  const { data: transactions, isLoading, isFetching } = useQuery({
     queryKey: ['account-latest-transactions', accountId],
     queryFn: async () => {
       const startTime = Date.now();
@@ -44,6 +47,34 @@ export function AccountLatestTransactions({ accountId }: AccountLatestTransactio
       return filtered;
     },
     enabled: !!accountId,
+    keepPreviousData: true, // Keep previous data while fetching new data
+    staleTime: 1000, // Consider data fresh for 1 second
+  });
+
+  // Animate opacity when account changes
+  React.useEffect(() => {
+    if (previousAccountId.current !== null && previousAccountId.current !== accountId) {
+      // Fade out, then fade in when new data arrives
+      opacity.value = withTiming(0.3, { duration: 200 }, () => {
+        if (!isFetching) {
+          opacity.value = withTiming(1, { duration: 300 });
+        }
+      });
+    }
+    previousAccountId.current = accountId;
+  }, [accountId, isFetching, opacity]);
+
+  // Fade in when data is ready
+  React.useEffect(() => {
+    if (!isFetching && transactions) {
+      opacity.value = withTiming(1, { duration: 300 });
+    }
+  }, [isFetching, transactions, opacity]);
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      opacity: opacity.value,
+    };
   });
   const { data: accounts } = useAccounts();
   const { data: categories } = useCategories();
@@ -96,10 +127,15 @@ export function AccountLatestTransactions({ accountId }: AccountLatestTransactio
   };
 
   // Transactions are already limited to 5 by pagination
-  const latestTransactions = transactions;
+  const latestTransactions = transactions || [];
 
   return (
-    <View className="mt-5 mx-5">
+    <Animated.View 
+      className="mt-5 mx-5"
+      style={animatedStyle}
+      entering={FadeIn.duration(300)}
+      exiting={FadeOut.duration(200)}
+    >
       <View className="mb-4 flex-row items-center justify-between">
         <View className="flex-row items-center gap-2">
           <Ionicons name="time-outline" size={20} color="#6B7280" />
@@ -124,10 +160,10 @@ export function AccountLatestTransactions({ accountId }: AccountLatestTransactio
         )}
       </View>
 
-      {isLoading ? (
+      {isLoading && !transactions ? (
         <RecentTransactionsSkeleton />
-      ) : latestTransactions.length > 0 ? (
-        <>
+      ) : latestTransactions && latestTransactions.length > 0 ? (
+        <Animated.View entering={FadeIn.duration(300)}>
           {latestTransactions.map((transaction) => (
             <TransactionItem
               key={transaction.id}
@@ -143,9 +179,11 @@ export function AccountLatestTransactions({ accountId }: AccountLatestTransactio
               categoryName={transactionCategories.get(transaction.id)}
             />
           ))}
-        </>
-      ) : (
-        <View className="bg-white dark:bg-gray-900 rounded-2xl p-8 items-center"
+        </Animated.View>
+      ) : !isLoading ? (
+        <Animated.View 
+          className="bg-white dark:bg-gray-900 rounded-2xl p-8 items-center"
+          entering={FadeIn.duration(300)}
           style={{
             shadowColor: '#000',
             shadowOffset: { width: 0, height: 2 },
@@ -172,9 +210,9 @@ export function AccountLatestTransactions({ accountId }: AccountLatestTransactio
           >
             <Text className="text-white font-semibold">Add Transaction</Text>
           </TouchableOpacity>
-        </View>
-      )}
-    </View>
+        </Animated.View>
+      ) : null}
+    </Animated.View>
   );
 }
 

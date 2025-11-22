@@ -10,6 +10,8 @@ import { useSettingsStore } from "@/store/settings-store";
 import { backupAppData, restoreAppData } from "@/utils/backup";
 import { getCurrencyOptions, getCurrencySymbol } from "@/utils/currencies";
 import { resetAppWithDummyData } from "@/utils/dummy-data";
+import { clearDatabase } from "@/utils/clear-database";
+import { useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { Paths } from "expo-file-system";
 import { router } from "expo-router";
@@ -26,6 +28,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function SettingsScreen() {
+  const queryClient = useQueryClient();
   const { preferences, loadPreferences, updateReminderSettings, isLoading } =
     useNotificationStore();
   const {
@@ -39,6 +42,7 @@ export default function SettingsScreen() {
   const [isSeedingDummyData, setIsSeedingDummyData] = useState(false);
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
+  const [isClearingDatabase, setIsClearingDatabase] = useState(false);
 
   useEffect(() => {
     console.log(Paths.document.uri);
@@ -246,6 +250,49 @@ export default function SettingsScreen() {
           text: "Import",
           style: "destructive",
           onPress: runRestoreData,
+        },
+      ]
+    );
+  };
+
+  const runClearDatabase = async () => {
+    try {
+      setIsClearingDatabase(true);
+      await clearDatabase();
+      
+      // Invalidate all queries to refresh the UI
+      await queryClient.invalidateQueries();
+      
+      Alert.alert(
+        "Database Cleared",
+        "All data has been successfully cleared from the database.",
+        [{ text: "OK" }]
+      );
+    } catch (error) {
+      console.error("Failed to clear database:", error);
+      Alert.alert(
+        "Clear Failed",
+        "An error occurred while clearing the database. Please try again."
+      );
+    } finally {
+      setIsClearingDatabase(false);
+    }
+  };
+
+  const handleClearDatabase = () => {
+    if (isClearingDatabase) {
+      return;
+    }
+
+    Alert.alert(
+      "Clear All Data",
+      "This will permanently delete ALL data from the database:\n\n• All accounts\n• All transactions\n• All categories\n• All tags\n\nThis action CANNOT be undone. Make sure you have a backup if you want to restore this data later.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Clear All Data",
+          style: "destructive",
+          onPress: runClearDatabase,
         },
       ]
     );
@@ -498,7 +545,7 @@ export default function SettingsScreen() {
             {/* Manage Tags */}
             <TouchableOpacity
               onPress={() => router.push("/settings/tags")}
-              className="flex-row items-center justify-between py-3"
+              className="flex-row items-center justify-between py-3 mb-3"
               activeOpacity={0.7}
             >
               <View className="flex-row items-center gap-3 flex-1">
@@ -512,6 +559,35 @@ export default function SettingsScreen() {
                   <Text className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
                     Add, edit, or delete tags
                   </Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+            </TouchableOpacity>
+
+            {/* Clear Database */}
+            <TouchableOpacity
+              onPress={handleClearDatabase}
+              className="flex-row items-center justify-between py-3"
+              activeOpacity={0.7}
+              disabled={isClearingDatabase}
+              style={{ opacity: isClearingDatabase ? 0.6 : 1 }}
+            >
+              <View className="flex-row items-center gap-3 flex-1">
+                <View className="bg-red-100 dark:bg-red-900/30 rounded-full p-2">
+                  <Ionicons name="trash" size={20} color="#EF4444" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-base font-medium text-gray-900 dark:text-gray-100">
+                    Clear All Data
+                  </Text>
+                  <Text className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                    Permanently delete all accounts, transactions, categories, and tags
+                  </Text>
+                  {isClearingDatabase && (
+                    <Text className="text-xs text-red-600 dark:text-red-400 mt-1">
+                      Clearing database...
+                    </Text>
+                  )}
                 </View>
               </View>
               <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />

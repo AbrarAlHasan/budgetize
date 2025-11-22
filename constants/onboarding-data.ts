@@ -48,5 +48,14 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
       { icon: "moon", text: "Beautiful dark mode" },
     ],
   },
+  {
+    id: 4,
+    title: "Setup Your Data",
+    description: "Choose how you'd like to get started",
+    icon: "cloud-upload",
+    color: "#F59E0B",
+    backgroundColor: "#FFFBEB",
+    features: [],
+  },
 ];
 

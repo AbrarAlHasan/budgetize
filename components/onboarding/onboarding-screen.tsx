@@ -7,6 +7,8 @@ import {
   StyleSheet,
   Platform,
   StatusBar,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import Animated, {
   useAnimatedStyle,
@@ -17,15 +19,357 @@ import Animated, {
   Extrapolate,
   useAnimatedScrollHandler,
   runOnJS,
+  withSequence,
+  withRepeat,
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { ONBOARDING_STEPS, OnboardingStep } from '@/constants/onboarding-data';
+import { restoreAppData, pickBackupFile } from '@/utils/backup';
+import { useSettingsStore } from '@/store/settings-store';
+import { useNotificationStore } from '@/store/notification-store';
+import { seedDefaultCategoriesAndTags } from '@/utils/seed-defaults';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 interface OnboardingScreenProps {
   onComplete: () => void;
 }
+
+const DataSetupSlide: React.FC<{
+  index: number;
+  scrollX: Animated.SharedValue<number>;
+  onComplete: () => void;
+}> = ({ index, scrollX, onComplete }) => {
+  // Note: QueryClient is not available during onboarding (rendered before QueryClientProvider)
+  // Queries will be fresh when the app loads, so invalidation is not needed
+  const { loadSettings } = useSettingsStore();
+  const { loadPreferences } = useNotificationStore();
+  const [isRestoring, setIsRestoring] = useState(false);
+  const [selectedOption, setSelectedOption] = useState<'new' | 'existing' | null>(null);
+  
+  const inputRange = [
+    (index - 1) * SCREEN_WIDTH,
+    index * SCREEN_WIDTH,
+    (index + 1) * SCREEN_WIDTH,
+  ];
+
+  const containerAnimatedStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(
+      scrollX.value,
+      inputRange,
+      [0, 1, 0],
+      Extrapolate.CLAMP
+    );
+
+    const translateY = interpolate(
+      scrollX.value,
+      inputRange,
+      [50, 0, -50],
+      Extrapolate.CLAMP
+    );
+
+    return {
+      opacity,
+      transform: [{ translateY }],
+    };
+  });
+
+  const newButtonScale = useSharedValue(1);
+  const existingButtonScale = useSharedValue(1);
+  const uploadIconRotation = useSharedValue(0);
+  const newButtonPulse = useSharedValue(1);
+  const existingButtonPulse = useSharedValue(1);
+  const iconHeartbeat = useSharedValue(1);
+
+  // Heartbeat animation for main icon - continuous
+  React.useEffect(() => {
+    iconHeartbeat.value = withRepeat(
+      withSequence(
+        withTiming(1.1, { duration: 400 }),
+        withTiming(1, { duration: 400 }),
+        withTiming(1.1, { duration: 400 }),
+        withTiming(1, { duration: 400 }),
+      ),
+      -1,
+      false
+    );
+  }, [iconHeartbeat]);
+
+  // Pulse animations for buttons (only when not selected)
+  React.useEffect(() => {
+    if (selectedOption === null && !isRestoring) {
+      newButtonPulse.value = withRepeat(
+        withSequence(
+          withTiming(1.02, { duration: 1500 }),
+          withTiming(1, { duration: 1500 })
+        ),
+        -1,
+        true
+      );
+      existingButtonPulse.value = withRepeat(
+        withSequence(
+          withTiming(1.02, { duration: 1500 }),
+          withTiming(1, { duration: 1500 })
+        ),
+        -1,
+        true
+      );
+    } else {
+      newButtonPulse.value = withTiming(1, { duration: 300 });
+      existingButtonPulse.value = withTiming(1, { duration: 300 });
+    }
+  }, [selectedOption, isRestoring, newButtonPulse, existingButtonPulse]);
+
+  const newButtonAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { scale: newButtonScale.value * newButtonPulse.value }
+    ],
+  }));
+
+  const existingButtonAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { scale: existingButtonScale.value * existingButtonPulse.value }
+    ],
+  }));
+
+  const iconHeartbeatStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: iconHeartbeat.value }],
+  }));
+
+  const uploadIconAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${uploadIconRotation.value}deg` }],
+  }));
+
+  // Animate upload icon when restoring
+  React.useEffect(() => {
+    if (isRestoring) {
+      uploadIconRotation.value = withRepeat(
+        withSequence(
+          withTiming(360, { duration: 1000 }),
+          withTiming(0, { duration: 0 })
+        ),
+        -1,
+        false
+      );
+    } else {
+      uploadIconRotation.value = withTiming(0, { duration: 300 });
+    }
+  }, [isRestoring, uploadIconRotation]);
+
+  const handleNewData = async () => {
+    newButtonScale.value = withSequence(
+      withSpring(0.95, { damping: 10 }),
+      withSpring(1, { damping: 10 })
+    );
+    setSelectedOption('new');
+    
+    try {
+      // Seed default categories and tags
+      await seedDefaultCategoriesAndTags();
+      // Note: Query invalidation is not needed here since onboarding runs before QueryClientProvider
+      // Queries will be fresh when the app loads after onboarding completes
+      // Small delay for visual feedback
+      setTimeout(() => {
+        onComplete();
+      }, 300);
+    } catch (error) {
+      console.error('Error seeding default data:', error);
+      // Still complete onboarding even if seeding fails
+      Alert.alert(
+        'Setup Complete',
+        'Your account has been created. Some default categories and tags could not be created, but you can add them manually later.',
+        [{ text: 'OK', onPress: onComplete }]
+      );
+    }
+  };
+
+  const handleExistingData = async () => {
+    existingButtonScale.value = withSequence(
+      withSpring(0.95, { damping: 10 }),
+      withSpring(1, { damping: 10 })
+    );
+    setSelectedOption('existing');
+    
+    try {
+      setIsRestoring(true);
+      const backupPath = await pickBackupFile();
+      
+      if (!backupPath) {
+        setIsRestoring(false);
+        setSelectedOption(null);
+        Alert.alert(
+          "No File Selected",
+          "Please select a backup file to restore your data."
+        );
+        return;
+      }
+
+      const success = await restoreAppData(backupPath);
+      
+      if (success) {
+        await loadSettings();
+        await loadPreferences();
+        Alert.alert(
+          "Restore Complete",
+          "Your data has been successfully restored!",
+          [{ text: "OK", onPress: onComplete }]
+        );
+      } else {
+        setIsRestoring(false);
+        setSelectedOption(null);
+        Alert.alert(
+          "Restore Failed",
+          "Could not restore the backup. Please make sure you selected a valid backup file and try again."
+        );
+      }
+    } catch (error) {
+      console.error("Restore failed:", error);
+      setIsRestoring(false);
+      setSelectedOption(null);
+      Alert.alert(
+        "Restore Failed",
+        "An unexpected error occurred while restoring the backup."
+      );
+    }
+  };
+
+  const step = ONBOARDING_STEPS[index];
+
+  return (
+    <View style={[styles.slide, { backgroundColor: step.backgroundColor }]}>
+      {/* Decorative Elements */}
+      <View style={styles.decorativeContainer}>
+        <Animated.View
+          style={[
+            styles.decorativeCircle,
+            { backgroundColor: step.color + '20', top: -100, right: -50 },
+            containerAnimatedStyle,
+          ]}
+        />
+        <Animated.View
+          style={[
+            styles.decorativeCircle,
+            { backgroundColor: step.color + '15', bottom: -80, left: -60 },
+            { transform: [{ scale: 1.2 }] },
+          ]}
+        />
+      </View>
+
+      {/* Main Icon */}
+      <Animated.View style={[styles.iconContainer, styles.dataSetupIconContainer, containerAnimatedStyle]}>
+        <View
+          style={[
+            styles.iconCircle,
+            styles.dataSetupIconCircle,
+            {
+              backgroundColor: step.color + '30',
+              shadowColor: step.color,
+            },
+          ]}
+        >
+          <Animated.View style={[styles.iconInnerCircle, styles.dataSetupIconInnerCircle, { backgroundColor: step.color }, iconHeartbeatStyle]}>
+            <Ionicons name={step.icon as any} size={60} color="#FFFFFF" />
+          </Animated.View>
+        </View>
+      </Animated.View>
+
+      {/* Content */}
+      <Animated.View style={[styles.content, styles.dataSetupContent, containerAnimatedStyle]}>
+        <Text style={styles.title}>{step.title}</Text>
+        <Text style={styles.description}>{step.description}</Text>
+
+        {/* Option Buttons */}
+        <View style={styles.optionsContainer}>
+          {/* New Data Option */}
+          <Animated.View style={newButtonAnimatedStyle}>
+            <TouchableOpacity
+              style={[
+                styles.optionButton,
+                selectedOption === 'new' && [
+                  styles.optionButtonSelected,
+                  { backgroundColor: step.color + '10', borderColor: step.color },
+                ],
+                { borderColor: step.color },
+              ]}
+              onPress={handleNewData}
+              disabled={isRestoring || selectedOption !== null}
+              activeOpacity={0.8}
+            >
+              <View style={[
+                styles.optionIconContainer, 
+                { backgroundColor: selectedOption === 'new' ? step.color : step.color + '15' }
+              ]}>
+                <Ionicons
+                  name="add-circle"
+                  size={40}
+                  color={selectedOption === 'new' ? '#FFFFFF' : step.color}
+                />
+              </View>
+              <Text
+                style={[
+                  styles.optionTitle,
+                  selectedOption === 'new' && styles.optionTitleSelected,
+                ]}
+              >
+                Start Fresh
+              </Text>
+              <Text style={styles.optionDescription}>
+                Create a new account and begin tracking from scratch
+              </Text>
+            </TouchableOpacity>
+          </Animated.View>
+
+          {/* Existing Data Option */}
+          <Animated.View style={existingButtonAnimatedStyle}>
+            <TouchableOpacity
+              style={[
+                styles.optionButton,
+                selectedOption === 'existing' && [
+                  styles.optionButtonSelected,
+                  { backgroundColor: step.color + '10', borderColor: step.color },
+                ],
+                { borderColor: step.color },
+              ]}
+              onPress={handleExistingData}
+              disabled={isRestoring || selectedOption !== null}
+              activeOpacity={0.8}
+            >
+              <View style={[
+                styles.optionIconContainer, 
+                { backgroundColor: selectedOption === 'existing' ? step.color : step.color + '15' }
+              ]}>
+                {isRestoring ? (
+                  <Animated.View style={uploadIconAnimatedStyle}>
+                    <ActivityIndicator size="large" color="#FFFFFF" />
+                  </Animated.View>
+                ) : (
+                  <Ionicons
+                    name="cloud-upload"
+                    size={40}
+                    color={selectedOption === 'existing' ? '#FFFFFF' : step.color}
+                  />
+                )}
+              </View>
+              <Text
+                style={[
+                  styles.optionTitle,
+                  selectedOption === 'existing' && styles.optionTitleSelected,
+                ]}
+              >
+                {isRestoring ? 'Restoring...' : 'Use Existing Data'}
+              </Text>
+              <Text style={styles.optionDescription}>
+                {isRestoring
+                  ? 'Please wait while we restore your backup'
+                  : 'Upload a backup file to restore your previous data'}
+              </Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </View>
+      </Animated.View>
+    </View>
+  );
+};
 
 const OnboardingSlide: React.FC<{
   step: OnboardingStep;
@@ -215,7 +559,12 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
   };
 
   const handleSkip = () => {
-    onComplete();
+    // Skip to the last screen (data setup) instead of completing onboarding
+    const lastScreenIndex = ONBOARDING_STEPS.length - 1;
+    scrollViewRef.current?.scrollTo({
+      x: lastScreenIndex * SCREEN_WIDTH,
+      animated: true,
+    });
   };
 
   const buttonAnimatedStyle = useAnimatedStyle(() => {
@@ -234,8 +583,8 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" />
       
-      {/* Skip Button */}
-      {currentIndex < ONBOARDING_STEPS.length - 1 && (
+      {/* Skip Button - Hide on data setup slide */}
+      {currentIndex < ONBOARDING_STEPS.length - 1 && currentIndex !== ONBOARDING_STEPS.length - 2 && (
         <TouchableOpacity style={styles.skipButton} onPress={handleSkip}>
           <Text style={styles.skipText}>Skip</Text>
         </TouchableOpacity>
@@ -251,14 +600,28 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
         onScroll={scrollHandler}
         scrollEventThrottle={16}
       >
-        {ONBOARDING_STEPS.map((step, index) => (
-          <OnboardingSlide
-            key={step.id}
-            step={step}
-            index={index}
-            scrollX={scrollX}
-          />
-        ))}
+        {ONBOARDING_STEPS.map((step, index) => {
+          // Render custom data setup slide for the last step
+          if (step.id === 4) {
+            return (
+              <DataSetupSlide
+                key={step.id}
+                index={index}
+                scrollX={scrollX}
+                onComplete={onComplete}
+              />
+            );
+          }
+          // Render regular slides for other steps
+          return (
+            <OnboardingSlide
+              key={step.id}
+              step={step}
+              index={index}
+              scrollX={scrollX}
+            />
+          );
+        })}
       </Animated.ScrollView>
 
       {/* Bottom Section */}
@@ -286,32 +649,22 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
           })}
         </View>
 
-        {/* Action Button */}
-        <Animated.View style={[styles.buttonContainer, buttonAnimatedStyle]}>
-          <TouchableOpacity
-            style={styles.button}
-            onPress={handleNext}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.buttonText}>
-              {currentIndex === ONBOARDING_STEPS.length - 1
-                ? "Get Started"
-                : "Next"}
-            </Text>
-            <Ionicons
-              name={
-                currentIndex === ONBOARDING_STEPS.length - 1
-                  ? "checkmark-circle"
-                  : "arrow-forward"
-              }
-              size={24}
-              color="#FFFFFF"
-            />
-          </TouchableOpacity>
-        </Animated.View>
+        {/* Action Button - Hide on data setup slide */}
+        {currentIndex !== ONBOARDING_STEPS.length - 1 && (
+          <Animated.View style={[styles.buttonContainer, buttonAnimatedStyle]}>
+            <TouchableOpacity
+              style={styles.button}
+              onPress={handleNext}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.buttonText}>Next</Text>
+              <Ionicons name="arrow-forward" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+          </Animated.View>
+        )}
 
-        {/* Trust Indicators (Last Slide) */}
-        {currentIndex === ONBOARDING_STEPS.length - 1 && (
+        {/* Trust Indicators - Show on second to last slide */}
+        {currentIndex === ONBOARDING_STEPS.length - 2 && (
           <View style={styles.trustIndicators}>
             <Text style={styles.trustText}>
               🔒 Bank-level encryption • 📊 No ads, ever • 💯 100% free
@@ -347,7 +700,7 @@ const styles = StyleSheet.create({
   },
   iconContainer: {
     marginTop: Platform.OS === 'ios' ? 60 : 40,
-    marginBottom: 40,
+    marginBottom: 20,
   },
   iconCircle: {
     width: 200,
@@ -372,12 +725,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: '100%',
   },
+  dataSetupContent: {
+    paddingBottom: 200, // Extra padding for bottom section
+    justifyContent: 'flex-start',
+    paddingTop: 10,
+  },
+  dataSetupIconContainer: {
+    marginTop: Platform.OS === 'ios' ? 100 : 80, // Extra margin to avoid notch
+    marginBottom: 20,
+  },
+  dataSetupIconCircle: {
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+  },
+  dataSetupIconInnerCircle: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+  },
   title: {
     fontSize: 32,
     fontWeight: 'bold',
     color: '#111827',
     textAlign: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
     lineHeight: 40,
   },
   description: {
@@ -385,7 +757,7 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     textAlign: 'center',
     lineHeight: 24,
-    marginBottom: 32,
+    marginBottom: 24,
     paddingHorizontal: 8,
   },
   featuresContainer: {
@@ -483,6 +855,54 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#9CA3AF',
     textAlign: 'center',
+  },
+  optionsContainer: {
+    width: '100%',
+    gap: 16,
+    marginTop: 16,
+    paddingBottom: 20,
+  },
+  optionButton: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 20,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  optionButtonSelected: {
+    borderStyle: 'solid',
+    borderWidth: 3,
+    backgroundColor: '#FFFFFF',
+  },
+  optionIconContainer: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  optionTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#111827',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  optionTitleSelected: {
+    color: '#111827',
+  },
+  optionDescription: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });
 
