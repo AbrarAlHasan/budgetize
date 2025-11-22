@@ -136,7 +136,6 @@ export default function RootLayout() {
       style={{ flex: 1 }}
       className={normalizedColorScheme === "dark" ? "dark" : ""}
     >
-      {" "}
       <PostHogProvider
         apiKey={process.env.EXPO_PUBLIC_POST_HOG_API_KEY!}
         options={{
