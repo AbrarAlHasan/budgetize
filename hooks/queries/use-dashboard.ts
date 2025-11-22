@@ -29,7 +29,7 @@ interface CategoryBreakdown {
 
 export function useDashboardData(month?: Date, useFilters: boolean = false) {
   const filters = useUIStore((state) => state.filters.dashboard);
-  const incomeEnabled = useSettingsStore((state) => state.incomeCalculationEnabled);
+  const incomeEnabled = useSettingsStore((state) => state.settings.incomeCalculationEnabled);
   const targetMonth = month || new Date();
   const monthKey = format(targetMonth, 'yyyy-MM');
   
@@ -86,7 +86,7 @@ export function useDashboardData(month?: Date, useFilters: boolean = false) {
 
 export function useCategoryBreakdown(month?: Date, useFilters: boolean = false) {
   const filters = useUIStore((state) => state.filters.dashboard);
-  const incomeEnabled = useSettingsStore((state) => state.incomeCalculationEnabled);
+  const incomeEnabled = useSettingsStore((state) => state.settings.incomeCalculationEnabled);
   const targetMonth = month || new Date();
   const monthKey = format(targetMonth, 'yyyy-MM');
   
@@ -133,18 +133,16 @@ export function useCategoryBreakdown(month?: Date, useFilters: boolean = false) 
         .map((d) => d.categoryId)
         .filter((id): id is number => id !== null && id !== 0);
 
-      // Fetch all categories in parallel
-      const categories = await Promise.all(
-        categoryIdsToFetch.map(async (id) => {
-          const category = await categoryRepository.findById(id);
-          return category ? { id, category: await categoryRepository.decryptCategory(category) } : null;
-        })
-      );
-
+      // Batch fetch all categories at once
+      const allCategories = categoryIdsToFetch.length > 0
+        ? await categoryRepository.findByIds(categoryIdsToFetch)
+        : [];
+      
+      // Decrypt all categories in parallel
+      const decryptedCategories = await categoryRepository.decryptCategories(allCategories);
+      
       const categoryMap = new Map(
-        categories
-          .filter((c): c is { id: number; category: any } => c !== null)
-          .map((c) => [c.id, c.category])
+        decryptedCategories.map((c) => [c.id, c])
       );
 
       // Build breakdown array

@@ -85,7 +85,7 @@ interface TagsWithTransactionsFilters {
  * only relevant tags.
  */
 export function useTagsWithTransactions(filters: TagsWithTransactionsFilters = {}) {
-  const incomeEnabled = useSettingsStore((state) => state.incomeCalculationEnabled);
+  const incomeEnabled = useSettingsStore((state) => state.settings.incomeCalculationEnabled);
 
   return useQuery({
     queryKey: [...QUERY_KEYS.withTransactions(filters), incomePreferenceKey(incomeEnabled)],

@@ -324,7 +324,7 @@ export default function ReportsScreen() {
         {/* Daily Spending Patterns */}
         {dailyLoading && !dailyPatterns ? (
           <ChartSkeleton title="Daily Spending Patterns" height={180} />
-        ) : dailyChartData && dailyChartData.length > 0 ? (
+        ) : dailyPatterns && dailyChartData && dailyChartData.length > 0 ? (
                 <Card className="mb-6">
                   <Text className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">
                     Daily Spending Patterns
@@ -350,7 +350,7 @@ export default function ReportsScreen() {
         {/* Monthly Trends */}
         {monthlyLoading && !monthlyTrends ? (
           <ChartSkeleton title="Monthly Trends" height={150} />
-        ) : monthlyChartData && monthlyChartData.length > 0 ? (
+        ) : monthlyTrends && monthlyChartData && monthlyChartData.length > 0 ? (
                 <Card className="mb-6">
                   <Text className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4">
                     Monthly Trends

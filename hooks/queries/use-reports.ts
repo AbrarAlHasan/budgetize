@@ -1,31 +1,38 @@
-import { accountRepository } from '@/repositories/account.repository';
-import { categoryRepository } from '@/repositories/category.repository';
-import { tagRepository } from '@/repositories/tag.repository';
-import { transactionTagRepository } from '@/repositories/transaction-tag.repository';
-import { transactionRepository } from '@/repositories/transaction.repository';
-import { Transaction } from '@/db/schema/types';
-import { useUIStore } from '@/store/ui-store';
-import { useSettingsStore } from '@/store/settings-store';
-import { useQuery } from '@tanstack/react-query';
-import { differenceInDays, eachMonthOfInterval, endOfMonth, format, startOfMonth, subDays, subMonths } from 'date-fns';
-import { filterTransactionsByIncomePreference, incomePreferenceKey } from '@/utils/income-preference';
+import { Transaction } from "@/db/schema/types";
+import { accountRepository } from "@/repositories/account.repository";
+import { categoryRepository } from "@/repositories/category.repository";
+import { tagRepository } from "@/repositories/tag.repository";
+import { transactionRepository } from "@/repositories/transaction.repository";
+import { useSettingsStore } from "@/store/settings-store";
+import { useUIStore } from "@/store/ui-store";
+import { incomePreferenceKey } from "@/utils/income-preference";
+import { useQuery } from "@tanstack/react-query";
+import {
+  differenceInDays,
+  eachMonthOfInterval,
+  endOfMonth,
+  format,
+  startOfMonth,
+  subDays,
+  subMonths,
+} from "date-fns";
 
 const QUERY_KEYS = {
-  all: ['reports'] as const,
-  summary: (startDate: string, endDate: string) => 
-    [...QUERY_KEYS.all, 'summary', startDate, endDate] as const,
-  byCategory: (startDate: string, endDate: string) => 
-    [...QUERY_KEYS.all, 'category', startDate, endDate] as const,
-  byTag: (startDate: string, endDate: string) => 
-    [...QUERY_KEYS.all, 'tag', startDate, endDate] as const,
-  byAccount: (startDate: string, endDate: string) => 
-    [...QUERY_KEYS.all, 'account', startDate, endDate] as const,
+  all: ["reports"] as const,
+  summary: (startDate: string, endDate: string) =>
+    [...QUERY_KEYS.all, "summary", startDate, endDate] as const,
+  byCategory: (startDate: string, endDate: string) =>
+    [...QUERY_KEYS.all, "category", startDate, endDate] as const,
+  byTag: (startDate: string, endDate: string) =>
+    [...QUERY_KEYS.all, "tag", startDate, endDate] as const,
+  byAccount: (startDate: string, endDate: string) =>
+    [...QUERY_KEYS.all, "account", startDate, endDate] as const,
   periodComparison: (startDate: string, endDate: string) =>
-    [...QUERY_KEYS.all, 'comparison', startDate, endDate] as const,
+    [...QUERY_KEYS.all, "comparison", startDate, endDate] as const,
   dailyPatterns: (startDate: string, endDate: string) =>
-    [...QUERY_KEYS.all, 'daily', startDate, endDate] as const,
+    [...QUERY_KEYS.all, "daily", startDate, endDate] as const,
   monthlyTrends: (startDate: string, endDate: string) =>
-    [...QUERY_KEYS.all, 'monthly', startDate, endDate] as const,
+    [...QUERY_KEYS.all, "monthly", startDate, endDate] as const,
 };
 
 export interface ReportSummary {
@@ -97,45 +104,85 @@ export interface MonthlyTrend {
   transactionCount: number;
 }
 
-
-export function useReportSummary(startDate: string, endDate: string, useFilters: boolean = false) {
+export function useReportSummary(
+  startDate: string,
+  endDate: string,
+  useFilters: boolean = false
+) {
   const filters = useUIStore((state) => state.filters.reports);
-  const incomeEnabled = useSettingsStore((state) => state.incomeCalculationEnabled);
-  
+  const incomeEnabled = useSettingsStore(
+    (state) => state.settings.incomeCalculationEnabled
+  );
+
   // Use filter dates if available, otherwise use provided dates
-  const filterStartDate = useFilters && filters.startDate ? filters.startDate : startDate;
-  const filterEndDate = useFilters && filters.endDate ? filters.endDate : endDate;
+  const filterStartDate =
+    useFilters && filters.startDate ? filters.startDate : startDate;
+  const filterEndDate =
+    useFilters && filters.endDate ? filters.endDate : endDate;
 
   return useQuery({
-    queryKey: useFilters 
-      ? [...QUERY_KEYS.summary(filterStartDate, filterEndDate), 'filters', filters, incomePreferenceKey(incomeEnabled)]
-      : [...QUERY_KEYS.summary(filterStartDate, filterEndDate), incomePreferenceKey(incomeEnabled)],
+    queryKey: useFilters
+      ? [
+          ...QUERY_KEYS.summary(filterStartDate, filterEndDate),
+          "filters",
+          filters,
+          incomePreferenceKey(incomeEnabled),
+        ]
+      : [
+          ...QUERY_KEYS.summary(filterStartDate, filterEndDate),
+          incomePreferenceKey(incomeEnabled),
+        ],
+    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
+    gcTime: 1000 * 60 * 10, // Keep in cache for 10 minutes
     queryFn: async (): Promise<ReportSummary> => {
       const startTime = Date.now();
-      console.log('[Performance] ReportSummary query started');
-      
-      const baseFilterOptions = useFilters ? {
-        startDate: filterStartDate,
-        endDate: filterEndDate,
-        accountIds: filters.accountIds && filters.accountIds.length > 0 ? filters.accountIds : undefined,
-        accountId: filters.accountId || undefined,
-        tagIds: filters.tagIds && filters.tagIds.length > 0 ? filters.tagIds : undefined,
-        tagId: filters.tagId || undefined,
-        categoryIds: filters.categoryIds && filters.categoryIds.length > 0 ? filters.categoryIds : undefined,
-        categoryId: filters.categoryId || undefined,
-        types: filters.transactionTypes && filters.transactionTypes.length > 0 ? filters.transactionTypes : undefined,
-        type: filters.transactionType || undefined,
-        accountTypes: filters.accountTypes && filters.accountTypes.length > 0 ? filters.accountTypes : undefined,
-        accountType: filters.accountType || undefined,
-      } : { startDate: filterStartDate, endDate: filterEndDate };
-      
+      console.log("[Performance] ReportSummary query started");
+
+      const baseFilterOptions = useFilters
+        ? {
+            startDate: filterStartDate,
+            endDate: filterEndDate,
+            accountIds:
+              filters.accountIds && filters.accountIds.length > 0
+                ? filters.accountIds
+                : undefined,
+            accountId: filters.accountId || undefined,
+            tagIds:
+              filters.tagIds && filters.tagIds.length > 0
+                ? filters.tagIds
+                : undefined,
+            tagId: filters.tagId || undefined,
+            categoryIds:
+              filters.categoryIds && filters.categoryIds.length > 0
+                ? filters.categoryIds
+                : undefined,
+            categoryId: filters.categoryId || undefined,
+            types:
+              filters.transactionTypes && filters.transactionTypes.length > 0
+                ? filters.transactionTypes
+                : undefined,
+            type: filters.transactionType || undefined,
+            accountTypes:
+              filters.accountTypes && filters.accountTypes.length > 0
+                ? filters.accountTypes
+                : undefined,
+            accountType: filters.accountType || undefined,
+          }
+        : { startDate: filterStartDate, endDate: filterEndDate };
+
       // If income is disabled, exclude income transactions from the query
-      const filterOptions = !incomeEnabled && !baseFilterOptions.types
-        ? { ...baseFilterOptions, types: ['expense'] as Transaction['type'][] }
-        : baseFilterOptions;
-      
+      const filterOptions =
+        !incomeEnabled && !baseFilterOptions.types
+          ? {
+              ...baseFilterOptions,
+              types: ["expense"] as Transaction["type"][],
+            }
+          : baseFilterOptions;
+
       // Use optimized method that only fetches and decrypts amounts
-      const totals = await transactionRepository.calculateSummaryTotals(filterOptions);
+      const totals = await transactionRepository.calculateSummaryTotals(
+        filterOptions
+      );
 
       // If income is disabled, ensure income totals are zero
       const finalTotals = !incomeEnabled
@@ -147,55 +194,104 @@ export function useReportSummary(startDate: string, endDate: string, useFilters:
         totalIncome: finalTotals.totalIncome,
         netAmount: finalTotals.totalIncome - finalTotals.totalExpenses,
         transactionCount: finalTotals.transactionCount,
-        averageExpense: finalTotals.expenseCount > 0 ? finalTotals.totalExpenses / finalTotals.expenseCount : 0,
-        averageIncome: finalTotals.incomeCount > 0 ? finalTotals.totalIncome / finalTotals.incomeCount : 0,
+        averageExpense:
+          finalTotals.expenseCount > 0
+            ? finalTotals.totalExpenses / finalTotals.expenseCount
+            : 0,
+        averageIncome:
+          finalTotals.incomeCount > 0
+            ? finalTotals.totalIncome / finalTotals.incomeCount
+            : 0,
       };
-      
+
       const endTime = Date.now();
-      console.log(`[Performance] ReportSummary query completed in ${endTime - startTime}ms`);
-      
+      console.log(
+        `[Performance] ReportSummary query completed in ${
+          endTime - startTime
+        }ms`
+      );
+
       return result;
     },
     enabled: !!filterStartDate && !!filterEndDate,
   });
 }
 
-export function useCategoryReport(startDate: string, endDate: string, useFilters: boolean = false) {
+export function useCategoryReport(
+  startDate: string,
+  endDate: string,
+  useFilters: boolean = false
+) {
   const filters = useUIStore((state) => state.filters.reports);
-  const incomeEnabled = useSettingsStore((state) => state.incomeCalculationEnabled);
-  
+  const incomeEnabled = useSettingsStore(
+    (state) => state.settings.incomeCalculationEnabled
+  );
+
   // Use filter dates if available, otherwise use provided dates
-  const filterStartDate = useFilters && filters.startDate ? filters.startDate : startDate;
-  const filterEndDate = useFilters && filters.endDate ? filters.endDate : endDate;
+  const filterStartDate =
+    useFilters && filters.startDate ? filters.startDate : startDate;
+  const filterEndDate =
+    useFilters && filters.endDate ? filters.endDate : endDate;
 
   return useQuery({
-    queryKey: useFilters 
-      ? [...QUERY_KEYS.byCategory(filterStartDate, filterEndDate), 'filters', filters, incomePreferenceKey(incomeEnabled)]
-      : [...QUERY_KEYS.byCategory(filterStartDate, filterEndDate), incomePreferenceKey(incomeEnabled)],
+    queryKey: useFilters
+      ? [
+          ...QUERY_KEYS.byCategory(filterStartDate, filterEndDate),
+          "filters",
+          filters,
+          incomePreferenceKey(incomeEnabled),
+        ]
+      : [
+          ...QUERY_KEYS.byCategory(filterStartDate, filterEndDate),
+          incomePreferenceKey(incomeEnabled),
+        ],
+    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
+    gcTime: 1000 * 60 * 10, // Keep in cache for 10 minutes
     queryFn: async (): Promise<CategoryReport[]> => {
       const startTime = Date.now();
-      console.log('[Performance] CategoryReport query started');
-      
-      const filterOptions = useFilters ? {
-        startDate: filterStartDate,
-        endDate: filterEndDate,
-        accountIds: filters.accountIds && filters.accountIds.length > 0 ? filters.accountIds : undefined,
-        accountId: filters.accountId || undefined,
-        tagIds: filters.tagIds && filters.tagIds.length > 0 ? filters.tagIds : undefined,
-        tagId: filters.tagId || undefined,
-        categoryIds: filters.categoryIds && filters.categoryIds.length > 0 ? filters.categoryIds : undefined,
-        categoryId: filters.categoryId || undefined,
-        types: filters.transactionTypes && filters.transactionTypes.length > 0 ? filters.transactionTypes : undefined,
-        type: filters.transactionType || undefined,
-        accountTypes: filters.accountTypes && filters.accountTypes.length > 0 ? filters.accountTypes : undefined,
-        accountType: filters.accountType || undefined,
-      } : { startDate: filterStartDate, endDate: filterEndDate };
-      
+      console.log("[Performance] CategoryReport query started");
+
+      const filterOptions = useFilters
+        ? {
+            startDate: filterStartDate,
+            endDate: filterEndDate,
+            accountIds:
+              filters.accountIds && filters.accountIds.length > 0
+                ? filters.accountIds
+                : undefined,
+            accountId: filters.accountId || undefined,
+            tagIds:
+              filters.tagIds && filters.tagIds.length > 0
+                ? filters.tagIds
+                : undefined,
+            tagId: filters.tagId || undefined,
+            categoryIds:
+              filters.categoryIds && filters.categoryIds.length > 0
+                ? filters.categoryIds
+                : undefined,
+            categoryId: filters.categoryId || undefined,
+            types:
+              filters.transactionTypes && filters.transactionTypes.length > 0
+                ? filters.transactionTypes
+                : undefined,
+            type: filters.transactionType || undefined,
+            accountTypes:
+              filters.accountTypes && filters.accountTypes.length > 0
+                ? filters.accountTypes
+                : undefined,
+            accountType: filters.accountType || undefined,
+          }
+        : { startDate: filterStartDate, endDate: filterEndDate };
+
       // Use optimized method that only fetches and decrypts amounts with category_id
-      const categoryBreakdown = await transactionRepository.calculateCategoryBreakdown(filterOptions);
+      const categoryBreakdown =
+        await transactionRepository.calculateCategoryBreakdown(filterOptions);
 
       // Calculate total expenses for percentage calculation
-      const totalExpenses = categoryBreakdown.reduce((sum, item) => sum + item.amount, 0);
+      const totalExpenses = categoryBreakdown.reduce(
+        (sum, item) => sum + item.amount,
+        0
+      );
 
       // Fetch category names
       const reports: CategoryReport[] = [];
@@ -204,73 +300,122 @@ export function useCategoryReport(startDate: string, endDate: string, useFilters
         if (item.categoryId === null || item.categoryId === 0) {
           reports.push({
             categoryId: 0,
-            categoryName: 'Uncategorized',
+            categoryName: "Uncategorized",
             amount: item.amount,
             count: item.count,
-            percentage: totalExpenses > 0 ? (item.amount / totalExpenses) * 100 : 0,
+            percentage:
+              totalExpenses > 0 ? (item.amount / totalExpenses) * 100 : 0,
             isDeleted: false,
           });
         } else {
           const category = await categoryRepository.findById(item.categoryId);
-          const decryptedCategory = category ? await categoryRepository.decryptCategory(category) : null;
+          const decryptedCategory = category
+            ? await categoryRepository.decryptCategory(category)
+            : null;
           reports.push({
             categoryId: item.categoryId,
-            categoryName: decryptedCategory?.name || `Category ${item.categoryId}`,
+            categoryName:
+              decryptedCategory?.name || `Category ${item.categoryId}`,
             amount: item.amount,
             count: item.count,
-            percentage: totalExpenses > 0 ? (item.amount / totalExpenses) * 100 : 0,
+            percentage:
+              totalExpenses > 0 ? (item.amount / totalExpenses) * 100 : 0,
             isDeleted: category?.deleted_at !== null,
           });
         }
       }
 
       const result = reports.sort((a, b) => b.amount - a.amount);
-      
+
       const endTime = Date.now();
-      console.log(`[Performance] CategoryReport query completed in ${endTime - startTime}ms`);
-      
+      console.log(
+        `[Performance] CategoryReport query completed in ${
+          endTime - startTime
+        }ms`
+      );
+
       return result;
     },
     enabled: !!filterStartDate && !!filterEndDate,
   });
 }
 
-export function useTagReport(startDate: string, endDate: string, useFilters: boolean = false) {
+export function useTagReport(
+  startDate: string,
+  endDate: string,
+  useFilters: boolean = false
+) {
   const filters = useUIStore((state) => state.filters.reports);
-  const incomeEnabled = useSettingsStore((state) => state.incomeCalculationEnabled);
-  
+  const incomeEnabled = useSettingsStore(
+    (state) => state.settings.incomeCalculationEnabled
+  );
+
   // Use filter dates if available, otherwise use provided dates
-  const filterStartDate = useFilters && filters.startDate ? filters.startDate : startDate;
-  const filterEndDate = useFilters && filters.endDate ? filters.endDate : endDate;
+  const filterStartDate =
+    useFilters && filters.startDate ? filters.startDate : startDate;
+  const filterEndDate =
+    useFilters && filters.endDate ? filters.endDate : endDate;
 
   return useQuery({
-    queryKey: useFilters 
-      ? [...QUERY_KEYS.byTag(filterStartDate, filterEndDate), 'filters', filters, incomePreferenceKey(incomeEnabled)]
-      : [...QUERY_KEYS.byTag(filterStartDate, filterEndDate), incomePreferenceKey(incomeEnabled)],
+    queryKey: useFilters
+      ? [
+          ...QUERY_KEYS.byTag(filterStartDate, filterEndDate),
+          "filters",
+          filters,
+          incomePreferenceKey(incomeEnabled),
+        ]
+      : [
+          ...QUERY_KEYS.byTag(filterStartDate, filterEndDate),
+          incomePreferenceKey(incomeEnabled),
+        ],
+    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
+    gcTime: 1000 * 60 * 10, // Keep in cache for 10 minutes
     queryFn: async (): Promise<TagReport[]> => {
       const startTime = Date.now();
-      console.log('[Performance] TagReport query started');
-      
-      const filterOptions = useFilters ? {
-        startDate: filterStartDate,
-        endDate: filterEndDate,
-        accountIds: filters.accountIds && filters.accountIds.length > 0 ? filters.accountIds : undefined,
-        accountId: filters.accountId || undefined,
-        tagIds: filters.tagIds && filters.tagIds.length > 0 ? filters.tagIds : undefined,
-        tagId: filters.tagId || undefined,
-        categoryIds: filters.categoryIds && filters.categoryIds.length > 0 ? filters.categoryIds : undefined,
-        categoryId: filters.categoryId || undefined,
-        types: filters.transactionTypes && filters.transactionTypes.length > 0 ? filters.transactionTypes : undefined,
-        type: filters.transactionType || undefined,
-        accountTypes: filters.accountTypes && filters.accountTypes.length > 0 ? filters.accountTypes : undefined,
-        accountType: filters.accountType || undefined,
-      } : { startDate: filterStartDate, endDate: filterEndDate };
-      
+      console.log("[Performance] TagReport query started");
+
+      const filterOptions = useFilters
+        ? {
+            startDate: filterStartDate,
+            endDate: filterEndDate,
+            accountIds:
+              filters.accountIds && filters.accountIds.length > 0
+                ? filters.accountIds
+                : undefined,
+            accountId: filters.accountId || undefined,
+            tagIds:
+              filters.tagIds && filters.tagIds.length > 0
+                ? filters.tagIds
+                : undefined,
+            tagId: filters.tagId || undefined,
+            categoryIds:
+              filters.categoryIds && filters.categoryIds.length > 0
+                ? filters.categoryIds
+                : undefined,
+            categoryId: filters.categoryId || undefined,
+            types:
+              filters.transactionTypes && filters.transactionTypes.length > 0
+                ? filters.transactionTypes
+                : undefined,
+            type: filters.transactionType || undefined,
+            accountTypes:
+              filters.accountTypes && filters.accountTypes.length > 0
+                ? filters.accountTypes
+                : undefined,
+            accountType: filters.accountType || undefined,
+          }
+        : { startDate: filterStartDate, endDate: filterEndDate };
+
       // Use optimized method that only fetches and decrypts amounts with tag_id
-      const tagBreakdown = await transactionRepository.calculateTagBreakdown(filterOptions);
+      const tagBreakdown = await transactionRepository.calculateTagBreakdown(
+        filterOptions
+      );
 
       // Calculate total tagged expenses for percentage (may be > totalExpenses due to multi-tag transactions)
-      const totalTaggedExpenses = tagBreakdown.reduce((sum, item) => sum + item.amount, 0);
+      const totalTaggedExpenses = tagBreakdown.reduce(
+        (sum, item) => sum + item.amount,
+        0
+      );
 
       // Fetch tag names
       const reports: TagReport[] = [];
@@ -279,10 +424,13 @@ export function useTagReport(startDate: string, endDate: string, useFilters: boo
         if (item.tagId === null || item.tagId === 0) {
           reports.push({
             tagId: 0,
-            tagName: 'Untagged',
+            tagName: "Untagged",
             amount: item.amount,
             count: item.count,
-            percentage: totalTaggedExpenses > 0 ? (item.amount / totalTaggedExpenses) * 100 : 0,
+            percentage:
+              totalTaggedExpenses > 0
+                ? (item.amount / totalTaggedExpenses) * 100
+                : 0,
             isDeleted: false,
           });
         } else {
@@ -294,68 +442,115 @@ export function useTagReport(startDate: string, endDate: string, useFilters: boo
             tagName: decryptedTag?.name || `Tag ${item.tagId}`,
             amount: item.amount,
             count: item.count,
-            percentage: totalTaggedExpenses > 0 ? (item.amount / totalTaggedExpenses) * 100 : 0,
+            percentage:
+              totalTaggedExpenses > 0
+                ? (item.amount / totalTaggedExpenses) * 100
+                : 0,
             isDeleted: tag?.deleted_at !== null,
           });
         }
       }
 
       const result = reports.sort((a, b) => b.amount - a.amount);
-      
+
       const endTime = Date.now();
-      console.log(`[Performance] TagReport query completed in ${endTime - startTime}ms`);
-      
+      console.log(
+        `[Performance] TagReport query completed in ${endTime - startTime}ms`
+      );
+
       return result;
     },
     enabled: !!filterStartDate && !!filterEndDate,
   });
 }
 
-export function useAccountReport(startDate: string, endDate: string, useFilters: boolean = false) {
+export function useAccountReport(
+  startDate: string,
+  endDate: string,
+  useFilters: boolean = false
+) {
   const filters = useUIStore((state) => state.filters.reports);
-  const incomeEnabled = useSettingsStore((state) => state.incomeCalculationEnabled);
-  
+  const incomeEnabled = useSettingsStore(
+    (state) => state.settings.incomeCalculationEnabled
+  );
+
   // Use filter dates if available, otherwise use provided dates
-  const filterStartDate = useFilters && filters.startDate ? filters.startDate : startDate;
-  const filterEndDate = useFilters && filters.endDate ? filters.endDate : endDate;
+  const filterStartDate =
+    useFilters && filters.startDate ? filters.startDate : startDate;
+  const filterEndDate =
+    useFilters && filters.endDate ? filters.endDate : endDate;
 
   return useQuery({
-    queryKey: useFilters 
-      ? [...QUERY_KEYS.byAccount(filterStartDate, filterEndDate), 'filters', filters, incomePreferenceKey(incomeEnabled)]
-      : [...QUERY_KEYS.byAccount(filterStartDate, filterEndDate), incomePreferenceKey(incomeEnabled)],
+    queryKey: useFilters
+      ? [
+          ...QUERY_KEYS.byAccount(filterStartDate, filterEndDate),
+          "filters",
+          filters,
+          incomePreferenceKey(incomeEnabled),
+        ]
+      : [
+          ...QUERY_KEYS.byAccount(filterStartDate, filterEndDate),
+          incomePreferenceKey(incomeEnabled),
+        ],
+    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
+    gcTime: 1000 * 60 * 10, // Keep in cache for 10 minutes
     queryFn: async (): Promise<AccountReport[]> => {
       const startTime = Date.now();
-      console.log('[Performance] AccountReport query started');
-      
-      const filterOptions = useFilters ? {
-        startDate: filterStartDate,
-        endDate: filterEndDate,
-        accountIds: filters.accountIds && filters.accountIds.length > 0 ? filters.accountIds : undefined,
-        accountId: filters.accountId || undefined,
-        tagIds: filters.tagIds && filters.tagIds.length > 0 ? filters.tagIds : undefined,
-        tagId: filters.tagId || undefined,
-        categoryIds: filters.categoryIds && filters.categoryIds.length > 0 ? filters.categoryIds : undefined,
-        categoryId: filters.categoryId || undefined,
-        types: filters.transactionTypes && filters.transactionTypes.length > 0 ? filters.transactionTypes : undefined,
-        type: filters.transactionType || undefined,
-        accountTypes: filters.accountTypes && filters.accountTypes.length > 0 ? filters.accountTypes : undefined,
-        accountType: filters.accountType || undefined,
-      } : { startDate: filterStartDate, endDate: filterEndDate };
-      
+      console.log("[Performance] AccountReport query started");
+
+      const filterOptions = useFilters
+        ? {
+            startDate: filterStartDate,
+            endDate: filterEndDate,
+            accountIds:
+              filters.accountIds && filters.accountIds.length > 0
+                ? filters.accountIds
+                : undefined,
+            accountId: filters.accountId || undefined,
+            tagIds:
+              filters.tagIds && filters.tagIds.length > 0
+                ? filters.tagIds
+                : undefined,
+            tagId: filters.tagId || undefined,
+            categoryIds:
+              filters.categoryIds && filters.categoryIds.length > 0
+                ? filters.categoryIds
+                : undefined,
+            categoryId: filters.categoryId || undefined,
+            types:
+              filters.transactionTypes && filters.transactionTypes.length > 0
+                ? filters.transactionTypes
+                : undefined,
+            type: filters.transactionType || undefined,
+            accountTypes:
+              filters.accountTypes && filters.accountTypes.length > 0
+                ? filters.accountTypes
+                : undefined,
+            accountType: filters.accountType || undefined,
+          }
+        : { startDate: filterStartDate, endDate: filterEndDate };
+
       // Use optimized method that only fetches and decrypts amounts with account_id and type
       // Filter by income preference in the query if needed
-      const accountBreakdownFilterOptions = !incomeEnabled 
-        ? { ...filterOptions, types: ['expense'] as Transaction['type'][] }
+      const accountBreakdownFilterOptions = !incomeEnabled
+        ? { ...filterOptions, types: ["expense"] as Transaction["type"][] }
         : filterOptions;
-      
-      const accountBreakdown = await transactionRepository.calculateAccountBreakdown(accountBreakdownFilterOptions);
+
+      const accountBreakdown =
+        await transactionRepository.calculateAccountBreakdown(
+          accountBreakdownFilterOptions
+        );
 
       // Fetch all accounts (not just those with transactions)
       const accounts = await accountRepository.findAll();
-      const decryptedAccounts = await accountRepository.decryptAccounts(accounts);
-      
+      const decryptedAccounts = await accountRepository.decryptAccounts(
+        accounts
+      );
+
       // Create a map of account breakdown data by account ID
-      const breakdownMap = new Map(accountBreakdown.map(item => [item.accountId, item]));
+      const breakdownMap = new Map(
+        accountBreakdown.map((item) => [item.accountId, item])
+      );
 
       // Build reports for ALL accounts, including those with no transactions
       const reports: AccountReport[] = decryptedAccounts.map((account) => {
@@ -379,10 +574,14 @@ export function useAccountReport(startDate: string, endDate: string, useFilters:
         // Then sort by absolute net amount
         return Math.abs(b.netAmount) - Math.abs(a.netAmount);
       });
-      
+
       const endTime = Date.now();
-      console.log(`[Performance] AccountReport query completed in ${endTime - startTime}ms`);
-      
+      console.log(
+        `[Performance] AccountReport query completed in ${
+          endTime - startTime
+        }ms`
+      );
+
       return result;
     },
     enabled: !!filterStartDate && !!filterEndDate,
@@ -391,65 +590,102 @@ export function useAccountReport(startDate: string, endDate: string, useFilters:
 
 // Period Comparison Hook
 
-export function usePeriodComparison(startDate: string, endDate: string, useFilters: boolean = false) {
+export function usePeriodComparison(
+  startDate: string,
+  endDate: string,
+  useFilters: boolean = false
+) {
   const filters = useUIStore((state) => state.filters.reports);
-  const incomeEnabled = useSettingsStore((state) => state.incomeCalculationEnabled);
-  
-  const filterStartDate = useFilters && filters.startDate ? filters.startDate : startDate;
-  const filterEndDate = useFilters && filters.endDate ? filters.endDate : endDate;
+  const incomeEnabled = useSettingsStore(
+    (state) => state.settings.incomeCalculationEnabled
+  );
+
+  const filterStartDate =
+    useFilters && filters.startDate ? filters.startDate : startDate;
+  const filterEndDate =
+    useFilters && filters.endDate ? filters.endDate : endDate;
 
   return useQuery({
-    queryKey: useFilters 
-      ? [...QUERY_KEYS.periodComparison(filterStartDate, filterEndDate), 'filters', filters, incomePreferenceKey(incomeEnabled)]
-      : [...QUERY_KEYS.periodComparison(filterStartDate, filterEndDate), incomePreferenceKey(incomeEnabled)],
+    queryKey: useFilters
+      ? [
+          ...QUERY_KEYS.periodComparison(filterStartDate, filterEndDate),
+          "filters",
+          filters,
+          incomePreferenceKey(incomeEnabled),
+        ]
+      : [
+          ...QUERY_KEYS.periodComparison(filterStartDate, filterEndDate),
+          incomePreferenceKey(incomeEnabled),
+        ],
     queryFn: async (): Promise<PeriodComparison> => {
       const start = new Date(filterStartDate);
       const end = new Date(filterEndDate);
       const daysDiff = differenceInDays(end, start);
-      
+
       // Calculate previous period dates
       const prevStart = subDays(start, daysDiff + 1);
       const prevEnd = subDays(start, 1);
-      
-      const prevStartStr = format(prevStart, 'yyyy-MM-dd');
-      const prevEndStr = format(prevEnd, 'yyyy-MM-dd');
 
-      const filterOptions = useFilters ? {
-        startDate: filterStartDate,
-        endDate: filterEndDate,
-        accountIds: filters.accountIds && filters.accountIds.length > 0 ? filters.accountIds : undefined,
-        accountId: filters.accountId || undefined,
-        tagIds: filters.tagIds && filters.tagIds.length > 0 ? filters.tagIds : undefined,
-        tagId: filters.tagId || undefined,
-        categoryIds: filters.categoryIds && filters.categoryIds.length > 0 ? filters.categoryIds : undefined,
-        categoryId: filters.categoryId || undefined,
-        types: filters.transactionTypes && filters.transactionTypes.length > 0 ? filters.transactionTypes : undefined,
-        type: filters.transactionType || undefined,
-        accountTypes: filters.accountTypes && filters.accountTypes.length > 0 ? filters.accountTypes : undefined,
-        accountType: filters.accountType || undefined,
-      } : { startDate: filterStartDate, endDate: filterEndDate };
+      const prevStartStr = format(prevStart, "yyyy-MM-dd");
+      const prevEndStr = format(prevEnd, "yyyy-MM-dd");
 
-      const prevFilterOptions = useFilters ? {
-        startDate: prevStartStr,
-        endDate: prevEndStr,
-        accountId: filters.accountId || undefined,
-        tagId: filters.tagId || undefined,
-        categoryId: filters.categoryId || undefined,
-        type: filters.transactionType || undefined,
-      } : { startDate: prevStartStr, endDate: prevEndStr };
+      const filterOptions = useFilters
+        ? {
+            startDate: filterStartDate,
+            endDate: filterEndDate,
+            accountIds:
+              filters.accountIds && filters.accountIds.length > 0
+                ? filters.accountIds
+                : undefined,
+            accountId: filters.accountId || undefined,
+            tagIds:
+              filters.tagIds && filters.tagIds.length > 0
+                ? filters.tagIds
+                : undefined,
+            tagId: filters.tagId || undefined,
+            categoryIds:
+              filters.categoryIds && filters.categoryIds.length > 0
+                ? filters.categoryIds
+                : undefined,
+            categoryId: filters.categoryId || undefined,
+            types:
+              filters.transactionTypes && filters.transactionTypes.length > 0
+                ? filters.transactionTypes
+                : undefined,
+            type: filters.transactionType || undefined,
+            accountTypes:
+              filters.accountTypes && filters.accountTypes.length > 0
+                ? filters.accountTypes
+                : undefined,
+            accountType: filters.accountType || undefined,
+          }
+        : { startDate: filterStartDate, endDate: filterEndDate };
+
+      const prevFilterOptions = useFilters
+        ? {
+            startDate: prevStartStr,
+            endDate: prevEndStr,
+            accountId: filters.accountId || undefined,
+            tagId: filters.tagId || undefined,
+            categoryId: filters.categoryId || undefined,
+            type: filters.transactionType || undefined,
+          }
+        : { startDate: prevStartStr, endDate: prevEndStr };
 
       // Use optimized method to calculate summaries for both periods
-      const currentFilterOptions = !incomeEnabled 
-        ? { ...filterOptions, types: ['expense'] as Transaction['type'][] }
+      const currentFilterOptions = !incomeEnabled
+        ? { ...filterOptions, types: ["expense"] as Transaction["type"][] }
         : filterOptions;
-      
+
       const prevFilterOptionsForSummary = !incomeEnabled
-        ? { ...prevFilterOptions, types: ['expense'] as Transaction['type'][] }
+        ? { ...prevFilterOptions, types: ["expense"] as Transaction["type"][] }
         : prevFilterOptions;
 
       const [currentSummary, prevSummary] = await Promise.all([
         transactionRepository.calculateSummaryTotals(currentFilterOptions),
-        transactionRepository.calculateSummaryTotals(prevFilterOptionsForSummary),
+        transactionRepository.calculateSummaryTotals(
+          prevFilterOptionsForSummary
+        ),
       ]);
 
       const currentExpenses = currentSummary.totalExpenses;
@@ -469,8 +705,10 @@ export function usePeriodComparison(startDate: string, endDate: string, useFilte
         totalIncome: currentIncome,
         netAmount: currentIncome - currentExpenses,
         transactionCount: currentVisible,
-        averageExpense: currentExpenseCount > 0 ? currentExpenses / currentExpenseCount : 0,
-        averageIncome: currentIncomeCount > 0 ? currentIncome / currentIncomeCount : 0,
+        averageExpense:
+          currentExpenseCount > 0 ? currentExpenses / currentExpenseCount : 0,
+        averageIncome:
+          currentIncomeCount > 0 ? currentIncome / currentIncomeCount : 0,
       };
 
       const previous: ReportSummary = {
@@ -478,30 +716,46 @@ export function usePeriodComparison(startDate: string, endDate: string, useFilte
         totalIncome: prevIncome,
         netAmount: prevIncome - prevExpenses,
         transactionCount: prevVisible,
-        averageExpense: prevExpenseCount > 0 ? prevExpenses / prevExpenseCount : 0,
+        averageExpense:
+          prevExpenseCount > 0 ? prevExpenses / prevExpenseCount : 0,
         averageIncome: prevIncomeCount > 0 ? prevIncome / prevIncomeCount : 0,
       };
 
       // Calculate changes
       const incomeChange = current.totalIncome - previous.totalIncome;
-      const incomeChangePercent = previous.totalIncome > 0 
-        ? (incomeChange / previous.totalIncome) * 100 
-        : (current.totalIncome > 0 ? 100 : 0);
-      
-      const expenseChange = current.totalExpenses - previous.totalExpenses;
-      const expenseChangePercent = previous.totalExpenses > 0 
-        ? (expenseChange / previous.totalExpenses) * 100 
-        : (current.totalExpenses > 0 ? 100 : 0);
-      
-      const netChange = current.netAmount - previous.netAmount;
-      const netChangePercent = previous.netAmount !== 0 
-        ? (netChange / Math.abs(previous.netAmount)) * 100 
-        : (current.netAmount !== 0 ? (current.netAmount > 0 ? 100 : -100) : 0);
+      const incomeChangePercent =
+        previous.totalIncome > 0
+          ? (incomeChange / previous.totalIncome) * 100
+          : current.totalIncome > 0
+          ? 100
+          : 0;
 
-      const transactionCountChange = current.transactionCount - previous.transactionCount;
-      const transactionCountChangePercent = previous.transactionCount > 0 
-        ? (transactionCountChange / previous.transactionCount) * 100 
-        : (current.transactionCount > 0 ? 100 : 0);
+      const expenseChange = current.totalExpenses - previous.totalExpenses;
+      const expenseChangePercent =
+        previous.totalExpenses > 0
+          ? (expenseChange / previous.totalExpenses) * 100
+          : current.totalExpenses > 0
+          ? 100
+          : 0;
+
+      const netChange = current.netAmount - previous.netAmount;
+      const netChangePercent =
+        previous.netAmount !== 0
+          ? (netChange / Math.abs(previous.netAmount)) * 100
+          : current.netAmount !== 0
+          ? current.netAmount > 0
+            ? 100
+            : -100
+          : 0;
+
+      const transactionCountChange =
+        current.transactionCount - previous.transactionCount;
+      const transactionCountChangePercent =
+        previous.transactionCount > 0
+          ? (transactionCountChange / previous.transactionCount) * 100
+          : current.transactionCount > 0
+          ? 100
+          : 0;
 
       return {
         current,
@@ -524,47 +778,91 @@ export function usePeriodComparison(startDate: string, endDate: string, useFilte
 
 // Daily Spending Patterns Hook
 
-export function useDailyPatterns(startDate: string, endDate: string, useFilters: boolean = false) {
+export function useDailyPatterns(
+  startDate: string,
+  endDate: string,
+  useFilters: boolean = false
+) {
   const filters = useUIStore((state) => state.filters.reports);
-  const incomeEnabled = useSettingsStore((state) => state.incomeCalculationEnabled);
-  
-  const filterStartDate = useFilters && filters.startDate ? filters.startDate : startDate;
-  const filterEndDate = useFilters && filters.endDate ? filters.endDate : endDate;
+  const incomeEnabled = useSettingsStore(
+    (state) => state.settings.incomeCalculationEnabled
+  );
+
+  const filterStartDate =
+    useFilters && filters.startDate ? filters.startDate : startDate;
+  const filterEndDate =
+    useFilters && filters.endDate ? filters.endDate : endDate;
 
   return useQuery({
-    queryKey: useFilters 
-      ? [...QUERY_KEYS.dailyPatterns(filterStartDate, filterEndDate), 'filters', filters, incomePreferenceKey(incomeEnabled)]
-      : [...QUERY_KEYS.dailyPatterns(filterStartDate, filterEndDate), incomePreferenceKey(incomeEnabled)],
+    queryKey: useFilters
+      ? [
+          ...QUERY_KEYS.dailyPatterns(filterStartDate, filterEndDate),
+          "filters",
+          filters,
+          incomePreferenceKey(incomeEnabled),
+        ]
+      : [
+          ...QUERY_KEYS.dailyPatterns(filterStartDate, filterEndDate),
+          incomePreferenceKey(incomeEnabled),
+        ],
+    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
+    gcTime: 1000 * 60 * 10, // Keep in cache for 10 minutes
     queryFn: async (): Promise<DailyPattern[]> => {
       const startTime = Date.now();
-      console.log('[Performance] DailyPatterns query started');
-      
-      const baseFilterOptions = useFilters ? {
-        startDate: filterStartDate,
-        endDate: filterEndDate,
-        accountIds: filters.accountIds && filters.accountIds.length > 0 ? filters.accountIds : undefined,
-        accountId: filters.accountId || undefined,
-        tagIds: filters.tagIds && filters.tagIds.length > 0 ? filters.tagIds : undefined,
-        tagId: filters.tagId || undefined,
-        categoryIds: filters.categoryIds && filters.categoryIds.length > 0 ? filters.categoryIds : undefined,
-        categoryId: filters.categoryId || undefined,
-        types: filters.transactionTypes && filters.transactionTypes.length > 0 ? filters.transactionTypes : undefined,
-        type: filters.transactionType || undefined,
-        accountTypes: filters.accountTypes && filters.accountTypes.length > 0 ? filters.accountTypes : undefined,
-        accountType: filters.accountType || undefined,
-      } : { startDate: filterStartDate, endDate: filterEndDate };
-      
+      console.log("[Performance] DailyPatterns query started");
+
+      const baseFilterOptions = useFilters
+        ? {
+            startDate: filterStartDate,
+            endDate: filterEndDate,
+            accountIds:
+              filters.accountIds && filters.accountIds.length > 0
+                ? filters.accountIds
+                : undefined,
+            accountId: filters.accountId || undefined,
+            tagIds:
+              filters.tagIds && filters.tagIds.length > 0
+                ? filters.tagIds
+                : undefined,
+            tagId: filters.tagId || undefined,
+            categoryIds:
+              filters.categoryIds && filters.categoryIds.length > 0
+                ? filters.categoryIds
+                : undefined,
+            categoryId: filters.categoryId || undefined,
+            types:
+              filters.transactionTypes && filters.transactionTypes.length > 0
+                ? filters.transactionTypes
+                : undefined,
+            type: filters.transactionType || undefined,
+            accountTypes:
+              filters.accountTypes && filters.accountTypes.length > 0
+                ? filters.accountTypes
+                : undefined,
+            accountType: filters.accountType || undefined,
+          }
+        : { startDate: filterStartDate, endDate: filterEndDate };
+
       // Daily patterns only show expenses, so filter to expenses
       const filterOptions = {
         ...baseFilterOptions,
-        types: baseFilterOptions.types || ['expense'] as Transaction['type'][],
+        types:
+          baseFilterOptions.types || (["expense"] as Transaction["type"][]),
       };
-      
+
       // Use optimized method that only fetches and decrypts amounts with date
-      const dayData = await transactionRepository.calculateDailyPatterns(filterOptions);
+      const dayData = await transactionRepository.calculateDailyPatterns(
+        filterOptions
+      );
+      const endTime = Date.now();
+      console.log(
+        `[Performance] DailyPatterns query completed in ${
+          endTime - startTime
+        }ms`
+      );
 
       // Convert to DailyPattern format
-      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
       const dayMap = new Map(dayData.map((d) => [d.dayIndex, d]));
 
       const patterns: DailyPattern[] = [];
@@ -579,9 +877,6 @@ export function useDailyPatterns(startDate: string, endDate: string, useFilters:
         });
       }
 
-      const endTime = Date.now();
-      console.log(`[Performance] DailyPatterns query completed in ${endTime - startTime}ms`);
-      
       return patterns;
     },
     enabled: !!filterStartDate && !!filterEndDate,
@@ -590,50 +885,88 @@ export function useDailyPatterns(startDate: string, endDate: string, useFilters:
 
 // Monthly Trends Hook
 
-export function useMonthlyTrends(startDate: string, endDate: string, useFilters: boolean = false) {
+export function useMonthlyTrends(
+  startDate: string,
+  endDate: string,
+  useFilters: boolean = false
+) {
   const filters = useUIStore((state) => state.filters.reports);
-  const incomeEnabled = useSettingsStore((state) => state.incomeCalculationEnabled);
+  const incomeEnabled = useSettingsStore(
+    (state) => state.settings.incomeCalculationEnabled
+  );
 
   return useQuery({
-    queryKey: useFilters 
-      ? [...QUERY_KEYS.monthlyTrends(startDate, endDate), 'filters', filters, incomePreferenceKey(incomeEnabled)]
-      : [...QUERY_KEYS.monthlyTrends(startDate, endDate), incomePreferenceKey(incomeEnabled)],
+    queryKey: useFilters
+      ? [
+          ...QUERY_KEYS.monthlyTrends(startDate, endDate),
+          "filters",
+          filters,
+          incomePreferenceKey(incomeEnabled),
+        ]
+      : [
+          ...QUERY_KEYS.monthlyTrends(startDate, endDate),
+          incomePreferenceKey(incomeEnabled),
+        ],
+    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
+    gcTime: 1000 * 60 * 10, // Keep in cache for 10 minutes
     queryFn: async (): Promise<MonthlyTrend[]> => {
       const startTime = Date.now();
-      console.log('[Performance] MonthlyTrends query started');
-      
+      console.log("[Performance] MonthlyTrends query started");
+
       // Always show last 10 months ending with current month
       const currentDate = new Date();
       const currentMonthEnd = endOfMonth(currentDate);
       const tenMonthsAgo = subMonths(currentMonthEnd, 9); // 9 months back = 10 months total (including current)
       const tenMonthsAgoStart = startOfMonth(tenMonthsAgo);
-      
-      const trendStartDate = format(tenMonthsAgoStart, 'yyyy-MM-dd');
-      const trendEndDate = format(currentMonthEnd, 'yyyy-MM-dd');
 
-      const filterOptions = useFilters ? {
-        startDate: trendStartDate,
-        endDate: trendEndDate,
-        accountIds: filters.accountIds && filters.accountIds.length > 0 ? filters.accountIds : undefined,
-        accountId: filters.accountId || undefined,
-        tagIds: filters.tagIds && filters.tagIds.length > 0 ? filters.tagIds : undefined,
-        tagId: filters.tagId || undefined,
-        categoryIds: filters.categoryIds && filters.categoryIds.length > 0 ? filters.categoryIds : undefined,
-        categoryId: filters.categoryId || undefined,
-        types: filters.transactionTypes && filters.transactionTypes.length > 0 ? filters.transactionTypes : undefined,
-        type: filters.transactionType || undefined,
-        accountTypes: filters.accountTypes && filters.accountTypes.length > 0 ? filters.accountTypes : undefined,
-        accountType: filters.accountType || undefined,
-      } : { 
-        startDate: trendStartDate, 
-        endDate: trendEndDate 
-      };
-      
+      const trendStartDate = format(tenMonthsAgoStart, "yyyy-MM-dd");
+      const trendEndDate = format(currentMonthEnd, "yyyy-MM-dd");
+
+      const filterOptions = useFilters
+        ? {
+            startDate: trendStartDate,
+            endDate: trendEndDate,
+            accountIds:
+              filters.accountIds && filters.accountIds.length > 0
+                ? filters.accountIds
+                : undefined,
+            accountId: filters.accountId || undefined,
+            tagIds:
+              filters.tagIds && filters.tagIds.length > 0
+                ? filters.tagIds
+                : undefined,
+            tagId: filters.tagId || undefined,
+            categoryIds:
+              filters.categoryIds && filters.categoryIds.length > 0
+                ? filters.categoryIds
+                : undefined,
+            categoryId: filters.categoryId || undefined,
+            types:
+              filters.transactionTypes && filters.transactionTypes.length > 0
+                ? filters.transactionTypes
+                : undefined,
+            type: filters.transactionType || undefined,
+            accountTypes:
+              filters.accountTypes && filters.accountTypes.length > 0
+                ? filters.accountTypes
+                : undefined,
+            accountType: filters.accountType || undefined,
+          }
+        : {
+            startDate: trendStartDate,
+            endDate: trendEndDate,
+          };
+
       // Use optimized method that only fetches and decrypts amounts with date and type
-      const monthlyData = await transactionRepository.calculateMonthlyTrends(filterOptions);
+      const monthlyData = await transactionRepository.calculateMonthlyTrends(
+        filterOptions
+      );
 
       // Create a map from the optimized results
-      const monthMap = new Map<string, { expenses: number; income: number; count: number }>();
+      const monthMap = new Map<
+        string,
+        { expenses: number; income: number; count: number }
+      >();
       for (const item of monthlyData) {
         monthMap.set(item.monthKey, {
           expenses: item.expenses,
@@ -643,17 +976,17 @@ export function useMonthlyTrends(startDate: string, endDate: string, useFilters:
       }
 
       // Generate all 10 months from 9 months ago to current month
-      const monthsInterval = eachMonthOfInterval({ 
-        start: tenMonthsAgoStart, 
-        end: currentMonthEnd 
+      const monthsInterval = eachMonthOfInterval({
+        start: tenMonthsAgoStart,
+        end: currentMonthEnd,
       });
 
       const trends: MonthlyTrend[] = monthsInterval.map((date) => {
-        const key = format(date, 'yyyy-MM');
+        const key = format(date, "yyyy-MM");
         const data = monthMap.get(key) || { expenses: 0, income: 0, count: 0 };
         return {
-          month: format(date, 'MMM yyyy'),
-          monthIndex: parseInt(format(date, 'M'), 10) - 1,
+          month: format(date, "MMM yyyy"),
+          monthIndex: parseInt(format(date, "M"), 10) - 1,
           totalExpenses: data.expenses,
           totalIncome: data.income,
           netAmount: data.income - data.expenses,
@@ -662,12 +995,14 @@ export function useMonthlyTrends(startDate: string, endDate: string, useFilters:
       });
 
       const endTime = Date.now();
-      console.log(`[Performance] MonthlyTrends query completed in ${endTime - startTime}ms`);
-      
+      console.log(
+        `[Performance] MonthlyTrends query completed in ${
+          endTime - startTime
+        }ms`
+      );
+
       return trends;
     },
     enabled: !!startDate && !!endDate,
   });
 }
-
-

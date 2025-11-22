@@ -20,6 +20,7 @@ export function Card({ children, className, ...props }: CardProps) {
         shadowOpacity: 0.05,
         shadowRadius: 8,
         elevation: 3,
+        overflow: 'hidden', // Prevent content from overflowing the card
       }}
       {...props}
     >

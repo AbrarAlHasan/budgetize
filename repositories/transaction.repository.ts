@@ -17,6 +17,78 @@ export class TransactionRepository extends BaseRepository<Transaction> {
   protected tableName = "transactions";
   protected primaryKey = "id";
 
+  /**
+   * Helper function to batch decrypt amounts to avoid overwhelming the system
+   * Processes in chunks to balance performance and memory usage
+   * Uses progressively smaller batches for larger datasets to prevent system overload
+   * Processes multiple batches concurrently for better throughput
+   */
+  private async batchDecryptAmounts<T extends { amount: string }>(
+    items: T[],
+    transform: (item: T, decryptedAmount: number) => T & { amount: number }
+  ): Promise<Array<T & { amount: number }>> {
+    if (items.length === 0) return [];
+    
+    // Use progressively smaller batches for larger datasets
+    // This prevents overwhelming the system with too many parallel operations
+    // Smaller batches = better memory management and less context switching
+    // For medium datasets, use smaller batches with concurrency for better throughput
+    let BATCH_SIZE: number;
+    let CONCURRENT_BATCHES: number; // Number of batches to process concurrently
+    
+    if (items.length > 15000) {
+      BATCH_SIZE = 50; // Very large datasets: 50 at a time
+      CONCURRENT_BATCHES = 3; // Process 3 batches concurrently (150 total operations)
+    } else if (items.length > 10000) {
+      BATCH_SIZE = 100; // Large datasets: 100 at a time
+      CONCURRENT_BATCHES = 3; // Process 3 batches concurrently (300 total operations)
+    } else if (items.length > 5000) {
+      BATCH_SIZE = 100; // Medium-large datasets: 100 at a time
+      CONCURRENT_BATCHES = 4; // Process 4 batches concurrently (400 total operations)
+    } else if (items.length > 1000) {
+      BATCH_SIZE = 100; // Medium datasets: 100 at a time
+      CONCURRENT_BATCHES = 5; // Process 5 batches concurrently (500 total operations)
+    } else if (items.length > 500) {
+      BATCH_SIZE = 50; // Small-medium datasets: 50 at a time
+      CONCURRENT_BATCHES = 4; // Process 4 batches concurrently (200 total operations)
+    } else {
+      BATCH_SIZE = 100; // Small datasets: 100 at a time
+      CONCURRENT_BATCHES = 1; // Process 1 batch at a time
+    }
+    
+    const results: Array<T & { amount: number }> = [];
+    const batches: T[][] = [];
+    
+    // Create all batches
+    for (let i = 0; i < items.length; i += BATCH_SIZE) {
+      batches.push(items.slice(i, i + BATCH_SIZE));
+    }
+    
+    // Process batches with controlled concurrency
+    for (let i = 0; i < batches.length; i += CONCURRENT_BATCHES) {
+      const concurrentBatches = batches.slice(i, i + CONCURRENT_BATCHES);
+      
+      // Process multiple batches concurrently
+      const batchResults = await Promise.all(
+        concurrentBatches.map(async (batch) => {
+          return Promise.all(
+            batch.map(async (item) => {
+              const decryptedAmount = await decryptAmount(item.amount);
+              return transform(item, decryptedAmount);
+            })
+          );
+        })
+      );
+      
+      // Flatten and add results
+      for (const batchResult of batchResults) {
+        results.push(...batchResult);
+      }
+    }
+    
+    return results;
+  }
+
   async create(input: CreateTransactionInput): Promise<Transaction> {
     // Encrypt sensitive fields
     const encryptedAmount = await encryptAmount(input.amount);
@@ -461,8 +533,8 @@ export class TransactionRepository extends BaseRepository<Transaction> {
 
   /**
    * Decrypt multiple transactions
-   * Optimized: Decrypts all amounts in parallel, then all notes, then all payment_modes
-   * This is faster than decrypting each transaction sequentially
+   * Optimized: For small batches, uses field-based parallel decryption
+   * For large batches, processes in chunks to avoid overwhelming the system
    */
   async decryptTransactions(transactions: Transaction[]): Promise<
     Array<
@@ -475,28 +547,47 @@ export class TransactionRepository extends BaseRepository<Transaction> {
   > {
     if (transactions.length === 0) return [];
 
-    // Decrypt all amounts in parallel
-    const amounts = await Promise.all(
-      transactions.map((t) => decryptAmount(t.amount))
-    );
+    // Use field-based parallel decryption, but process in smaller batches
+    // to avoid overwhelming the system with too many parallel operations
+    const BATCH_SIZE = 10; // Process 10 transactions at a time
+    
+    // Process in batches, using field-based parallel decryption within each batch
+    const results: Array<
+      Omit<Transaction, "amount" | "note" | "payment_mode"> & {
+        amount: number;
+        note: string | null;
+        payment_mode: string;
+      }
+    > = [];
 
-    // Decrypt all notes in parallel (only for transactions that have notes)
-    const notes = await Promise.all(
-      transactions.map((t) => (t.note ? decrypt(t.note) : Promise.resolve(null)))
-    );
+    for (let i = 0; i < transactions.length; i += BATCH_SIZE) {
+      const batch = transactions.slice(i, i + BATCH_SIZE);
+      
+      // Decrypt all fields in parallel for this batch
+      const amounts = await Promise.all(
+        batch.map((t) => decryptAmount(t.amount))
+      );
 
-    // Decrypt all payment_modes in parallel
-    const paymentModes = await Promise.all(
-      transactions.map((t) => decrypt(t.payment_mode))
-    );
+      const notes = await Promise.all(
+        batch.map((t) => (t.note ? decrypt(t.note) : Promise.resolve(null)))
+      );
 
-    // Combine results
-    return transactions.map((t, index) => ({
-      ...t,
-      amount: amounts[index],
-      note: notes[index],
-      payment_mode: paymentModes[index],
-    }));
+      const paymentModes = await Promise.all(
+        batch.map((t) => decrypt(t.payment_mode))
+      );
+
+      // Combine results for this batch
+      const decryptedBatch = batch.map((t, index) => ({
+        ...t,
+        amount: amounts[index],
+        note: notes[index],
+        payment_mode: paymentModes[index],
+      }));
+      
+      results.push(...decryptedBatch);
+    }
+
+    return results;
   }
 
   /**
@@ -601,13 +692,14 @@ export class TransactionRepository extends BaseRepository<Transaction> {
       type: Transaction["type"];
     }>(query, params);
 
-    // Decrypt amounts in parallel (only amounts, not notes/payment_mode)
-    const decryptedAmounts = await Promise.all(
-      results.map(async (row) => ({
+    // Decrypt amounts in batches to avoid overwhelming the system
+    const decryptedAmounts = await this.batchDecryptAmounts(
+      results,
+      (row, amount) => ({
         id: row.id,
-        amount: await decryptAmount(row.amount),
+        amount,
         type: row.type,
-      }))
+      })
     );
 
     // Calculate totals
@@ -735,14 +827,15 @@ export class TransactionRepository extends BaseRepository<Transaction> {
       category_id: number | null;
     }>(query, params);
 
-    // Decrypt amounts in parallel (only amounts, not notes/payment_mode)
-    const decryptedAmounts = await Promise.all(
-      results.map(async (row) => ({
+    // Decrypt amounts in batches to avoid overwhelming the system
+    const decryptedAmounts = await this.batchDecryptAmounts(
+      results,
+      (row, amount) => ({
         id: row.id,
-        amount: await decryptAmount(row.amount),
+        amount,
         type: row.type,
         category_id: row.category_id,
-      }))
+      })
     );
 
     // Group by category
@@ -867,15 +960,27 @@ export class TransactionRepository extends BaseRepository<Transaction> {
       date: string;
     }>(query, params);
 
-    // Decrypt amounts in parallel (only amounts, not notes/payment_mode)
-    const decryptedAmounts = await Promise.all(
-      results.map(async (row) => ({
-        id: row.id,
-        amount: await decryptAmount(row.amount),
-        type: row.type,
-        date: row.date,
-      }))
-    );
+    // Decrypt amounts in batches to avoid overwhelming the system
+    const BATCH_SIZE = 500; // Process 500 at a time
+    const decryptedAmounts: Array<{
+      id: number;
+      amount: number;
+      type: Transaction["type"];
+      date: string;
+    }> = [];
+    
+    for (let i = 0; i < results.length; i += BATCH_SIZE) {
+      const batch = results.slice(i, i + BATCH_SIZE);
+      const decryptedBatch = await Promise.all(
+        batch.map(async (row) => ({
+          id: row.id,
+          amount: await decryptAmount(row.amount),
+          type: row.type,
+          date: row.date,
+        }))
+      );
+      decryptedAmounts.push(...decryptedBatch);
+    }
 
     // Group by day of week
     const dayMap = new Map<number, { total: number; count: number }>();
@@ -999,15 +1104,27 @@ export class TransactionRepository extends BaseRepository<Transaction> {
       date: string;
     }>(query, params);
 
-    // Decrypt amounts in parallel (only amounts, not notes/payment_mode)
-    const decryptedAmounts = await Promise.all(
-      results.map(async (row) => ({
-        id: row.id,
-        amount: await decryptAmount(row.amount),
-        type: row.type,
-        date: row.date,
-      }))
-    );
+    // Decrypt amounts in batches to avoid overwhelming the system
+    const BATCH_SIZE = 500; // Process 500 at a time
+    const decryptedAmounts: Array<{
+      id: number;
+      amount: number;
+      type: Transaction["type"];
+      date: string;
+    }> = [];
+    
+    for (let i = 0; i < results.length; i += BATCH_SIZE) {
+      const batch = results.slice(i, i + BATCH_SIZE);
+      const decryptedBatch = await Promise.all(
+        batch.map(async (row) => ({
+          id: row.id,
+          amount: await decryptAmount(row.amount),
+          type: row.type,
+          date: row.date,
+        }))
+      );
+      decryptedAmounts.push(...decryptedBatch);
+    }
 
     // Group by month
     const monthMap = new Map<
@@ -1140,14 +1257,15 @@ export class TransactionRepository extends BaseRepository<Transaction> {
       tag_id: number | null;
     }>(query, params);
 
-    // Decrypt amounts in parallel (only amounts, not notes/payment_mode)
-    const decryptedAmounts = await Promise.all(
-      results.map(async (row) => ({
+    // Decrypt amounts in batches to avoid overwhelming the system
+    const decryptedAmounts = await this.batchDecryptAmounts(
+      results,
+      (row, amount) => ({
         id: row.id,
-        amount: await decryptAmount(row.amount),
+        amount,
         type: row.type,
         tag_id: row.tag_id,
-      }))
+      })
     );
 
     // Group by tag (null means untagged)
@@ -1269,22 +1387,29 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     query += ` WHERE ${conditions.join(" AND ")}`;
 
     // Execute query to get only id, amount, type, account_id
+    const queryStartTime = Date.now();
     const results = await this.executeQuery<{
       id: number;
       amount: string;
       type: Transaction["type"];
       account_id: number;
     }>(query, params);
+    const queryEndTime = Date.now();
+    console.log(`[Performance] calculateAccountBreakdown query fetch: ${queryEndTime - queryStartTime}ms (${results.length} transactions)`);
 
-    // Decrypt amounts in parallel (only amounts, not notes/payment_mode)
-    const decryptedAmounts = await Promise.all(
-      results.map(async (row) => ({
+    // Decrypt amounts in batches to avoid overwhelming the system
+    const decryptStartTime = Date.now();
+    const decryptedAmounts = await this.batchDecryptAmounts(
+      results,
+      (row, amount) => ({
         id: row.id,
-        amount: await decryptAmount(row.amount),
+        amount,
         type: row.type,
         account_id: row.account_id,
-      }))
+      })
     );
+    const decryptEndTime = Date.now();
+    console.log(`[Performance] calculateAccountBreakdown decrypt: ${decryptEndTime - decryptStartTime}ms (${decryptedAmounts.length} transactions)`);
 
     // Group by account
     const accountMap = new Map<
@@ -1363,13 +1488,19 @@ export class TransactionRepository extends BaseRepository<Transaction> {
 
     const results = await this.executeQuery<{ id: number; amount: string; type: Transaction['type'] }>(query, params);
 
-    // Decrypt amounts in parallel (only amounts, not notes/payment_mode)
-    const decryptedAmounts = await Promise.all(
-      results.map(async (row) => await decryptAmount(row.amount))
-    );
+    // Decrypt amounts in batches to avoid overwhelming the system
+    const BATCH_SIZE = 500;
+    let total = 0;
+    
+    for (let i = 0; i < results.length; i += BATCH_SIZE) {
+      const batch = results.slice(i, i + BATCH_SIZE);
+      const decryptedBatch = await Promise.all(
+        batch.map(async (row) => await decryptAmount(row.amount))
+      );
+      total += decryptedBatch.reduce((sum, amount) => sum + amount, 0);
+    }
 
-    // Sum all expenses
-    return decryptedAmounts.reduce((sum, amount) => sum + amount, 0);
+    return total;
   }
 
   /**

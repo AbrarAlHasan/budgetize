@@ -4,10 +4,20 @@ import * as Crypto from 'expo-crypto';
 const ENCRYPTION_KEY_STORAGE_KEY = 'budgetize_encryption_key';
 const KEY_SIZE = 32; // 256 bits for AES-256
 
+// Cache the encryption key in memory to avoid repeated SecureStore reads
+let cachedEncryptionKey: string | null = null;
+let keyBytesCache: Uint8Array | null = null;
+
 /**
  * Get or generate encryption key
+ * Caches the key in memory after first fetch for performance
  */
 async function getEncryptionKey(): Promise<string> {
+  // Return cached key if available
+  if (cachedEncryptionKey) {
+    return cachedEncryptionKey;
+  }
+  
   let key = await SecureStore.getItemAsync(ENCRYPTION_KEY_STORAGE_KEY);
   
   if (!key) {
@@ -21,7 +31,25 @@ async function getEncryptionKey(): Promise<string> {
     await SecureStore.setItemAsync(ENCRYPTION_KEY_STORAGE_KEY, key);
   }
   
+  // Cache the key in memory
+  cachedEncryptionKey = key;
+  
   return key;
+}
+
+/**
+ * Get encryption key bytes (cached)
+ * This avoids repeated hex conversion
+ */
+async function getEncryptionKeyBytes(): Promise<Uint8Array> {
+  if (keyBytesCache) {
+    return keyBytesCache;
+  }
+  
+  const key = await getEncryptionKey();
+  keyBytesCache = hexToBytes(key);
+  
+  return keyBytesCache;
 }
 
 /**
@@ -53,8 +81,7 @@ export async function encrypt(value: string): Promise<string> {
   }
 
   try {
-    const key = await getEncryptionKey();
-    const keyBytes = hexToBytes(key);
+    const keyBytes = await getEncryptionKeyBytes();
     
     // Generate IV (Initialization Vector)
     const iv = await Crypto.getRandomBytesAsync(16);
@@ -91,8 +118,7 @@ export async function decrypt(encryptedValue: string): Promise<string> {
   }
 
   try {
-    const key = await getEncryptionKey();
-    const keyBytes = hexToBytes(key);
+    const keyBytes = await getEncryptionKeyBytes();
     
     // Decode from base64
     const combined = Uint8Array.from(

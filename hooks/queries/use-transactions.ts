@@ -42,7 +42,7 @@ export function useTransactions(filters?: {
   accountType?: string;
   accountTypes?: string[];
 }) {
-  const incomeEnabled = useSettingsStore((state) => state.incomeCalculationEnabled);
+  const incomeEnabled = useSettingsStore((state) => state.settings.incomeCalculationEnabled);
 
   return useQuery({
     queryKey: [...QUERY_KEYS.list(filters), incomePreferenceKey(incomeEnabled)],
@@ -89,7 +89,7 @@ export function useTransactionsPaginated(filters?: {
   accountType?: string;
   accountTypes?: string[];
 }) {
-  const incomeEnabled = useSettingsStore((state) => state.incomeCalculationEnabled);
+  const incomeEnabled = useSettingsStore((state) => state.settings.incomeCalculationEnabled);
 
   return useInfiniteQuery({
     queryKey: [...QUERY_KEYS.list(filters), 'paginated', incomePreferenceKey(incomeEnabled)],
@@ -145,7 +145,7 @@ export function useTransaction(id: number) {
 }
 
 export function useTransactionsByAccount(accountId: number) {
-  const incomeEnabled = useSettingsStore((state) => state.incomeCalculationEnabled);
+  const incomeEnabled = useSettingsStore((state) => state.settings.incomeCalculationEnabled);
 
   return useQuery({
     queryKey: [...QUERY_KEYS.byAccount(accountId), incomePreferenceKey(incomeEnabled)],
@@ -159,7 +159,7 @@ export function useTransactionsByAccount(accountId: number) {
 }
 
 export function useTransactionsByDateRange(startDate: string, endDate: string) {
-  const incomeEnabled = useSettingsStore((state) => state.incomeCalculationEnabled);
+  const incomeEnabled = useSettingsStore((state) => state.settings.incomeCalculationEnabled);
 
   return useQuery({
     queryKey: [...QUERY_KEYS.byDateRange(startDate, endDate), incomePreferenceKey(incomeEnabled)],

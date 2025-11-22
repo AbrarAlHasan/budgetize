@@ -33,6 +33,32 @@ export abstract class BaseRepository<T> {
     return results[0] || null;
   }
 
+  /**
+   * Find multiple records by IDs (batch fetch for performance)
+   * Useful for loading tags/categories for multiple transactions at once
+   */
+  async findByIds(ids: number[]): Promise<T[]> {
+    if (ids.length === 0) return [];
+    const placeholders = ids.map(() => '?').join(', ');
+    return this.executeQuery<T>(
+      `SELECT * FROM ${this.tableName} WHERE ${this.primaryKey} IN (${placeholders}) AND deleted_at IS NULL`,
+      ids
+    );
+  }
+
+  /**
+   * Find multiple records by IDs including deleted ones
+   */
+  async findByIdsIncludingDeleted(ids: number[]): Promise<T[]> {
+    if (ids.length === 0) return [];
+    const placeholders = ids.map(() => '?').join(', ');
+    const db = await this.getDb();
+    return db.getAllAsync<T>(
+      `SELECT * FROM ${this.tableName} WHERE ${this.primaryKey} IN (${placeholders})`,
+      ids
+    );
+  }
+
   async findAll(): Promise<T[]> {
     return this.executeQuery<T>(
       `SELECT * FROM ${this.tableName} WHERE deleted_at IS NULL ORDER BY created_at DESC`

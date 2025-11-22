@@ -5,11 +5,9 @@ import { categoryRepository } from '@/repositories/category.repository';
 import { tagRepository } from '@/repositories/tag.repository';
 import { transactionRepository } from '@/repositories/transaction.repository';
 
-const MONTHS_TO_GENERATE = 12;
-const MONTHLY_MIN_TOTAL = 10000;
-const MONTHLY_MAX_TOTAL = 30000;
-const MONTH_WITHOUT_TRANSACTIONS_OFFSET = 5; // e.g., 5 months ago (zero data)
-const WEEKDAY_WITHOUT_TRANSACTIONS = 0; // 0 = Sunday (skip all Sundays)
+const YEARS_TO_GENERATE = 2; // Generate data for 2 years
+const TRANSACTIONS_PER_DAY = 50; // 50 transactions per day
+const DAYS_IN_TWO_YEARS = 730; // 2 years = 730 days
 
 const EXPENSE_CATEGORIES = [
   'Food & Dining',
@@ -75,94 +73,35 @@ function pickRandomItem<T>(items: T[]): T {
   return items[Math.floor(Math.random() * items.length)];
 }
 
-function buildRandomDateExcludingWeekday(
-  monthOffset: number,
-  excludeWeekday: number | null
-): string {
-  const now = new Date();
-  const currentDate = new Date(now.getFullYear(), now.getMonth() - monthOffset, now.getDate());
+function buildRandomTimeForDate(targetDate: Date, isToday: boolean): Date {
+  const date = new Date(targetDate);
   
-  // For current month (monthOffset = 0), ensure we don't exceed current date
-  // For past months, use the last day of that month
-  const maxDay = monthOffset === 0 
-    ? now.getDate() // Current month: only up to today
-    : 28; // Past months: use day 1-28 (safe for all months)
-
-  for (let attempt = 0; attempt < 40; attempt++) {
-    const day = 1 + Math.floor(Math.random() * maxDay);
-    const date = new Date(now.getFullYear(), now.getMonth() - monthOffset, day);
-    
-    // Ensure date doesn't exceed current date/time
-    if (date > now) {
-      continue;
-    }
-    
-    if (excludeWeekday !== null && date.getDay() === excludeWeekday) {
-      continue;
-    }
-    
-    // Set random time within the day (but not exceeding current time if it's today)
-    if (monthOffset === 0 && day === now.getDate()) {
-      // For today, use a random time up to current time
-      const maxHours = now.getHours();
-      const maxMinutes = now.getMinutes();
-      const hours = Math.floor(Math.random() * (maxHours + 1));
-      const minutes = hours === maxHours 
-        ? Math.floor(Math.random() * (maxMinutes + 1))
-        : Math.floor(Math.random() * 60);
-      date.setHours(hours, minutes, Math.floor(Math.random() * 60), 0);
-    } else {
-      // For past dates, use random time during the day
-      date.setHours(
-        Math.floor(Math.random() * 24),
-        Math.floor(Math.random() * 60),
-        Math.floor(Math.random() * 60),
-        0
-      );
-    }
-    
-    return date.toISOString();
-  }
-
-  // Fallback: use a safe date (15th of the month, or today if current month)
-  const fallbackDay = monthOffset === 0 
-    ? Math.min(15, now.getDate())
-    : 15;
-  const date = new Date(now.getFullYear(), now.getMonth() - monthOffset, fallbackDay);
-  
-  // Ensure fallback date doesn't exceed current date
-  if (date > now) {
-    // If fallback exceeds current date, use today
-    date.setFullYear(now.getFullYear());
-    date.setMonth(now.getMonth());
-    date.setDate(now.getDate());
-  }
-  
-  if (excludeWeekday !== null) {
-    while (date.getDay() === excludeWeekday) {
-      date.setDate(date.getDate() - 1);
-      // Ensure we don't go too far back
-      if (date < new Date(now.getFullYear(), now.getMonth() - monthOffset, 1)) {
-        date.setDate(date.getDate() + 7); // Move forward a week instead
-      }
-    }
-  }
-  
-  // Set time (random for past dates, up to current time for today)
-  if (monthOffset === 0 && date.getDate() === now.getDate()) {
+  if (isToday) {
+    const now = new Date();
     const maxHours = now.getHours();
     const maxMinutes = now.getMinutes();
-    date.setHours(
-      Math.min(12, maxHours),
-      Math.min(30, maxMinutes),
-      0,
-      0
-    );
+    const maxSeconds = now.getSeconds();
+    
+    const hours = Math.floor(Math.random() * (maxHours + 1));
+    const minutes = hours === maxHours 
+      ? Math.floor(Math.random() * (maxMinutes + 1))
+      : Math.floor(Math.random() * 60);
+    const seconds = hours === maxHours && minutes === maxMinutes
+      ? Math.floor(Math.random() * (maxSeconds + 1))
+      : Math.floor(Math.random() * 60);
+    
+    date.setHours(hours, minutes, seconds, Math.floor(Math.random() * 1000));
   } else {
-    date.setHours(12, 0, 0, 0);
+    // For past dates, use random time during the day
+    date.setHours(
+      Math.floor(Math.random() * 24),
+      Math.floor(Math.random() * 60),
+      Math.floor(Math.random() * 60),
+      Math.floor(Math.random() * 1000)
+    );
   }
   
-  return date.toISOString();
+  return date;
 }
 
 function pickRandomTags(tagMap: Map<string, number>, max = 2): number[] | undefined {
@@ -249,78 +188,83 @@ async function seedTransactions(
   tagMap: Map<string, number>
 ): Promise<number> {
   let transactionCount = 0;
+  const now = new Date();
+  const startDate = new Date(now);
+  startDate.setFullYear(now.getFullYear() - YEARS_TO_GENERATE);
+  startDate.setHours(0, 0, 0, 0);
 
-  for (let monthOffset = 0; monthOffset < MONTHS_TO_GENERATE; monthOffset++) {
-    if (monthOffset === MONTH_WITHOUT_TRANSACTIONS_OFFSET) {
-      console.log(
-        `[dummy-data] Skipping month offset ${monthOffset} to simulate zero-transaction month.`
-      );
-      continue;
+  console.log(`[dummy-data] Generating ${TRANSACTIONS_PER_DAY} transactions per day for ${DAYS_IN_TWO_YEARS} days...`);
+  console.log(`[dummy-data] Start date: ${startDate.toISOString()}, End date: ${now.toISOString()}`);
+
+  // Get non-credit accounts for income transactions
+  const nonCreditAccounts = accounts.filter(acc => acc.type !== 'credit');
+  
+  // Process each day
+  for (let dayOffset = 0; dayOffset < DAYS_IN_TWO_YEARS; dayOffset++) {
+    const targetDate = new Date(startDate);
+    targetDate.setDate(targetDate.getDate() + dayOffset);
+    
+    // Skip if date exceeds today
+    if (targetDate > now) {
+      break;
+    }
+    
+    const isToday = targetDate.toDateString() === now.toDateString();
+    
+    // Progress logging every 100 days
+    if (dayOffset % 100 === 0) {
+      console.log(`[dummy-data] Progress: ${dayOffset}/${DAYS_IN_TWO_YEARS} days (${transactionCount} transactions so far)`);
     }
 
-    const monthlyTarget = randomBetween(MONTHLY_MIN_TOTAL, MONTHLY_MAX_TOTAL, 0);
-    let monthlyTotal = 0;
-
-    // Income transactions for non-credit accounts
-    for (const account of accounts) {
-      if (account.type === 'credit') {
-        continue;
-      }
-
+    // Generate income transactions (1-2 per day for non-credit accounts)
+    const incomeCount = Math.floor(Math.random() * 2) + 1; // 1-2 income transactions
+    for (let i = 0; i < incomeCount && i < nonCreditAccounts.length; i++) {
+      const account = pickRandomItem(nonCreditAccounts);
       const incomeCategory = pickRandomItem(INCOME_CATEGORIES);
       const incomeAmount = randomBetween(2500, 6000);
-      const incomeDate = buildRandomDateExcludingWeekday(
-        monthOffset,
-        WEEKDAY_WITHOUT_TRANSACTIONS
-      );
+      const incomeDate = buildRandomTimeForDate(targetDate, isToday);
 
       await transactionRepository.create({
         account_id: account.id,
         category_id: categoryMap.get(incomeCategory) ?? null,
         amount: incomeAmount,
         type: 'income',
-        date: incomeDate,
+        date: incomeDate.toISOString(),
         note: `${incomeCategory} payout`,
         payment_mode: 'bank-transfer',
         tag_ids: pickRandomTags(tagMap, 1),
       });
 
-      monthlyTotal += incomeAmount;
       transactionCount++;
     }
 
-    // Expense transactions until monthly total is within desired range
-    let safetyCounter = 0;
-    while (monthlyTotal < monthlyTarget && safetyCounter < 200) {
-      safetyCounter++;
-
+    // Generate expense transactions to reach TRANSACTIONS_PER_DAY
+    const remainingTransactions = TRANSACTIONS_PER_DAY - incomeCount;
+    for (let i = 0; i < remainingTransactions; i++) {
       const account = pickRandomItem(accounts);
       const expenseCategory = pickRandomItem(EXPENSE_CATEGORIES);
       const expenseAmount = randomBetween(
-        40,
-        account.type === 'credit' ? 700 : 450
+        20,
+        account.type === 'credit' ? 800 : 500
       );
-      const expenseDate = buildRandomDateExcludingWeekday(
-        monthOffset,
-        WEEKDAY_WITHOUT_TRANSACTIONS
-      );
+      const expenseDate = buildRandomTimeForDate(targetDate, isToday);
 
       await transactionRepository.create({
         account_id: account.id,
         category_id: categoryMap.get(expenseCategory) ?? null,
         amount: expenseAmount,
         type: 'expense',
-        date: expenseDate,
+        date: expenseDate.toISOString(),
         note: `${expenseCategory} expense`,
         payment_mode: pickRandomItem(PAYMENT_MODES),
         tag_ids: pickRandomTags(tagMap, 2),
       });
 
-      monthlyTotal += expenseAmount;
       transactionCount++;
     }
   }
 
+  console.log(`[dummy-data] Completed! Generated ${transactionCount} transactions.`);
   return transactionCount;
 }
 

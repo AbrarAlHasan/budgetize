@@ -10,10 +10,12 @@ const QUERY_KEYS = {
 };
 
 export function useAccountBalances() {
-  const incomeEnabled = useSettingsStore((state) => state.incomeCalculationEnabled);
+  const incomeEnabled = useSettingsStore((state) => state.settings.incomeCalculationEnabled);
 
   return useQuery({
     queryKey: [...QUERY_KEYS.balances(), incomePreferenceKey(incomeEnabled)],
+    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
+    gcTime: 1000 * 60 * 10, // Keep in cache for 10 minutes
     queryFn: async (): Promise<Map<number, number>> => {
       const startTime = Date.now();
       console.log('[Performance] useAccountBalances query started');

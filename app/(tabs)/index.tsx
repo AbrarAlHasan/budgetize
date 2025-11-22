@@ -217,41 +217,58 @@ export default function DashboardScreen() {
         const tagsMap = new Map<number, Array<{ id: number; name: string }>>();
         const categoriesMap = new Map<number, string>();
 
-        // Only process the transactions we're displaying (already limited to 10 by query)
-        for (const transaction of transactions) {
-          // Load tags (including deleted ones)
-          const tags = await transactionTagRepository.findByTransactionId(
-            transaction.id
-          );
-          const tagDetails = await Promise.all(
-            tags.map(async (tt) => {
-              const tag = await tagRepository.findByIdIncludingDeleted(
-                tt.tag_id
-              );
-              if (!tag) return null;
-              const decryptedTag = await tagRepository.decryptTag(tag);
-              return { id: decryptedTag.id, name: decryptedTag.name };
+        // Collect all transaction IDs and category IDs first
+        const transactionIds = transactions.map(t => t.id);
+        const categoryIds = transactions
+          .map(t => t.category_id)
+          .filter((id): id is number => id !== null && id !== 0);
+        
+        // Load all transaction tags in parallel
+        const allTransactionTags = await Promise.all(
+          transactionIds.map(id => transactionTagRepository.findByTransactionId(id))
+        );
+        
+        // Collect all unique tag IDs
+        const tagIdsSet = new Set<number>();
+        allTransactionTags.forEach(tags => {
+          tags.forEach(tt => tagIdsSet.add(tt.tag_id));
+        });
+        const tagIds = Array.from(tagIdsSet);
+        
+        // Batch fetch all tags and categories
+        const [allTags, allCategories] = await Promise.all([
+          tagIds.length > 0 ? tagRepository.findByIdsIncludingDeleted(tagIds) : Promise.resolve([]),
+          categoryIds.length > 0 ? categoryRepository.findByIdsIncludingDeleted(categoryIds) : Promise.resolve([]),
+        ]);
+        
+        // Decrypt all tags and categories in parallel
+        const [decryptedTags, decryptedCategories] = await Promise.all([
+          tagRepository.decryptTags(allTags),
+          categoryRepository.decryptCategories(allCategories),
+        ]);
+        
+        // Create lookup maps
+        const tagMap = new Map(decryptedTags.map(t => [t.id, t]));
+        const categoryMap = new Map(decryptedCategories.map(c => [c.id, c]));
+        
+        // Map tags and categories back to transactions
+        transactions.forEach((transaction, index) => {
+          const transactionTagIds = allTransactionTags[index];
+          const tagDetails = transactionTagIds
+            .map(tt => {
+              const tag = tagMap.get(tt.tag_id);
+              return tag ? { id: tag.id, name: tag.name } : null;
             })
-          );
-          tagsMap.set(
-            transaction.id,
-            tagDetails.filter(
-              (t): t is { id: number; name: string } => t !== null
-            )
-          );
-
-          // Load category (including deleted ones)
+            .filter((t): t is { id: number; name: string } => t !== null);
+          tagsMap.set(transaction.id, tagDetails);
+          
           if (transaction.category_id) {
-            const category = await categoryRepository.findByIdIncludingDeleted(
-              transaction.category_id
-            );
+            const category = categoryMap.get(transaction.category_id);
             if (category) {
-              const decryptedCategory =
-                await categoryRepository.decryptCategory(category);
-              categoriesMap.set(transaction.id, decryptedCategory.name);
+              categoriesMap.set(transaction.id, category.name);
             }
           }
-        }
+        });
         setTransactionTags(tagsMap);
         setTransactionCategories(categoriesMap);
       };
