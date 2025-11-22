@@ -148,16 +148,16 @@ export default function AddAccountScreen() {
         });
         Alert.alert("Success", "Account updated successfully");
       } else {
-        await createAccount.mutateAsync({
-          name: name.trim(),
-          type,
-          bank_name: bankName.trim() || null,
-          credit_limit: creditLimit ? parseFloat(creditLimit) : null,
+      await createAccount.mutateAsync({
+        name: name.trim(),
+        type,
+        bank_name: bankName.trim() || null,
+        credit_limit: creditLimit ? parseFloat(creditLimit) : null,
           billing_start_date: billingStartDate?.toISOString() || null,
           billing_end_date: billingEndDate?.toISOString() || null,
           payment_due_date: paymentDueDate?.toISOString() || null,
-        });
-        Alert.alert("Success", "Account created successfully");
+      });
+      Alert.alert("Success", "Account created successfully");
       }
       router.back();
     } catch (error) {
@@ -193,8 +193,8 @@ export default function AddAccountScreen() {
   return (
     <View className="flex-1 bg-gray-50 dark:bg-black">
       <Stack.Screen
-        options={{
-          headerShown: true,
+        options={{ 
+          headerShown: true, 
           headerTitle: isEditMode ? "Edit Account" : "New Account",
           headerBackTitle: originLabel,
           headerStyle: {
@@ -227,8 +227,8 @@ export default function AddAccountScreen() {
             >
               <TextInput
                 ref={nameInputRef}
-                value={name}
-                onChangeText={setName}
+              value={name}
+              onChangeText={setName}
                 placeholder="Account Name"
                 placeholderTextColor="#9CA3AF"
                 multiline
@@ -420,8 +420,8 @@ export default function AddAccountScreen() {
                         </Text>
                         <TextInput
                           ref={bankNameInputRef}
-                          value={bankName}
-                          onChangeText={setBankName}
+              value={bankName}
+              onChangeText={setBankName}
                           placeholder="Enter bank name"
                           placeholderTextColor="#9CA3AF"
                           className="text-base font-semibold text-gray-900 dark:text-gray-100"
@@ -433,7 +433,7 @@ export default function AddAccountScreen() {
                 </TouchableWithoutFeedback>
 
                 {/* Credit Limit - Only for credit cards */}
-                {type === "credit" && (
+            {type === "credit" && (
                   <TouchableWithoutFeedback onPress={handleBlurInput}>
                     <View className="flex-row items-center justify-between py-4">
                       <View className="flex-row items-center flex-1">
@@ -450,11 +450,11 @@ export default function AddAccountScreen() {
                             </Text>
                             <TextInput
                               ref={creditLimitInputRef}
-                              value={creditLimit}
+                  value={creditLimit}
                               onChangeText={handleCreditLimitChange}
                               placeholder="0.00"
                               placeholderTextColor="#9CA3AF"
-                              keyboardType="numeric"
+                  keyboardType="numeric"
                               className="text-base font-semibold text-gray-900 dark:text-gray-100"
                               style={{ flex: 1, minHeight: 24 }}
                             />
@@ -540,11 +540,11 @@ export default function AddAccountScreen() {
                         : "Select date"}
                     </Text>
                   </TouchableOpacity>
-                </View>
-              </Card>
             </View>
+          </Card>
+        </View>
           )}
-        </ScrollView>
+      </ScrollView>
       </KeyboardAvoidingView>
 
       {/* Floating Action Buttons */}

@@ -10,7 +10,8 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.budgetize.app"
+      "bundleIdentifier": "com.budgetize.app",
+      "googleServicesFile": "./GoogleService-Info.plist"
     },
     "android": {
       "adaptiveIcon": {
@@ -22,7 +23,9 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "softwareKeyboardLayoutMode": "pan",
-      "package": "com.budgetize.app"
+      "package": "com.budgetize.app",
+      "googleServicesFile": "./google-services.json",
+      "versionCode": 7
     },
     "web": {
       "output": "static",
@@ -56,10 +59,16 @@
         "expo-build-properties",
         {
           "ios": {
-            "deploymentTarget": "15.5"
+            "deploymentTarget": "15.5",
+            "useFrameworks": "static",
+            "buildReactNativeFromSource": true
           }
         }
-      ]
+      ],
+      "expo-localization",
+      "@react-native-firebase/crashlytics",
+      "@react-native-firebase/app",
+      "@react-native-firebase/perf"
     ],
     "experiments": {
       "typedRoutes": true,

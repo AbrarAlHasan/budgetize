@@ -564,25 +564,25 @@ export class TransactionRepository extends BaseRepository<Transaction> {
       const batch = transactions.slice(i, i + BATCH_SIZE);
       
       // Decrypt all fields in parallel for this batch
-      const amounts = await Promise.all(
+    const amounts = await Promise.all(
         batch.map((t) => decryptAmount(t.amount))
-      );
+    );
 
-      const notes = await Promise.all(
+    const notes = await Promise.all(
         batch.map((t) => (t.note ? decrypt(t.note) : Promise.resolve(null)))
-      );
+    );
 
-      const paymentModes = await Promise.all(
+    const paymentModes = await Promise.all(
         batch.map((t) => decrypt(t.payment_mode))
-      );
+    );
 
       // Combine results for this batch
       const decryptedBatch = batch.map((t, index) => ({
-        ...t,
-        amount: amounts[index],
-        note: notes[index],
-        payment_mode: paymentModes[index],
-      }));
+      ...t,
+      amount: amounts[index],
+      note: notes[index],
+      payment_mode: paymentModes[index],
+    }));
       
       results.push(...decryptedBatch);
     }
@@ -973,12 +973,12 @@ export class TransactionRepository extends BaseRepository<Transaction> {
       const batch = results.slice(i, i + BATCH_SIZE);
       const decryptedBatch = await Promise.all(
         batch.map(async (row) => ({
-          id: row.id,
-          amount: await decryptAmount(row.amount),
-          type: row.type,
-          date: row.date,
-        }))
-      );
+        id: row.id,
+        amount: await decryptAmount(row.amount),
+        type: row.type,
+        date: row.date,
+      }))
+    );
       decryptedAmounts.push(...decryptedBatch);
     }
 
@@ -1117,12 +1117,12 @@ export class TransactionRepository extends BaseRepository<Transaction> {
       const batch = results.slice(i, i + BATCH_SIZE);
       const decryptedBatch = await Promise.all(
         batch.map(async (row) => ({
-          id: row.id,
-          amount: await decryptAmount(row.amount),
-          type: row.type,
-          date: row.date,
-        }))
-      );
+        id: row.id,
+        amount: await decryptAmount(row.amount),
+        type: row.type,
+        date: row.date,
+      }))
+    );
       decryptedAmounts.push(...decryptedBatch);
     }
 
@@ -1496,7 +1496,7 @@ export class TransactionRepository extends BaseRepository<Transaction> {
       const batch = results.slice(i, i + BATCH_SIZE);
       const decryptedBatch = await Promise.all(
         batch.map(async (row) => await decryptAmount(row.amount))
-      );
+    );
       total += decryptedBatch.reduce((sum, amount) => sum + amount, 0);
     }
 

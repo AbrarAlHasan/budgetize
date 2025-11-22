@@ -172,16 +172,16 @@ export default function AddTransactionScreen() {
         });
         Alert.alert("Success", "Transaction updated successfully");
       } else {
-        await createTransaction.mutateAsync({
-          account_id: accountId,
-          category_id: categoryId,
-          amount: amountValue,
-          type,
-          date: selectedDateWithTime.toISOString(),
-          note: note.trim() || null,
-          payment_mode: paymentMode.trim(),
-          tag_ids: selectedTagIds.length > 0 ? selectedTagIds : undefined,
-        });
+      await createTransaction.mutateAsync({
+        account_id: accountId,
+        category_id: categoryId,
+        amount: amountValue,
+        type,
+        date: selectedDateWithTime.toISOString(),
+        note: note.trim() || null,
+        payment_mode: paymentMode.trim(),
+        tag_ids: selectedTagIds.length > 0 ? selectedTagIds : undefined,
+      });
         Alert.alert("Success", "Transaction created successfully");
       }
       router.back();
@@ -399,11 +399,11 @@ export default function AddTransactionScreen() {
                 {/* Amount Input */}
                 <TextInput
                   ref={amountInputRef}
-                  value={amount}
+            value={amount}
                   onChangeText={handleAmountChange}
                   placeholder="0.00"
                   placeholderTextColor="#9CA3AF"
-                  keyboardType="numeric"
+            keyboardType="numeric"
                   className="text-gray-400 dark:text-gray-500"
                   style={{ 
                     fontSize: 48,
@@ -522,12 +522,12 @@ export default function AddTransactionScreen() {
                   </Text>
                 </View>
                 <TextInput
-                  value={paymentMode}
-                  onChangeText={setPaymentMode}
+            value={paymentMode}
+            onChangeText={setPaymentMode}
                   placeholder="Cash, Card, UPI..."
                   placeholderTextColor="#9CA3AF"
                   className="bg-gray-50 dark:bg-gray-800 rounded-xl px-4 py-3 text-base text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-700"
-                />
+          />
               </View>
 
               <View>
@@ -538,12 +538,12 @@ export default function AddTransactionScreen() {
                   </Text>
                 </View>
                 <TextInput
-                  value={note}
-                  onChangeText={setNote}
+            value={note}
+            onChangeText={setNote}
                   placeholder="Add a note..."
                   placeholderTextColor="#9CA3AF"
-                  multiline
-                  numberOfLines={3}
+            multiline
+            numberOfLines={3}
                   className="bg-gray-50 dark:bg-gray-800 rounded-xl px-4 py-3 text-base text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-700"
                   style={{ minHeight: 80, textAlignVertical: "top" }}
                 />
@@ -558,30 +558,30 @@ export default function AddTransactionScreen() {
                 <View className="flex-row items-center">
                   <Ionicons name="pricetags" size={20} color="#6B7280" />
                   <Text className="text-xs text-gray-500 dark:text-gray-400 ml-2 uppercase tracking-wide font-semibold">
-                    Tags
-                  </Text>
+                Tags
+              </Text>
                 </View>
-                <TouchableOpacity
-                  onPress={handleOpenAddTag}
+              <TouchableOpacity
+                onPress={handleOpenAddTag}
                   className="flex-row items-center gap-1.5 bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 rounded-lg"
-                  activeOpacity={0.7}
-                >
+                activeOpacity={0.7}
+              >
                   <Ionicons name="add" size={18} color="#3B82F6" />
-                  <Text className="text-sm font-semibold text-blue-600 dark:text-blue-400">
+                <Text className="text-sm font-semibold text-blue-600 dark:text-blue-400">
                     Add
-                  </Text>
-                </TouchableOpacity>
-              </View>
+                </Text>
+              </TouchableOpacity>
+            </View>
 
             {displayTags && displayTags.length > 0 ? (
               <View className="flex-row flex-wrap gap-2">
                 {displayTags.map((tag) => (
                   <View key={tag.id} className="flex-col items-start gap-1">
-                    <TagChip
-                      name={tag.name}
-                      selected={selectedTagIds.includes(tag.id)}
-                      onPress={() => toggleTag(tag.id)}
-                    />
+                  <TagChip
+                    name={tag.name}
+                    selected={selectedTagIds.includes(tag.id)}
+                    onPress={() => toggleTag(tag.id)}
+                  />
                     {isEditMode && 'isDeleted' in tag && tag.isDeleted && (
                       <View className="bg-gray-200 dark:bg-gray-700 px-2 py-0.5 rounded ml-1">
                         <Text className="text-xs text-gray-600 dark:text-gray-400">
@@ -601,7 +601,7 @@ export default function AddTransactionScreen() {
                 />
                 <Text className="text-sm text-gray-400 dark:text-gray-500 mt-2">
                   No tags yet
-                </Text>
+              </Text>
               </View>
             )}
             </Card>
@@ -732,8 +732,8 @@ export default function AddTransactionScreen() {
       </View>
 
       {/* Add Tag Bottom Sheet */}
-      <AddTagBottomSheet
-        ref={addTagBottomSheetRef}
+      <AddTagBottomSheet 
+        ref={addTagBottomSheetRef} 
         onTagCreated={handleTagCreated}
       />
     </View>

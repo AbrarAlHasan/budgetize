@@ -614,12 +614,12 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
           }
           // Render regular slides for other steps
           return (
-            <OnboardingSlide
-              key={step.id}
-              step={step}
-              index={index}
-              scrollX={scrollX}
-            />
+          <OnboardingSlide
+            key={step.id}
+            step={step}
+            index={index}
+            scrollX={scrollX}
+          />
           );
         })}
       </Animated.ScrollView>
@@ -651,16 +651,16 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
 
         {/* Action Button - Hide on data setup slide */}
         {currentIndex !== ONBOARDING_STEPS.length - 1 && (
-          <Animated.View style={[styles.buttonContainer, buttonAnimatedStyle]}>
-            <TouchableOpacity
-              style={styles.button}
-              onPress={handleNext}
-              activeOpacity={0.8}
-            >
+        <Animated.View style={[styles.buttonContainer, buttonAnimatedStyle]}>
+          <TouchableOpacity
+            style={styles.button}
+            onPress={handleNext}
+            activeOpacity={0.8}
+          >
               <Text style={styles.buttonText}>Next</Text>
               <Ionicons name="arrow-forward" size={24} color="#FFFFFF" />
-            </TouchableOpacity>
-          </Animated.View>
+          </TouchableOpacity>
+        </Animated.View>
         )}
 
         {/* Trust Indicators - Show on second to last slide */}

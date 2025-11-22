@@ -78,25 +78,25 @@ function buildRandomTimeForDate(targetDate: Date, isToday: boolean): Date {
   
   if (isToday) {
     const now = new Date();
-    const maxHours = now.getHours();
-    const maxMinutes = now.getMinutes();
+      const maxHours = now.getHours();
+      const maxMinutes = now.getMinutes();
     const maxSeconds = now.getSeconds();
     
-    const hours = Math.floor(Math.random() * (maxHours + 1));
-    const minutes = hours === maxHours 
-      ? Math.floor(Math.random() * (maxMinutes + 1))
-      : Math.floor(Math.random() * 60);
+      const hours = Math.floor(Math.random() * (maxHours + 1));
+      const minutes = hours === maxHours 
+        ? Math.floor(Math.random() * (maxMinutes + 1))
+        : Math.floor(Math.random() * 60);
     const seconds = hours === maxHours && minutes === maxMinutes
       ? Math.floor(Math.random() * (maxSeconds + 1))
       : Math.floor(Math.random() * 60);
     
     date.setHours(hours, minutes, seconds, Math.floor(Math.random() * 1000));
-  } else {
-    // For past dates, use random time during the day
-    date.setHours(
-      Math.floor(Math.random() * 24),
-      Math.floor(Math.random() * 60),
-      Math.floor(Math.random() * 60),
+    } else {
+      // For past dates, use random time during the day
+      date.setHours(
+        Math.floor(Math.random() * 24),
+        Math.floor(Math.random() * 60),
+        Math.floor(Math.random() * 60),
       Math.floor(Math.random() * 1000)
     );
   }
@@ -208,7 +208,7 @@ async function seedTransactions(
     if (targetDate > now) {
       break;
     }
-    
+
     const isToday = targetDate.toDateString() === now.toDateString();
     
     // Progress logging every 100 days

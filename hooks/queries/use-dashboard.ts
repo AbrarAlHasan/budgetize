@@ -140,7 +140,7 @@ export function useCategoryBreakdown(month?: Date, useFilters: boolean = false) 
       
       // Decrypt all categories in parallel
       const decryptedCategories = await categoryRepository.decryptCategories(allCategories);
-      
+
       const categoryMap = new Map(
         decryptedCategories.map((c) => [c.id, c])
       );

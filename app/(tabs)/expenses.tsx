@@ -154,12 +154,12 @@ export default function ExpensesScreen() {
             .filter((t): t is { id: number; name: string } => t !== null);
           newTagsMap.set(transaction.id, tagDetails);
           
-          if (transaction.category_id) {
+              if (transaction.category_id) {
             const category = categoryMap.get(transaction.category_id);
-            if (category) {
+                if (category) {
               newCategoriesMap.set(transaction.id, category.name);
-            }
-          }
+                }
+              }
         });
 
         // Merge with existing maps

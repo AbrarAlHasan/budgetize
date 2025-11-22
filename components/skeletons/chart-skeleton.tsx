@@ -47,11 +47,11 @@ export function ChartSkeleton({
                   maxHeight: '100%',
                 }}
               >
-                {showValues && (
+              {showValues && (
                   <View style={{ marginBottom: 4, height: 12, width: '100%', alignItems: 'center' }}>
-                    <SkeletonBase width={40} height={12} borderRadius={4} />
+                <SkeletonBase width={40} height={12} borderRadius={4} />
                   </View>
-                )}
+              )}
                 <View 
                   className="w-full items-center justify-end"
                   style={{ 
@@ -61,11 +61,11 @@ export function ChartSkeleton({
                     maxHeight: '100%',
                   }}
                 >
-                  <SkeletonBase
-                    width="80%"
+              <SkeletonBase
+                width="80%"
                     height={Math.max(barHeight, 4)}
-                    borderRadius={4}
-                  />
+                borderRadius={4}
+              />
                 </View>
               </View>
             );
