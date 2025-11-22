@@ -10,17 +10,18 @@ interface BackupMetadata {
 }
 
 /**
- * Complete backup function that exports all application data:
+ * Generic function that creates a backup ZIP file and returns the file location.
+ * This function only creates the backup file - it does NOT share it.
+ * 
+ * Exports all application data:
  * - SQLite database (with WAL checkpoint)
  * - MMKV storage directory
  * - Encryption key from SecureStore
  * - Metadata (timestamp, version)
  *
- * Packages everything into a timestamped ZIP file and shares it.
- *
  * @returns Path to the created backup ZIP file, or null on failure
  */
-export async function backupAppData(): Promise<string | null> {
+export async function createBackupFile(): Promise<string | null> {
   let tempBackupDir: Directory | null = null;
 
   try {
@@ -173,23 +174,9 @@ export async function backupAppData(): Promise<string | null> {
 
     // 8. Zip the backup-temp directory
     await zip(tempBackupDir.uri, backupZipPath);
-    console.log("✓ Backup ZIP created:", tempBackupDir.uri);
+    console.log("✓ Backup ZIP created:", backupZipPath);
 
-    // 9. Share the backup via system share dialog
-    try {
-      const isAvailable = await Sharing.isAvailableAsync();
-      if (isAvailable) {
-        await Sharing.shareAsync(backupZipPath);
-        console.log("✓ Backup shared via system dialog");
-      } else {
-        console.warn("⚠ Sharing not available on this platform");
-      }
-    } catch (error) {
-      console.warn("⚠ Failed to share backup:", error);
-      // Continue anyway - backup file is still created
-    }
-
-    // 10. Clean up temporary directory
+    // 9. Clean up temporary directory
     if (tempBackupDir.exists) {
       try {
         tempBackupDir.delete();
@@ -199,7 +186,7 @@ export async function backupAppData(): Promise<string | null> {
       }
     }
 
-    console.log("✓ Backup completed successfully");
+    console.log("✓ Backup file created successfully");
     return backupZipPath;
   } catch (error) {
     console.error("ERROR IN BACKUP:", error);
@@ -213,6 +200,42 @@ export async function backupAppData(): Promise<string | null> {
       }
     }
 
+    return null;
+  }
+}
+
+/**
+ * Complete backup function that exports all application data and shares it.
+ * This function creates a backup and automatically opens the share dialog.
+ * 
+ * @deprecated Use createBackupFile() and Sharing.shareAsync() separately for more control
+ * @returns Path to the created backup ZIP file, or null on failure
+ */
+export async function backupAppData(): Promise<string | null> {
+  try {
+    // 1. Create the backup file
+    const backupPath = await createBackupFile();
+    if (!backupPath) {
+      return null;
+    }
+
+    // 2. Share the backup via system share dialog
+    try {
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (isAvailable) {
+        await Sharing.shareAsync(backupPath);
+        console.log("✓ Backup shared via system dialog");
+      } else {
+        console.warn("⚠ Sharing not available on this platform");
+      }
+    } catch (error) {
+      console.warn("⚠ Failed to share backup:", error);
+      // Continue anyway - backup file is still created
+    }
+
+    return backupPath;
+  } catch (error) {
+    console.error("ERROR IN BACKUP:", error);
     return null;
   }
 }

@@ -1,3 +1,5 @@
+import { BackupList } from "@/components/cloud-backup/backup-list";
+import { LoginButton } from "@/components/cloud-backup/login-button";
 import { BottomSheetSelect } from "@/components/ui/bottom-sheet-select";
 import { Card } from "@/components/ui/card";
 import {
@@ -5,19 +7,23 @@ import {
   requestNotificationPermissions,
 } from "@/services/notifications";
 import { onboardingStorage } from "@/storage/onboarding";
+import { useAuthStore } from "@/store/auth-store";
 import { useNotificationStore } from "@/store/notification-store";
 import { useSettingsStore } from "@/store/settings-store";
-import { backupAppData, restoreAppData } from "@/utils/backup";
+import { createBackupFile, restoreAppData } from "@/utils/backup";
+import { clearDatabase } from "@/utils/clear-database";
+import { uploadBackupToCloud } from "@/utils/cloud-backup";
 import { getCurrencyOptions, getCurrencySymbol } from "@/utils/currencies";
 import { resetAppWithDummyData } from "@/utils/dummy-data";
-import { clearDatabase } from "@/utils/clear-database";
-import { useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
+import { useQueryClient } from "@tanstack/react-query";
 import { Paths } from "expo-file-system";
 import { router } from "expo-router";
+import * as Sharing from "expo-sharing";
 import { colorScheme } from "nativewind";
 import { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   ScrollView,
   Switch,
@@ -38,17 +44,21 @@ export default function SettingsScreen() {
     updateCurrency,
     updateTheme,
   } = useSettingsStore();
+  const { user, isAuthenticated, isLoading: authLoading, initialize: initializeAuth, logout } = useAuthStore();
   const [permissionGranted, setPermissionGranted] = useState(false);
   const [isSeedingDummyData, setIsSeedingDummyData] = useState(false);
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
   const [isClearingDatabase, setIsClearingDatabase] = useState(false);
+  const [isUploadingToCloud, setIsUploadingToCloud] = useState(false);
+  const [backupListRefreshTrigger, setBackupListRefreshTrigger] = useState(0);
 
   useEffect(() => {
     console.log(Paths.document.uri);
     loadPreferences();
     loadSettings();
     checkPermissions();
+    initializeAuth();
   }, []);
 
   const checkPermissions = async () => {
@@ -174,16 +184,36 @@ export default function SettingsScreen() {
 
     try {
       setIsBackingUp(true);
-      const zipPath = await backupAppData();
-      if (zipPath) {
-        Alert.alert(
-          "Backup Ready",
-          "backup.zip was generated and the system share dialog opened. Save it to a safe location."
-        );
-      } else {
+      // 1. Create the backup file
+      const zipPath = await createBackupFile();
+      if (!zipPath) {
         Alert.alert(
           "Backup Failed",
           "Could not create the backup. Please try again."
+        );
+        return;
+      }
+
+      // 2. Open the share dialog
+      try {
+        const isAvailable = await Sharing.isAvailableAsync();
+        if (isAvailable) {
+          await Sharing.shareAsync(zipPath);
+          Alert.alert(
+            "Backup Ready",
+            "Backup file created and share dialog opened. Save it to a safe location."
+          );
+        } else {
+          Alert.alert(
+            "Backup Created",
+            `Backup file created at: ${zipPath}\nSharing is not available on this platform.`
+          );
+        }
+      } catch (shareError) {
+        console.error("Share error:", shareError);
+        Alert.alert(
+          "Backup Created",
+          `Backup file created at: ${zipPath}\nFailed to open share dialog.`
         );
       }
     } catch (error) {
@@ -592,6 +622,149 @@ export default function SettingsScreen() {
               </View>
               <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
             </TouchableOpacity>
+          </Card>
+
+          {/* Account Section */}
+          <Card className="mb-4">
+            <Text className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+              Account
+            </Text>
+
+            {!isAuthenticated ? (
+              <View>
+                <LoginButton />
+                <Text className="text-xs text-gray-500 dark:text-gray-400 mt-3 text-center">
+                  Login to enable cloud backup features
+                </Text>
+              </View>
+            ) : (
+              <View>
+                <View className="flex-row items-center justify-between mb-4 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                  <View className="flex-row items-center gap-3 flex-1">
+                    <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+                    <View className="flex-1">
+                      <Text className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                        Logged in as {user?.email || 'User'}
+                      </Text>
+                      <Text className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                        Cloud backup is enabled
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  onPress={async () => {
+                    const { error } = await logout();
+                    if (error) {
+                      Alert.alert('Error', 'Failed to logout. Please try again.');
+                    }
+                  }}
+                  className="flex-row items-center justify-center bg-red-600 dark:bg-red-500 px-6 py-3 rounded-xl"
+                >
+                  <Ionicons name="log-out" size={18} color="#fff" style={{ marginRight: 8 }} />
+                  <Text className="text-white font-semibold text-base">Logout</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </Card>
+
+          {/* Cloud Backup Section */}
+          <Card className="mb-4">
+            <Text className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+              Cloud Backup
+            </Text>
+
+            {!isAuthenticated ? (
+              <View>
+                <View className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg mb-4">
+                  <View className="flex-row items-start gap-3">
+                    <Ionicons name="warning" size={20} color="#F59E0B" />
+                    <Text className="text-sm text-yellow-800 dark:text-yellow-200 flex-1">
+                      To use cloud backup, please login with your Google account. This allows you to automatically backup your data to the cloud and restore from any of your latest 3 backups.
+                    </Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  disabled={true}
+                  className="flex-row items-center justify-between py-3 mb-3 opacity-50"
+                >
+                  <View className="flex-row items-center gap-3 flex-1">
+                    <View className="bg-blue-100 dark:bg-blue-900/30 rounded-full p-2">
+                      <Ionicons name="cloud-upload" size={20} color="#3B82F6" />
+                    </View>
+                    <View className="flex-1">
+                      <Text className="text-base font-medium text-gray-900 dark:text-gray-100">
+                        Upload Backup to Cloud
+                      </Text>
+                      <Text className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                        Automatically backup to cloud (keeps latest 3 backups)
+                      </Text>
+                    </View>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View>
+                <TouchableOpacity
+                  onPress={async () => {
+                    if (!user?.id) {
+                      Alert.alert('Error', 'User ID not found. Please login again.');
+                      return;
+                    }
+
+                    setIsUploadingToCloud(true);
+                    try {
+                      const { error, success } = await uploadBackupToCloud(user.id);
+                      if (error || !success) {
+                        Alert.alert('Error', 'Failed to upload backup to cloud. Please try again.');
+                        return;
+                      }
+                      Alert.alert('Success', 'Backup uploaded to cloud successfully!');
+                      // Trigger backup list refresh
+                      setBackupListRefreshTrigger(prev => prev + 1);
+                    } catch (error) {
+                      console.error('Error uploading to cloud:', error);
+                      Alert.alert('Error', 'An unexpected error occurred.');
+                    } finally {
+                      setIsUploadingToCloud(false);
+                    }
+                  }}
+                  className="flex-row items-center justify-between py-3 mb-4"
+                  activeOpacity={0.7}
+                  disabled={isUploadingToCloud}
+                  style={{ opacity: isUploadingToCloud ? 0.6 : 1 }}
+                >
+                  <View className="flex-row items-center gap-3 flex-1">
+                    <View className="bg-blue-100 dark:bg-blue-900/30 rounded-full p-2">
+                      {isUploadingToCloud ? (
+                        <ActivityIndicator size="small" color="#3B82F6" />
+                      ) : (
+                        <Ionicons name="cloud-upload" size={20} color="#3B82F6" />
+                      )}
+                    </View>
+                    <View className="flex-1">
+                      <Text className="text-base font-medium text-gray-900 dark:text-gray-100">
+                        Upload Backup to Cloud
+                      </Text>
+                      <Text className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                        Automatically backup to cloud (keeps latest 3 backups)
+                      </Text>
+                      {isUploadingToCloud && (
+                        <Text className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                          Uploading backup...
+                        </Text>
+                      )}
+                    </View>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+                </TouchableOpacity>
+
+                <View className="mt-2">
+                  {user?.id && <BackupList userId={user.id} refreshTrigger={backupListRefreshTrigger} />}
+                </View>
+              </View>
+            )}
           </Card>
 
           {/* Developer Options */}

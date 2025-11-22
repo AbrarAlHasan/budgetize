@@ -10,10 +10,13 @@ import { OnboardingScreen } from '@/components/onboarding/onboarding-screen';
 import { queryClient } from '@/hooks/use-query-client';
 import { onboardingStorage } from '@/storage/onboarding';
 import { useSettingsStore } from '@/store/settings-store';
+import { useAuthStore } from '@/store/auth-store';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { useColorScheme, colorScheme } from 'nativewind';
 import { useEffect, useState, useRef } from 'react';
 import { ActivityIndicator, View } from 'react-native';
+import * as Linking from 'expo-linking';
+import { supabase } from '@/services/supabase/client';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -29,6 +32,10 @@ export default function RootLayout() {
   useEffect(() => {
     const initializeApp = async () => {
       try {
+        // Initialize auth
+        const { initialize: initializeAuth } = useAuthStore.getState();
+        await initializeAuth();
+        
         // Load settings first
         await loadSettings();
         
@@ -65,6 +72,12 @@ export default function RootLayout() {
     };
     
     initializeApp();
+    
+    // Cleanup deep link listener
+    return () => {
+      // Note: Linking.removeEventListener is deprecated, but we keep the subscription
+      // The subscription will be cleaned up when component unmounts
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

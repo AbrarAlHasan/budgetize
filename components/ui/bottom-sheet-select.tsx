@@ -49,7 +49,7 @@ export const BottomSheetSelect = forwardRef<
     ref
   ) => {
     const colorScheme = useColorScheme();
-    const isDark = colorScheme === 'dark';
+    const isDark = colorScheme.colorScheme === 'dark';
     const bottomSheetRef = useRef<BottomSheetModalMethods>(null);
     const selectedOption = options.find((opt) => opt.value === value);
 

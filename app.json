@@ -5,12 +5,12 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "budgetize",
+    "scheme": "com.budgetize.app",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.abrarhasanprogrammer.budgetize"
+      "bundleIdentifier": "com.budgetize.app"
     },
     "android": {
       "adaptiveIcon": {
@@ -22,7 +22,7 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "softwareKeyboardLayoutMode": "pan",
-      "package": "com.abrarhasanprogrammer.budgetize"
+      "package": "com.budgetize.app"
     },
     "web": {
       "output": "static",
@@ -69,7 +69,8 @@
       "router": {},
       "eas": {
         "projectId": "2b25d1c5-c3e0-4c9a-b902-31bd8c8f2dae"
-      }
+      },
+      "googleClientId": "992503429521-t5lvig90604vitb0tbk9es2bsm6puvrv.apps.googleusercontent.com"
     },
     "owner": "abrarhasanprogrammer"
   }
