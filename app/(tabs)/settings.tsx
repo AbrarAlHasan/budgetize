@@ -21,7 +21,7 @@ import { Paths } from "expo-file-system";
 import { router } from "expo-router";
 import * as Sharing from "expo-sharing";
 import { colorScheme } from "nativewind";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -52,6 +52,9 @@ export default function SettingsScreen() {
   const [isClearingDatabase, setIsClearingDatabase] = useState(false);
   const [isUploadingToCloud, setIsUploadingToCloud] = useState(false);
   const [backupListRefreshTrigger, setBackupListRefreshTrigger] = useState(0);
+  const [showDeveloperOptions, setShowDeveloperOptions] = useState(false);
+  const [settingsTapCount, setSettingsTapCount] = useState(0);
+  const tapTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     console.log(Paths.document.uri);
@@ -93,6 +96,36 @@ export default function SettingsScreen() {
     { label: "3 times per day", value: 3 },
     { label: "4 times per day", value: 4 },
   ];
+
+  const handleSettingsHeaderTap = () => {
+    // Clear existing timeout
+    if (tapTimeoutRef.current) {
+      clearTimeout(tapTimeoutRef.current);
+    }
+
+    const newCount = settingsTapCount + 1;
+    setSettingsTapCount(newCount);
+
+    // If 5 taps reached, show developer options
+    if (newCount >= 5) {
+      setShowDeveloperOptions(true);
+      setSettingsTapCount(0);
+    } else {
+      // Reset counter after 2 seconds of no taps
+      tapTimeoutRef.current = setTimeout(() => {
+        setSettingsTapCount(0);
+      }, 2000);
+    }
+  };
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (tapTimeoutRef.current) {
+        clearTimeout(tapTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const themeOptions = [
     { label: "Light Mode", value: "light" },
@@ -334,9 +367,14 @@ export default function SettingsScreen() {
         <View className="px-5 pt-6 pb-6">
           {/* Header */}
           <View className="mb-6">
-            <Text className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-1">
-              Settings
-            </Text>
+            <TouchableOpacity
+              onPress={handleSettingsHeaderTap}
+              activeOpacity={1}
+            >
+              <Text className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-1">
+                Settings
+              </Text>
+            </TouchableOpacity>
             <Text className="text-sm text-gray-500 dark:text-gray-400">
               Manage your app preferences
             </Text>
@@ -768,7 +806,7 @@ export default function SettingsScreen() {
           </Card>
 
           {/* Developer Options */}
-          {true && (
+          {showDeveloperOptions && (
             <Card className="mb-4">
               <Text className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
                 Developer Options
