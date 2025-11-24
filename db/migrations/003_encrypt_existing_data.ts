@@ -1,6 +1,6 @@
-import * as SQLite from 'expo-sqlite';
 import { encrypt, encryptAmount, isEncrypted } from '@/services/encryption';
-import { log } from '@/utils/logger';
+import { log, logError } from '@/utils/logger';
+import * as SQLite from 'expo-sqlite';
 
 /**
  * Migration to encrypt existing data in all tables

@@ -1,5 +1,6 @@
-import { create } from 'zustand';
+import { logError } from '@/utils/logger';
 import * as SecureStore from 'expo-secure-store';
+import { create } from 'zustand';
 
 const SETTINGS_STORE_KEY = 'app_settings';
 

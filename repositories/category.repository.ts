@@ -1,8 +1,8 @@
-import { BaseRepository } from './base.repository';
 import { Category, CreateCategoryInput, UpdateCategoryInput } from '@/db/schema/types';
-import { encrypt, decrypt } from '@/services/encryption';
 import { getDatabase } from '@/db/sqlite/db';
-import * as SQLite from 'expo-sqlite';
+import { decrypt, encrypt } from '@/services/encryption';
+import { logError } from '@/utils/logger';
+import { BaseRepository } from './base.repository';
 
 export class CategoryRepository extends BaseRepository<Category> {
   protected tableName = 'categories';

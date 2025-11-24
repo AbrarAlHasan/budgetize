@@ -1,55 +1,93 @@
-import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useQuery } from '@tanstack/react-query';
-import Animated, { useSharedValue, useAnimatedStyle, withTiming, FadeIn, FadeOut } from 'react-native-reanimated';
-import { transactionRepository } from '@/repositories/transaction.repository';
-import { useSettingsStore } from '@/store/settings-store';
-import { filterTransactionsByIncomePreference } from '@/utils/income-preference';
-import { getCurrencySymbol } from '@/utils/currencies';
-import { router } from 'expo-router';
-import { TransactionItem } from '@/components/transaction-item';
-import { RecentTransactionsSkeleton } from '@/components/skeletons';
-import { useAccounts } from '@/hooks/queries/use-accounts';
-import { useCategories } from '@/hooks/queries/use-categories';
-import { categoryRepository } from '@/repositories/category.repository';
-import { transactionTagRepository } from '@/repositories/transaction-tag.repository';
-import { tagRepository } from '@/repositories/tag.repository';
-import { useUIStore } from '@/store/ui-store';
+import { RecentTransactionsSkeleton } from "@/components/skeletons";
+import { TransactionItem } from "@/components/transaction-item";
+import { useAccounts } from "@/hooks/queries/use-accounts";
+import { useCategories } from "@/hooks/queries/use-categories";
+import { categoryRepository } from "@/repositories/category.repository";
+import { tagRepository } from "@/repositories/tag.repository";
+import { transactionTagRepository } from "@/repositories/transaction-tag.repository";
+import { transactionRepository } from "@/repositories/transaction.repository";
+import { useSettingsStore } from "@/store/settings-store";
+import { useUIStore } from "@/store/ui-store";
+import { getCurrencySymbol } from "@/utils/currencies";
+import { filterTransactionsByIncomePreference } from "@/utils/income-preference";
+import { logPerformance } from "@/utils/logger";
+import { Ionicons } from "@expo/vector-icons";
+import { useQuery } from "@tanstack/react-query";
+import { router } from "expo-router";
+import React from "react";
+import { Text, TouchableOpacity, View } from "react-native";
+import Animated, {
+  FadeIn,
+  FadeOut,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
 
 interface AccountLatestTransactionsProps {
   accountId: number;
 }
 
-export function AccountLatestTransactions({ accountId }: AccountLatestTransactionsProps) {
+type DecryptedTransaction = Awaited<
+  ReturnType<typeof transactionRepository.decryptTransactions>
+>[number];
+
+export function AccountLatestTransactions({
+  accountId,
+}: AccountLatestTransactionsProps) {
   const { settings } = useSettingsStore();
-  const incomeCalculationEnabled = useSettingsStore((state) => state.settings.incomeCalculationEnabled);
+  const incomeCalculationEnabled = useSettingsStore(
+    (state) => state.settings.incomeCalculationEnabled
+  );
   const opacity = useSharedValue(1);
   const previousAccountId = React.useRef<number | null>(null);
   
   // Use optimized query to fetch only latest 5 transactions with keepPreviousData
-  const { data: transactions, isLoading, isFetching } = useQuery({
-    queryKey: ['account-latest-transactions', accountId],
+  const {
+    data: transactions,
+    isLoading,
+    isFetching,
+  } = useQuery<DecryptedTransaction[]>({
+    queryKey: ["account-latest-transactions", accountId],
     queryFn: async () => {
       const startTime = Date.now();
-      logPerformance(`AccountLatestTransactions query started for account ${accountId}`, 0);
+      logPerformance(
+        `AccountLatestTransactions query started for account ${accountId}`,
+        0
+      );
       
       // Fetch only latest 5 transactions directly from database
-      const rawTransactions = await transactionRepository.findLatestTransactionsForAccount(accountId, 5);
+      const rawTransactions =
+        await transactionRepository.findLatestTransactionsForAccount(
+          accountId,
+          5
+        );
       
       // Decrypt only the transactions we need
-      const decrypted = await transactionRepository.decryptTransactions(rawTransactions);
-      const filtered = filterTransactionsByIncomePreference(decrypted, incomeCalculationEnabled);
+      const decrypted = await transactionRepository.decryptTransactions(
+        rawTransactions
+      );
+      const filtered = filterTransactionsByIncomePreference(
+        decrypted,
+        incomeCalculationEnabled
+      );
       
       const endTime = Date.now();
-      logPerformance(`AccountLatestTransactions query completed`, endTime - startTime, `${filtered.length} transactions`);
+      logPerformance(
+        `AccountLatestTransactions query completed`,
+        endTime - startTime,
+        `${filtered.length} transactions`
+      );
       
       return filtered;
     },
     enabled: !!accountId,
-    keepPreviousData: true, // Keep previous data while fetching new data
+    placeholderData: (previousData) => previousData ?? [],
+    initialData: [],
     staleTime: 1000, // Consider data fresh for 1 second
   });
+
+  const safeTransactions = transactions ?? [];
 
   // Animate opacity when account changes
   React.useEffect(() => {
@@ -66,10 +104,10 @@ export function AccountLatestTransactions({ accountId }: AccountLatestTransactio
 
   // Fade in when data is ready
   React.useEffect(() => {
-    if (!isFetching && transactions) {
+    if (!isFetching && safeTransactions.length > 0) {
       opacity.value = withTiming(1, { duration: 300 });
     }
-  }, [isFetching, transactions, opacity]);
+  }, [isFetching, safeTransactions.length, opacity]);
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
@@ -87,14 +125,14 @@ export function AccountLatestTransactions({ accountId }: AccountLatestTransactio
 
   React.useEffect(() => {
     // Only load tags and categories for the transactions we actually display (max 5)
-    if (transactions && transactions.length > 0) {
+    if (safeTransactions.length > 0) {
       const loadTagsAndCategories = async () => {
         const tagsMap = new Map<number, Array<{ id: number; name: string }>>();
         const categoriesMap = new Map<number, string>();
         
         // Collect all transaction IDs and category IDs first
-        const transactionIds = transactions.map(t => t.id);
-        const categoryIds = transactions
+        const transactionIds = safeTransactions.map((t) => t.id);
+        const categoryIds = safeTransactions
           .map(t => t.category_id)
           .filter((id): id is number => id !== null && id !== 0);
         
@@ -127,7 +165,7 @@ export function AccountLatestTransactions({ accountId }: AccountLatestTransactio
         const categoryMap = new Map(decryptedCategories.map(c => [c.id, c]));
         
         // Map tags and categories back to transactions
-        transactions.forEach((transaction, index) => {
+        safeTransactions.forEach((transaction, index) => {
           const transactionTagIds = allTransactionTags[index];
           const tagDetails = transactionTagIds
             .map(tt => {
@@ -150,15 +188,13 @@ export function AccountLatestTransactions({ accountId }: AccountLatestTransactio
       };
       loadTagsAndCategories();
     }
-  }, [transactions]);
+  }, [safeTransactions]);
 
   const getAccountName = (accountId: number) => {
     return accounts?.find((a) => a.id === accountId)?.name || '';
   };
 
   // Transactions are already limited to 5 by pagination
-  const latestTransactions = transactions || [];
-
   return (
     <Animated.View 
       className="mt-5 mx-5"
@@ -173,7 +209,7 @@ export function AccountLatestTransactions({ accountId }: AccountLatestTransactio
             Latest Transactions
           </Text>
         </View>
-        {!isLoading && transactions && transactions.length >= 5 && (
+        {!isLoading && safeTransactions.length >= 5 && (
           <TouchableOpacity
             onPress={() => {
               clearFilters('expenses');
@@ -190,11 +226,11 @@ export function AccountLatestTransactions({ accountId }: AccountLatestTransactio
         )}
       </View>
 
-      {isLoading && !transactions ? (
+      {isLoading && safeTransactions.length === 0 ? (
         <RecentTransactionsSkeleton />
-      ) : latestTransactions && latestTransactions.length > 0 ? (
+      ) : safeTransactions.length > 0 ? (
         <Animated.View entering={FadeIn.duration(300)}>
-          {latestTransactions.map((transaction) => (
+          {safeTransactions.map((transaction) => (
             <TransactionItem
               key={transaction.id}
               id={transaction.id}

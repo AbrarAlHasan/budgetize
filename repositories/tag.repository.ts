@@ -1,8 +1,8 @@
-import { BaseRepository } from './base.repository';
-import { Tag, CreateTagInput, UpdateTagInput } from '@/db/schema/types';
-import { encrypt, decrypt } from '@/services/encryption';
+import { CreateTagInput, Tag, UpdateTagInput } from '@/db/schema/types';
 import { getDatabase } from '@/db/sqlite/db';
-import * as SQLite from 'expo-sqlite';
+import { decrypt, encrypt } from '@/services/encryption';
+import { logError } from '@/utils/logger';
+import { BaseRepository } from './base.repository';
 
 export class TagRepository extends BaseRepository<Tag> {
   protected tableName = 'tags';

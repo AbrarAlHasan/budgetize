@@ -209,9 +209,10 @@ export const DatePicker = forwardRef<DatePickerRef, DatePickerProps>(({
                           try {
                             const date = fromDateId(dateId);
                             const dateStart = startOfDay(date);
-                            isDisabled = 
+                            isDisabled = Boolean(
                               (minDate && isBefore(dateStart, startOfDay(minDate))) ||
-                              (maxDate && isBefore(startOfDay(maxDate), dateStart));
+                              (maxDate && isBefore(startOfDay(maxDate), dateStart))
+                            );
                           } catch (e) {
                             // If dateId is invalid, ignore
                           }

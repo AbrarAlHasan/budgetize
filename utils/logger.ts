@@ -76,3 +76,17 @@ export function logPerformance(
     customLog.debug(message);
   }
 }
+
+export function logErrorDetails(error: unknown): void {
+  if (__DEV__) {
+    customLog.error("Error:", error);
+    if (error instanceof Error) {
+      customLog.error("Error message:", error.message);
+      customLog.error("Error stack:", error.stack);
+    } else if (typeof error === "string") {
+      customLog.error("Error message:", error);
+    } else if (error && typeof error === "object" && "message" in error) {
+      customLog.error("Error message:", error.message);
+    }
+  }
+}

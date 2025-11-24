@@ -1,19 +1,19 @@
-import React, { useEffect } from "react";
-import { View } from "react-native";
+import { useColorScheme } from "nativewind";
+import { useEffect } from "react";
+import { DimensionValue, View } from "react-native";
 import Animated, {
+  Easing,
+  interpolate,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
-  withTiming,
   withSequence,
-  Easing,
-  interpolate,
+  withTiming,
 } from "react-native-reanimated";
-import { useColorScheme } from "nativewind";
 
 interface SkeletonBaseProps {
-  width?: number | string;
-  height?: number;
+  width?: DimensionValue;
+  height?: DimensionValue;
   borderRadius?: number;
   className?: string;
 }

@@ -2,26 +2,25 @@ import { ActiveFilterChips } from "@/components/filters/active-filter-chips";
 import { SpendingVelocity } from "@/components/reports/spending-velocity";
 import {
   RecentTransactionsSkeleton,
-  SpendingVelocitySkeleton,
   SummaryCardsSkeleton,
 } from "@/components/skeletons";
 import { TransactionItem } from "@/components/transaction-item";
 import { Card } from "@/components/ui/card";
 import { useAccounts } from "@/hooks/queries/use-accounts";
 import { useDashboardData } from "@/hooks/queries/use-dashboard";
-import { useSpendingVelocity } from "@/hooks/queries/use-spending-velocity";
+
 import { categoryRepository } from "@/repositories/category.repository";
 import { tagRepository } from "@/repositories/tag.repository";
 import { transactionTagRepository } from "@/repositories/transaction-tag.repository";
 import { transactionRepository } from "@/repositories/transaction.repository";
 import { useSettingsStore } from "@/store/settings-store";
-import { logPerformance } from "@/utils/logger";
 import { useUIStore } from "@/store/ui-store";
 import { getCurrencySymbol } from "@/utils/currencies";
 import {
   filterTransactionsByIncomePreference,
   incomePreferenceKey,
 } from "@/utils/income-preference";
+import { logPerformance } from "@/utils/logger";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { endOfMonth, format, startOfMonth } from "date-fns";
@@ -106,12 +105,6 @@ export default function DashboardScreen() {
       ? filters.endDate
       : format(endOfMonth(currentMonth), "yyyy-MM-dd");
 
-  const { isLoading: velocityLoading } = useSpendingVelocity(
-    startDate,
-    endDate,
-    useFilters
-  );
-
   // Use optimized query to fetch only latest 10 transactions instead of all
   const { data: transactions, isLoading: transactionsLoading } = useQuery({
     queryKey: [
@@ -165,7 +158,11 @@ export default function DashboardScreen() {
           filterOptions
         );
       const queryEndTime = Date.now();
-      logPerformance("Dashboard query fetch", queryEndTime - queryStartTime, `${rawTransactions.length} transactions`);
+      logPerformance(
+        "Dashboard query fetch",
+        queryEndTime - queryStartTime,
+        `${rawTransactions.length} transactions`
+      );
 
       // Decrypt only the transactions we need
       const decryptStartTime = Date.now();
@@ -173,7 +170,11 @@ export default function DashboardScreen() {
         rawTransactions
       );
       const decryptEndTime = Date.now();
-      logPerformance("Dashboard decrypt", decryptEndTime - decryptStartTime, `${decrypted.length} transactions`);
+      logPerformance(
+        "Dashboard decrypt",
+        decryptEndTime - decryptStartTime,
+        `${decrypted.length} transactions`
+      );
 
       const filterStartTime = Date.now();
       const filtered = filterTransactionsByIncomePreference(
@@ -184,7 +185,11 @@ export default function DashboardScreen() {
       logPerformance("Dashboard filter", filterEndTime - filterStartTime);
 
       const endTime = Date.now();
-      logPerformance("Dashboard latest transactions query completed", endTime - startTime, `${filtered.length} transactions`);
+      logPerformance(
+        "Dashboard latest transactions query completed",
+        endTime - startTime,
+        `${filtered.length} transactions`
+      );
 
       return filtered;
     },
@@ -209,50 +214,56 @@ export default function DashboardScreen() {
         const categoriesMap = new Map<number, string>();
 
         // Collect all transaction IDs and category IDs first
-        const transactionIds = transactions.map(t => t.id);
+        const transactionIds = transactions.map((t) => t.id);
         const categoryIds = transactions
-          .map(t => t.category_id)
+          .map((t) => t.category_id)
           .filter((id): id is number => id !== null && id !== 0);
-        
+
         // Load all transaction tags in parallel
         const allTransactionTags = await Promise.all(
-          transactionIds.map(id => transactionTagRepository.findByTransactionId(id))
+          transactionIds.map((id) =>
+            transactionTagRepository.findByTransactionId(id)
+          )
         );
-        
+
         // Collect all unique tag IDs
         const tagIdsSet = new Set<number>();
-        allTransactionTags.forEach(tags => {
-          tags.forEach(tt => tagIdsSet.add(tt.tag_id));
+        allTransactionTags.forEach((tags) => {
+          tags.forEach((tt) => tagIdsSet.add(tt.tag_id));
         });
         const tagIds = Array.from(tagIdsSet);
-        
+
         // Batch fetch all tags and categories
         const [allTags, allCategories] = await Promise.all([
-          tagIds.length > 0 ? tagRepository.findByIdsIncludingDeleted(tagIds) : Promise.resolve([]),
-          categoryIds.length > 0 ? categoryRepository.findByIdsIncludingDeleted(categoryIds) : Promise.resolve([]),
+          tagIds.length > 0
+            ? tagRepository.findByIdsIncludingDeleted(tagIds)
+            : Promise.resolve([]),
+          categoryIds.length > 0
+            ? categoryRepository.findByIdsIncludingDeleted(categoryIds)
+            : Promise.resolve([]),
         ]);
-        
+
         // Decrypt all tags and categories in parallel
         const [decryptedTags, decryptedCategories] = await Promise.all([
           tagRepository.decryptTags(allTags),
           categoryRepository.decryptCategories(allCategories),
         ]);
-        
+
         // Create lookup maps
-        const tagMap = new Map(decryptedTags.map(t => [t.id, t]));
-        const categoryMap = new Map(decryptedCategories.map(c => [c.id, c]));
-        
+        const tagMap = new Map(decryptedTags.map((t) => [t.id, t]));
+        const categoryMap = new Map(decryptedCategories.map((c) => [c.id, c]));
+
         // Map tags and categories back to transactions
         transactions.forEach((transaction, index) => {
           const transactionTagIds = allTransactionTags[index];
           const tagDetails = transactionTagIds
-            .map(tt => {
+            .map((tt) => {
               const tag = tagMap.get(tt.tag_id);
               return tag ? { id: tag.id, name: tag.name } : null;
             })
             .filter((t): t is { id: number; name: string } => t !== null);
           tagsMap.set(transaction.id, tagDetails);
-          
+
           if (transaction.category_id) {
             const category = categoryMap.get(transaction.category_id);
             if (category) {
@@ -278,7 +289,9 @@ export default function DashboardScreen() {
       await Promise.all([
         queryClient.refetchQueries({ queryKey: ["dashboard"] }),
         queryClient.refetchQueries({ queryKey: ["transactions"] }),
-        queryClient.refetchQueries({ queryKey: ["dashboard-latest-transactions"] }),
+        queryClient.refetchQueries({
+          queryKey: ["dashboard-latest-transactions"],
+        }),
         queryClient.refetchQueries({ queryKey: ["accounts"] }),
         queryClient.refetchQueries({ queryKey: ["spendingVelocity"] }),
       ]);
@@ -453,15 +466,12 @@ export default function DashboardScreen() {
           )}
 
           {/* Spending Velocity */}
-          {velocityLoading ? (
-            <SpendingVelocitySkeleton />
-          ) : (
-            <SpendingVelocity
-              startDate={startDate}
-              endDate={endDate}
-              useFilters={useFilters}
-            />
-          )}
+
+          <SpendingVelocity
+            startDate={startDate}
+            endDate={endDate}
+            useFilters={useFilters}
+          />
 
           {/* Quick Actions */}
           <View className="flex-row gap-3 mb-6">

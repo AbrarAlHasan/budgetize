@@ -1,5 +1,6 @@
-import * as SecureStore from 'expo-secure-store';
+import { logError } from '@/utils/logger';
 import * as Crypto from 'expo-crypto';
+import * as SecureStore from 'expo-secure-store';
 
 const ENCRYPTION_KEY_STORAGE_KEY = 'budgetize_encryption_key';
 const KEY_SIZE = 32; // 256 bits for AES-256

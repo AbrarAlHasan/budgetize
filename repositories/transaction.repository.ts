@@ -10,9 +10,9 @@ import {
   encrypt,
   encryptAmount,
 } from "@/services/encryption";
+import { logError, logPerformance } from "@/utils/logger";
 import { BaseRepository } from "./base.repository";
 import { transactionTagRepository } from "./transaction-tag.repository";
-import { logPerformance, logError } from "@/utils/logger";
 
 export class TransactionRepository extends BaseRepository<Transaction> {
   protected tableName = "transactions"
@@ -58,8 +58,8 @@ export class TransactionRepository extends BaseRepository<Transaction> {
    */
   private async batchDecryptAmounts<T extends { amount: string }>(
     items: T[],
-    transform: (item: T, decryptedAmount: number) => T & { amount: number }
-  ): Promise<Array<T & { amount: number }>> {
+    transform: (item: T, decryptedAmount: number) => Omit<T, 'amount'> & { amount: number }
+  ): Promise<Array<Omit<T, 'amount'> & { amount: number }>> {
     if (items.length === 0) return [];
     
     // Use progressively smaller batches for larger datasets
@@ -89,7 +89,7 @@ export class TransactionRepository extends BaseRepository<Transaction> {
       CONCURRENT_BATCHES = 1; // Process 1 batch at a time
     }
     
-    const results: Array<T & { amount: number }> = [];
+    const results: Array<Omit<T, 'amount'> & { amount: number }> = [];
     const batches: T[][] = [];
     
     // Create all batches

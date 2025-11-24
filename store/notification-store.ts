@@ -1,6 +1,7 @@
-import { create } from 'zustand';
-import { scheduleDailyNotifications, NotificationConfig } from '@/services/notifications';
+import { NotificationConfig, scheduleDailyNotifications } from '@/services/notifications';
+import { logError } from '@/utils/logger';
 import * as SecureStore from 'expo-secure-store';
+import { create } from 'zustand';
 
 const NOTIFICATION_STORE_KEY = 'notification_preferences';
 

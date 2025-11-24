@@ -1,6 +1,7 @@
-import * as SQLite from 'expo-sqlite';
-import { encryptExistingData } from './003_encrypt_existing_data';
-import { addCurrencyToAccounts } from './004_add_currency_to_accounts';
+import { log, logError } from "@/utils/logger";
+import * as SQLite from "expo-sqlite";
+import { encryptExistingData } from "./003_encrypt_existing_data";
+import { addCurrencyToAccounts } from "./004_add_currency_to_accounts";
 
 const INITIAL_SCHEMA_SQL = `
 -- Accounts table
@@ -98,12 +99,12 @@ CREATE INDEX IF NOT EXISTS idx_categories_deleted_at ON categories(deleted_at);
 const MIGRATIONS = [
   {
     version: 1,
-    name: '001_initial_schema',
+    name: "001_initial_schema",
     sql: INITIAL_SCHEMA_SQL,
   },
   {
     version: 2,
-    name: '002_add_categories',
+    name: "002_add_categories",
     sql: CATEGORIES_MIGRATION_SQL,
   },
 ];
@@ -120,7 +121,7 @@ export async function runMigrations(db: SQLite.SQLiteDatabase): Promise<void> {
 
   // Get applied migrations
   const result = await db.getAllAsync<{ version: number }>(
-    'SELECT version FROM schema_migrations ORDER BY version'
+    "SELECT version FROM schema_migrations ORDER BY version"
   );
   const appliedVersions = new Set(result.map((r) => Number(r.version)));
 
@@ -132,38 +133,44 @@ export async function runMigrations(db: SQLite.SQLiteDatabase): Promise<void> {
         if (migration.version === 2) {
           // Execute the migration SQL (creates categories table, inserts defaults, creates indexes)
           await db.execAsync(migration.sql);
-          
+
           // Check if category_id column already exists, if not add it
           const tableInfo = await db.getAllAsync<{ name: string }>(
             "PRAGMA table_info(transactions)"
           );
-          const hasCategoryId = tableInfo.some(col => col.name === 'category_id');
-          
+          const hasCategoryId = tableInfo.some(
+            (col) => col.name === "category_id"
+          );
+
           if (!hasCategoryId) {
             // Add category_id column to transactions
             try {
-              await db.execAsync('ALTER TABLE transactions ADD COLUMN category_id INTEGER REFERENCES categories(id)');
+              await db.execAsync(
+                "ALTER TABLE transactions ADD COLUMN category_id INTEGER REFERENCES categories(id)"
+              );
             } catch (e: any) {
               const message = e?.message ?? String(e);
               // Ignore if another concurrent runner added the column first
-              if (!message.includes('duplicate column name: category_id')) {
+              if (!message.includes("duplicate column name: category_id")) {
                 throw e;
               }
             }
             // Create index for category_id
-            await db.execAsync('CREATE INDEX IF NOT EXISTS idx_transactions_category_id ON transactions(category_id)');
+            await db.execAsync(
+              "CREATE INDEX IF NOT EXISTS idx_transactions_category_id ON transactions(category_id)"
+            );
           }
         } else {
           // Execute migration normally
           await db.execAsync(migration.sql);
         }
-        
+
         // Record migration
         await db.runAsync(
-          'INSERT OR IGNORE INTO schema_migrations (version, name) VALUES (?, ?)',
+          "INSERT OR IGNORE INTO schema_migrations (version, name) VALUES (?, ?)",
           [migration.version, migration.name]
         );
-        
+
         log(`Migration ${migration.name} applied successfully`);
       } catch (error) {
         logError(`Error applying migration ${migration.name}:`, error);
@@ -176,16 +183,16 @@ export async function runMigrations(db: SQLite.SQLiteDatabase): Promise<void> {
   if (!appliedVersions.has(3)) {
     try {
       await encryptExistingData(db);
-      
+
       // Record migration
       await db.runAsync(
-        'INSERT OR IGNORE INTO schema_migrations (version, name) VALUES (?, ?)',
-        [3, '003_encrypt_existing_data']
+        "INSERT OR IGNORE INTO schema_migrations (version, name) VALUES (?, ?)",
+        [3, "003_encrypt_existing_data"]
       );
-      
-      log('Migration 003_encrypt_existing_data applied successfully');
+
+      log("Migration 003_encrypt_existing_data applied successfully");
     } catch (error) {
-      logError('Error applying migration 003_encrypt_existing_data:', error);
+      logError("Error applying migration 003_encrypt_existing_data:", error);
       throw error;
     }
   }
@@ -194,16 +201,16 @@ export async function runMigrations(db: SQLite.SQLiteDatabase): Promise<void> {
   if (!appliedVersions.has(4)) {
     try {
       await addCurrencyToAccounts(db);
-      
+
       // Record migration
       await db.runAsync(
-        'INSERT OR IGNORE INTO schema_migrations (version, name) VALUES (?, ?)',
-        [4, '004_add_currency_to_accounts']
+        "INSERT OR IGNORE INTO schema_migrations (version, name) VALUES (?, ?)",
+        [4, "004_add_currency_to_accounts"]
       );
-      
-      log('Migration 004_add_currency_to_accounts applied successfully');
+
+      log("Migration 004_add_currency_to_accounts applied successfully");
     } catch (error) {
-      logError('Error applying migration 004_add_currency_to_accounts:', error);
+      logError("Error applying migration 004_add_currency_to_accounts:", error);
       throw error;
     }
   }
@@ -230,20 +237,19 @@ CREATE INDEX IF NOT EXISTS idx_transactions_category_date ON transactions(catego
 -- Index for type + date queries (for filtering expenses/income)
 CREATE INDEX IF NOT EXISTS idx_transactions_type_date ON transactions(type, date, deleted_at);
       `;
-      
+
       await db.execAsync(compositeIndexesSQL);
-      
+
       // Record migration
       await db.runAsync(
-        'INSERT OR IGNORE INTO schema_migrations (version, name) VALUES (?, ?)',
-        [5, '005_add_composite_indexes']
+        "INSERT OR IGNORE INTO schema_migrations (version, name) VALUES (?, ?)",
+        [5, "005_add_composite_indexes"]
       );
-      
-      log('Migration 005_add_composite_indexes applied successfully');
+
+      log("Migration 005_add_composite_indexes applied successfully");
     } catch (error) {
-      logError('Error applying migration 005_add_composite_indexes:', error);
+      logError("Error applying migration 005_add_composite_indexes:", error);
       throw error;
     }
   }
 }
-

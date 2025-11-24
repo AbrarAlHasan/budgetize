@@ -1,34 +1,35 @@
+import { ONBOARDING_STEPS, OnboardingStep } from '@/constants/onboarding-data';
+import { useNotificationStore } from '@/store/notification-store';
+import { useSettingsStore } from '@/store/settings-store';
+import { pickBackupFile, restoreAppData } from '@/utils/backup';
+import { logError } from '@/utils/logger';
+import { seedDefaultCategoriesAndTags } from '@/utils/seed-defaults';
+import { Ionicons } from '@expo/vector-icons';
 import React, { useRef, useState } from 'react';
 import {
-  View,
-  Text,
+  ActivityIndicator,
+  Alert,
   Dimensions,
-  TouchableOpacity,
-  StyleSheet,
   Platform,
   StatusBar,
-  Alert,
-  ActivityIndicator,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import Animated, {
+  Extrapolate,
+  interpolate,
+  runOnJS,
+  useAnimatedScrollHandler,
   useAnimatedStyle,
   useSharedValue,
+  withRepeat,
+  withSequence,
   withSpring,
   withTiming,
-  interpolate,
-  Extrapolate,
-  useAnimatedScrollHandler,
-  runOnJS,
-  withSequence,
-  withRepeat,
+  type SharedValue,
 } from 'react-native-reanimated';
-import { Ionicons } from '@expo/vector-icons';
-import { ONBOARDING_STEPS, OnboardingStep } from '@/constants/onboarding-data';
-import { restoreAppData, pickBackupFile } from '@/utils/backup';
-import { useSettingsStore } from '@/store/settings-store';
-import { useNotificationStore } from '@/store/notification-store';
-import { seedDefaultCategoriesAndTags } from '@/utils/seed-defaults';
-import { logError } from '@/utils/logger';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -38,7 +39,7 @@ interface OnboardingScreenProps {
 
 const DataSetupSlide: React.FC<{
   index: number;
-  scrollX: Animated.SharedValue<number>;
+  scrollX: SharedValue<number>;
   onComplete: () => void;
 }> = ({ index, scrollX, onComplete }) => {
   // Note: QueryClient is not available during onboarding (rendered before QueryClientProvider)
@@ -375,7 +376,7 @@ const DataSetupSlide: React.FC<{
 const OnboardingSlide: React.FC<{
   step: OnboardingStep;
   index: number;
-  scrollX: Animated.SharedValue<number>;
+  scrollX: SharedValue<number>;
 }> = ({ step, index, scrollX }) => {
   const inputRange = [
     (index - 1) * SCREEN_WIDTH,

@@ -1,8 +1,9 @@
-import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
+import { CreateTransactionInput, Transaction, UpdateTransactionInput } from '@/db/schema/types';
 import { transactionRepository } from '@/repositories/transaction.repository';
-import { CreateTransactionInput, UpdateTransactionInput, Transaction } from '@/db/schema/types';
 import { useSettingsStore } from '@/store/settings-store';
 import { filterTransactionsByIncomePreference, incomePreferenceKey } from '@/utils/income-preference';
+import { logPerformance } from '@/utils/logger';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 const QUERY_KEYS = {
   all: ['transactions'] as const,

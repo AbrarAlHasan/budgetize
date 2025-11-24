@@ -51,7 +51,7 @@ export const BottomSheetMultiSelect = forwardRef<
     ref
   ) => {
     const colorScheme = useColorScheme();
-    const isDark = colorScheme === 'dark';
+    const isDark = colorScheme.colorScheme === 'dark';
     const bottomSheetRef = useRef<BottomSheetModalMethods>(null);
     const selectedValues = value || [];
 

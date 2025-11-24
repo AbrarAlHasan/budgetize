@@ -1,13 +1,18 @@
-import { Card } from "@/components/ui/card";
 import { DatePicker, DatePickerRef } from "@/components/date-picker";
+import { Card } from "@/components/ui/card";
 import { AccountType } from "@/db/schema/types";
-import { useCreateAccount, useUpdateAccount, useDeleteAccount, useAccount } from "@/hooks/queries/use-accounts";
-import { getCurrencySymbol } from "@/utils/currencies";
+import {
+  useAccount,
+  useCreateAccount,
+  useDeleteAccount,
+  useUpdateAccount,
+} from "@/hooks/queries/use-accounts";
 import { useSettingsStore } from "@/store/settings-store";
+import { getCurrencySymbol } from "@/utils/currencies";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
-import { router, Stack, useLocalSearchParams } from "expo-router";
 import { parseISO } from "date-fns";
+import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -31,8 +36,10 @@ export default function AddAccountScreen() {
   const createAccount = useCreateAccount();
   const updateAccount = useUpdateAccount();
   const deleteAccount = useDeleteAccount();
-  const { data: account, isLoading: isLoadingAccount } = useAccount(accountId || 0);
-  
+  const { data: account, isLoading: isLoadingAccount } = useAccount(
+    accountId || 0
+  );
+
   const originLabel = params.from ?? "Back";
   const { settings, loadSettings } = useSettingsStore();
 
@@ -62,9 +69,15 @@ export default function AddAccountScreen() {
       setType(account.type);
       setBankName(account.bank_name || "");
       setCreditLimit(account.credit_limit?.toString() || "");
-      setBillingStartDate(account.billing_start_date ? parseISO(account.billing_start_date) : null);
-      setBillingEndDate(account.billing_end_date ? parseISO(account.billing_end_date) : null);
-      setPaymentDueDate(account.payment_due_date ? parseISO(account.payment_due_date) : null);
+      setBillingStartDate(
+        account.billing_start_date ? parseISO(account.billing_start_date) : null
+      );
+      setBillingEndDate(
+        account.billing_end_date ? parseISO(account.billing_end_date) : null
+      );
+      setPaymentDueDate(
+        account.payment_due_date ? parseISO(account.payment_due_date) : null
+      );
     }
   }, [account, isEditMode]);
 
@@ -109,7 +122,9 @@ export default function AddAccountScreen() {
   if (isEditMode && !account) {
     return (
       <View className="flex-1 justify-center items-center bg-gray-50 dark:bg-black">
-        <Text className="text-gray-500 dark:text-gray-400">Account not found</Text>
+        <Text className="text-gray-500 dark:text-gray-400">
+          Account not found
+        </Text>
       </View>
     );
   }
@@ -148,26 +163,29 @@ export default function AddAccountScreen() {
         });
         Alert.alert("Success", "Account updated successfully");
       } else {
-      await createAccount.mutateAsync({
-        name: name.trim(),
-        type,
-        bank_name: bankName.trim() || null,
-        credit_limit: creditLimit ? parseFloat(creditLimit) : null,
+        await createAccount.mutateAsync({
+          name: name.trim(),
+          type,
+          bank_name: bankName.trim() || null,
+          credit_limit: creditLimit ? parseFloat(creditLimit) : null,
           billing_start_date: billingStartDate?.toISOString() || null,
           billing_end_date: billingEndDate?.toISOString() || null,
           payment_due_date: paymentDueDate?.toISOString() || null,
-      });
-      Alert.alert("Success", "Account created successfully");
+        });
+        Alert.alert("Success", "Account created successfully");
       }
       router.back();
     } catch (error) {
-      Alert.alert("Error", isEditMode ? "Failed to update account" : "Failed to create account");
+      Alert.alert(
+        "Error",
+        isEditMode ? "Failed to update account" : "Failed to create account"
+      );
     }
   };
 
   const handleDelete = () => {
     if (!isEditMode || !accountId) return;
-    
+
     Alert.alert(
       "Delete Account",
       "Are you sure you want to delete this account?",
@@ -193,8 +211,8 @@ export default function AddAccountScreen() {
   return (
     <View className="flex-1 bg-gray-50 dark:bg-black">
       <Stack.Screen
-        options={{ 
-          headerShown: true, 
+        options={{
+          headerShown: true,
           headerTitle: isEditMode ? "Edit Account" : "New Account",
           headerBackTitle: originLabel,
           headerStyle: {
@@ -227,8 +245,8 @@ export default function AddAccountScreen() {
             >
               <TextInput
                 ref={nameInputRef}
-              value={name}
-              onChangeText={setName}
+                value={name}
+                onChangeText={setName}
                 placeholder="Account Name"
                 placeholderTextColor="#9CA3AF"
                 multiline
@@ -420,8 +438,8 @@ export default function AddAccountScreen() {
                         </Text>
                         <TextInput
                           ref={bankNameInputRef}
-              value={bankName}
-              onChangeText={setBankName}
+                          value={bankName}
+                          onChangeText={setBankName}
                           placeholder="Enter bank name"
                           placeholderTextColor="#9CA3AF"
                           className="text-base font-semibold text-gray-900 dark:text-gray-100"
@@ -433,7 +451,7 @@ export default function AddAccountScreen() {
                 </TouchableWithoutFeedback>
 
                 {/* Credit Limit - Only for credit cards */}
-            {type === "credit" && (
+                {type === "credit" && (
                   <TouchableWithoutFeedback onPress={handleBlurInput}>
                     <View className="flex-row items-center justify-between py-4">
                       <View className="flex-row items-center flex-1">
@@ -450,11 +468,11 @@ export default function AddAccountScreen() {
                             </Text>
                             <TextInput
                               ref={creditLimitInputRef}
-                  value={creditLimit}
+                              value={creditLimit}
                               onChangeText={handleCreditLimitChange}
                               placeholder="0.00"
                               placeholderTextColor="#9CA3AF"
-                  keyboardType="numeric"
+                              keyboardType="numeric"
                               className="text-base font-semibold text-gray-900 dark:text-gray-100"
                               style={{ flex: 1, minHeight: 24 }}
                             />
@@ -485,7 +503,11 @@ export default function AddAccountScreen() {
                     className="flex-row items-center justify-between py-3 border-b border-gray-100 dark:border-gray-800"
                   >
                     <View className="flex-row items-center flex-1">
-                      <Ionicons name="calendar-outline" size={20} color="#6B7280" />
+                      <Ionicons
+                        name="calendar-outline"
+                        size={20}
+                        color="#6B7280"
+                      />
                       <Text className="text-xs text-gray-500 dark:text-gray-400 ml-2 uppercase tracking-wide">
                         Billing Start Date
                       </Text>
@@ -507,7 +529,11 @@ export default function AddAccountScreen() {
                     className="flex-row items-center justify-between py-3 border-b border-gray-100 dark:border-gray-800"
                   >
                     <View className="flex-row items-center flex-1">
-                      <Ionicons name="calendar-outline" size={20} color="#6B7280" />
+                      <Ionicons
+                        name="calendar-outline"
+                        size={20}
+                        color="#6B7280"
+                      />
                       <Text className="text-xs text-gray-500 dark:text-gray-400 ml-2 uppercase tracking-wide">
                         Billing End Date
                       </Text>
@@ -540,11 +566,11 @@ export default function AddAccountScreen() {
                         : "Select date"}
                     </Text>
                   </TouchableOpacity>
+                </View>
+              </Card>
             </View>
-          </Card>
-        </View>
           )}
-      </ScrollView>
+        </ScrollView>
       </KeyboardAvoidingView>
 
       {/* Floating Action Buttons */}
@@ -569,11 +595,15 @@ export default function AddAccountScreen() {
               }}
             >
               {deleteAccount.isPending ? (
-                <Text className="text-white font-bold text-lg">Deleting...</Text>
+                <Text className="text-white font-bold text-lg">
+                  Deleting...
+                </Text>
               ) : (
                 <View className="flex-row items-center">
                   <Ionicons name="trash" size={20} color="#FFFFFF" />
-                  <Text className="text-white font-bold text-base ml-2">Delete</Text>
+                  <Text className="text-white font-bold text-base ml-2">
+                    Delete
+                  </Text>
                 </View>
               )}
             </TouchableOpacity>
@@ -599,7 +629,9 @@ export default function AddAccountScreen() {
               ) : (
                 <View className="flex-row items-center">
                   <Ionicons name="checkmark-circle" size={24} color="#FFFFFF" />
-                  <Text className="text-white font-bold text-lg ml-2">Save</Text>
+                  <Text className="text-white font-bold text-lg ml-2">
+                    Save
+                  </Text>
                 </View>
               )}
             </TouchableOpacity>
