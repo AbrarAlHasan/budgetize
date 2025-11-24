@@ -15,9 +15,9 @@ export async function addCurrencyToAccounts(db: SQLite.SQLiteDatabase): Promise<
   const hasCurrency = tableInfo.some((col) => col.name === 'currency');
 
   if (!hasCurrency) {
-    // Add currency column with default value 'USD'
+    // Add currency column with default value 'INR'
     await db.execAsync(
-      "ALTER TABLE accounts ADD COLUMN currency TEXT NOT NULL DEFAULT 'USD'"
+      "ALTER TABLE accounts ADD COLUMN currency TEXT NOT NULL DEFAULT 'INR'"
     );
     log('Added currency column to accounts table');
   } else {

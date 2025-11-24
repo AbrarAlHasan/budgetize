@@ -82,7 +82,7 @@ export interface TransactionTag {
 export interface CreateAccountInput {
   name: string;
   type: AccountType;
-  currency?: string; // Defaults to 'USD' if not provided
+  currency?: string; // Defaults to 'INR' if not provided
   bank_name?: string | null;
   credit_limit?: number | null;
   billing_start_date?: string | null;

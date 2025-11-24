@@ -21,7 +21,7 @@ interface SettingsStore {
 
 const defaultSettings: AppSettings = {
   incomeCalculationEnabled: true, // Default to enabled
-  currency: 'USD', // Default to USD
+  currency: 'INR', // Default to INR
   theme: 'auto', // Default to system preference
 };
 

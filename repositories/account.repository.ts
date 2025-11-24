@@ -25,7 +25,7 @@ export class AccountRepository extends BaseRepository<Account> {
 
     try {
       const now = new Date().toISOString();
-      const currency = input.currency || 'USD'; // Default to USD if not provided
+      const currency = input.currency || 'INR'; // Default to INR if not provided
       const result = await db.runAsync(
         `INSERT INTO ${this.tableName} 
          (name, type, currency, bank_name, credit_limit, billing_start_date, billing_end_date, payment_due_date, created_at, updated_at, is_synced)
@@ -139,7 +139,7 @@ export class AccountRepository extends BaseRepository<Account> {
     return {
       ...account,
       name,
-      currency: account.currency || 'USD', // Default to USD if not set
+      currency: account.currency || 'INR', // Default to INR if not set
       bank_name,
       credit_limit,
       billing_start_date,
