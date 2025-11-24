@@ -29,7 +29,7 @@
       "softwareKeyboardLayoutMode": "pan",
       "package": "com.budgetize.app",
       "googleServicesFile": "./google-services.json",
-      "versionCode": 14
+      "versionCode": 15
     },
     "web": {
       "output": "static",

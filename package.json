@@ -8,7 +8,8 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "release-android-build": "chmod +x scripts/release-android-build.sh && ./scripts/release-android-build.sh"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
