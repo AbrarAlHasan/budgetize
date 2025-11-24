@@ -41,5 +41,5 @@ echo ""
 
 # Run EAS build
 cd "$PROJECT_ROOT"
-eas build --platform android --profile production
+eas build --platform android --profile production --local
 
