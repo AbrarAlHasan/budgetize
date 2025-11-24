@@ -6,6 +6,7 @@ import { transactionRepository } from "@/repositories/transaction.repository";
 import { useSettingsStore } from "@/store/settings-store";
 import { useUIStore } from "@/store/ui-store";
 import { incomePreferenceKey } from "@/utils/income-preference";
+import { logPerformance } from "@/utils/logger";
 import { useQuery } from "@tanstack/react-query";
 import {
   differenceInDays,
@@ -136,7 +137,7 @@ export function useReportSummary(
     gcTime: 1000 * 60 * 10, // Keep in cache for 10 minutes
     queryFn: async (): Promise<ReportSummary> => {
       const startTime = Date.now();
-      console.log("[Performance] ReportSummary query started");
+      logPerformance("ReportSummary query started", 0);
       
       const baseFilterOptions = useFilters
         ? {
@@ -205,11 +206,7 @@ export function useReportSummary(
       };
       
       const endTime = Date.now();
-      console.log(
-        `[Performance] ReportSummary query completed in ${
-          endTime - startTime
-        }ms`
-      );
+      logPerformance("ReportSummary query completed", endTime - startTime);
       
       return result;
     },
@@ -249,7 +246,7 @@ export function useCategoryReport(
     gcTime: 1000 * 60 * 10, // Keep in cache for 10 minutes
     queryFn: async (): Promise<CategoryReport[]> => {
       const startTime = Date.now();
-      console.log("[Performance] CategoryReport query started");
+      logPerformance("CategoryReport query started", 0);
       
       const filterOptions = useFilters
         ? {
@@ -328,11 +325,7 @@ export function useCategoryReport(
       const result = reports.sort((a, b) => b.amount - a.amount);
       
       const endTime = Date.now();
-      console.log(
-        `[Performance] CategoryReport query completed in ${
-          endTime - startTime
-        }ms`
-      );
+      logPerformance("CategoryReport query completed", endTime - startTime);
       
       return result;
     },
@@ -372,7 +365,7 @@ export function useTagReport(
     gcTime: 1000 * 60 * 10, // Keep in cache for 10 minutes
     queryFn: async (): Promise<TagReport[]> => {
       const startTime = Date.now();
-      console.log("[Performance] TagReport query started");
+      logPerformance("TagReport query started", 0);
       
       const filterOptions = useFilters
         ? {
@@ -454,9 +447,7 @@ export function useTagReport(
       const result = reports.sort((a, b) => b.amount - a.amount);
       
       const endTime = Date.now();
-      console.log(
-        `[Performance] TagReport query completed in ${endTime - startTime}ms`
-      );
+      logPerformance("TagReport query completed", endTime - startTime);
       
       return result;
     },
@@ -496,7 +487,7 @@ export function useAccountReport(
     gcTime: 1000 * 60 * 10, // Keep in cache for 10 minutes
     queryFn: async (): Promise<AccountReport[]> => {
       const startTime = Date.now();
-      console.log("[Performance] AccountReport query started");
+      logPerformance("AccountReport query started", 0);
       
       const filterOptions = useFilters
         ? {
@@ -576,11 +567,7 @@ export function useAccountReport(
       });
       
       const endTime = Date.now();
-      console.log(
-        `[Performance] AccountReport query completed in ${
-          endTime - startTime
-        }ms`
-      );
+      logPerformance("AccountReport query completed", endTime - startTime);
       
       return result;
     },
@@ -809,7 +796,7 @@ export function useDailyPatterns(
     gcTime: 1000 * 60 * 10, // Keep in cache for 10 minutes
     queryFn: async (): Promise<DailyPattern[]> => {
       const startTime = Date.now();
-      console.log("[Performance] DailyPatterns query started");
+      logPerformance("DailyPatterns query started", 0);
       
       const baseFilterOptions = useFilters
         ? {
@@ -855,11 +842,7 @@ export function useDailyPatterns(
         filterOptions
       );
       const endTime = Date.now();
-      console.log(
-        `[Performance] DailyPatterns query completed in ${
-          endTime - startTime
-        }ms`
-      );
+      logPerformance("DailyPatterns query completed", endTime - startTime);
 
       // Convert to DailyPattern format
       const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -911,7 +894,7 @@ export function useMonthlyTrends(
     gcTime: 1000 * 60 * 10, // Keep in cache for 10 minutes
     queryFn: async (): Promise<MonthlyTrend[]> => {
       const startTime = Date.now();
-      console.log("[Performance] MonthlyTrends query started");
+      logPerformance("MonthlyTrends query started", 0);
       
       // Always show last 10 months ending with current month
       const currentDate = new Date();
@@ -995,11 +978,7 @@ export function useMonthlyTrends(
       });
 
       const endTime = Date.now();
-      console.log(
-        `[Performance] MonthlyTrends query completed in ${
-          endTime - startTime
-        }ms`
-      );
+      logPerformance("MonthlyTrends query completed", endTime - startTime);
       
       return trends;
     },

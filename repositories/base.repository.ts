@@ -1,5 +1,6 @@
 import * as SQLite from 'expo-sqlite';
 import { getDatabase } from '@/db/sqlite/db';
+import { logSQL } from '@/utils/logger';
 
 export abstract class BaseRepository<T> {
   protected abstract tableName: string;
@@ -13,8 +14,14 @@ export abstract class BaseRepository<T> {
     query: string,
     params: any[] = []
   ): Promise<TResult[]> {
+    // Generate a unique ID for this query execution
+    const queryId = Math.random().toString(36).substring(2, 9);
+    
+    // Log the final SQL query and parameters for debugging (only in development)
     const db = await this.getDb();
-    return db.getAllAsync<TResult>(query, params);
+    const result = await db.getAllAsync<TResult>(query, params);
+    logSQL(queryId, query, params, result.length);
+    return result;
   }
 
   protected async executeUpdate(

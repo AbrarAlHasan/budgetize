@@ -164,9 +164,9 @@ export async function runMigrations(db: SQLite.SQLiteDatabase): Promise<void> {
           [migration.version, migration.name]
         );
         
-        console.log(`Migration ${migration.name} applied successfully`);
+        log(`Migration ${migration.name} applied successfully`);
       } catch (error) {
-        console.error(`Error applying migration ${migration.name}:`, error);
+        logError(`Error applying migration ${migration.name}:`, error);
         throw error;
       }
     }
@@ -183,9 +183,9 @@ export async function runMigrations(db: SQLite.SQLiteDatabase): Promise<void> {
         [3, '003_encrypt_existing_data']
       );
       
-      console.log('Migration 003_encrypt_existing_data applied successfully');
+      log('Migration 003_encrypt_existing_data applied successfully');
     } catch (error) {
-      console.error('Error applying migration 003_encrypt_existing_data:', error);
+      logError('Error applying migration 003_encrypt_existing_data:', error);
       throw error;
     }
   }
@@ -201,9 +201,9 @@ export async function runMigrations(db: SQLite.SQLiteDatabase): Promise<void> {
         [4, '004_add_currency_to_accounts']
       );
       
-      console.log('Migration 004_add_currency_to_accounts applied successfully');
+      log('Migration 004_add_currency_to_accounts applied successfully');
     } catch (error) {
-      console.error('Error applying migration 004_add_currency_to_accounts:', error);
+      logError('Error applying migration 004_add_currency_to_accounts:', error);
       throw error;
     }
   }
@@ -239,9 +239,9 @@ CREATE INDEX IF NOT EXISTS idx_transactions_type_date ON transactions(type, date
         [5, '005_add_composite_indexes']
       );
       
-      console.log('Migration 005_add_composite_indexes applied successfully');
+      log('Migration 005_add_composite_indexes applied successfully');
     } catch (error) {
-      console.error('Error applying migration 005_add_composite_indexes:', error);
+      logError('Error applying migration 005_add_composite_indexes:', error);
       throw error;
     }
   }

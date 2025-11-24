@@ -41,7 +41,7 @@ export class CategoryRepository extends BaseRepository<Category> {
       return category;
     } catch (error) {
       await db.execAsync('ROLLBACK');
-      console.error('Error creating category:', error);
+      logError('Error creating category:', error);
       throw new Error(error instanceof Error ? error.message : 'Failed to create category');
     }
   }
@@ -69,7 +69,7 @@ export class CategoryRepository extends BaseRepository<Category> {
       return category;
     } catch (error) {
       await db.execAsync('ROLLBACK');
-      console.error('Error updating category:', error);
+      logError('Error updating category:', error);
       throw new Error(error instanceof Error ? error.message : 'Failed to update category');
     }
   }
@@ -124,7 +124,7 @@ export class CategoryRepository extends BaseRepository<Category> {
       return category;
     } catch (error) {
       await db.execAsync('ROLLBACK');
-      console.error('Error reactivating category:', error);
+      logError('Error reactivating category:', error);
       throw new Error(error instanceof Error ? error.message : 'Failed to reactivate category');
     }
   }

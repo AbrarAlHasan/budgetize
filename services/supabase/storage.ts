@@ -1,5 +1,6 @@
 import { File } from "expo-file-system";
 import { supabase } from "./client";
+import { log, logError, logWarn } from "@/utils/logger";
 
 const BACKUP_BUCKET = process.env.EXPO_PUBLIC_BACKUP_BUCKET as string;
 const MAX_BACKUPS = 3;
@@ -35,7 +36,7 @@ export async function uploadBackup(
     // Upload raw bytes directly (Supabase supports ArrayBuffer/Uint8Array)
     // We don't need to create a Blob manually which causes issues in RN
 
-    console.log("storagePath:", storagePath);
+    log("storagePath:", storagePath);
 
     const { data, error } = await supabase.storage
       .from(BACKUP_BUCKET)
@@ -45,13 +46,13 @@ export async function uploadBackup(
       });
 
     if (error) {
-      console.error("Upload error:", error);
+      logError("Upload error:", error);
       return { error, path: null };
     }
 
     return { error: null, path: data.path };
   } catch (error) {
-    console.error("Unexpected error uploading backup:", error);
+    logError("Unexpected error uploading backup:", error);
     return { error: error as Error, path: null };
   }
 }
@@ -71,7 +72,7 @@ export async function listBackups(
       });
 
     if (error) {
-      console.error("List backups error:", error);
+      logError("List backups error:", error);
       return { backups: [], error };
     }
 
@@ -87,7 +88,7 @@ export async function listBackups(
 
     return { backups, error: null };
   } catch (error) {
-    console.error("Unexpected error listing backups:", error);
+    logError("Unexpected error listing backups:", error);
     return { backups: [], error: error as Error };
   }
 }
@@ -105,7 +106,7 @@ export async function downloadBackup(
       .download(storagePath);
 
     if (error) {
-      console.error("Download error:", error);
+      logError("Download error:", error);
       return { error };
     }
 
@@ -146,7 +147,7 @@ export async function downloadBackup(
 
     return { error: null };
   } catch (error) {
-    console.error("Unexpected error downloading backup:", error);
+    logError("Unexpected error downloading backup:", error);
     return { error: error as Error };
   }
 }
@@ -163,13 +164,13 @@ export async function deleteBackup(
       .remove([storagePath]);
 
     if (error) {
-      console.error("Delete backup error:", error);
+      logError("Delete backup error:", error);
       return { error };
     }
 
     return { error: null };
   } catch (error) {
-    console.error("Unexpected error deleting backup:", error);
+    logError("Unexpected error deleting backup:", error);
     return { error: error as Error };
   }
 }
@@ -194,7 +195,7 @@ export async function cleanupOldBackups(
       for (const backup of backupsToDelete) {
         const { error: deleteError } = await deleteBackup(backup.path);
         if (deleteError) {
-          console.warn(
+          logWarn(
             "Failed to delete old backup:",
             backup.path,
             deleteError
@@ -205,7 +206,7 @@ export async function cleanupOldBackups(
 
     return { error: null };
   } catch (error) {
-    console.error("Unexpected error cleaning up backups:", error);
+    logError("Unexpected error cleaning up backups:", error);
     return { error: error as Error };
   }
 }

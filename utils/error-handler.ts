@@ -1,4 +1,5 @@
 import { Alert } from 'react-native';
+import { logError } from '@/utils/logger';
 
 export interface AppError {
   message: string;
@@ -17,7 +18,7 @@ export function handleError(error: unknown, defaultMessage = 'An error occurred'
     message = String(error.message);
   }
 
-  console.error('Error:', error);
+  logError('Error:', error);
   Alert.alert('Error', message);
 }
 

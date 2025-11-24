@@ -1,11 +1,12 @@
 import * as SQLite from 'expo-sqlite';
+import { log } from '@/utils/logger';
 
 /**
  * Migration: Add currency field to accounts table
  * This allows each account to have its own currency
  */
 export async function addCurrencyToAccounts(db: SQLite.SQLiteDatabase): Promise<void> {
-  console.log('Running migration: 004_add_currency_to_accounts');
+  log('Running migration: 004_add_currency_to_accounts');
 
   // Check if currency column already exists
   const tableInfo = await db.getAllAsync<{ name: string }>(
@@ -18,9 +19,9 @@ export async function addCurrencyToAccounts(db: SQLite.SQLiteDatabase): Promise<
     await db.execAsync(
       "ALTER TABLE accounts ADD COLUMN currency TEXT NOT NULL DEFAULT 'USD'"
     );
-    console.log('Added currency column to accounts table');
+    log('Added currency column to accounts table');
   } else {
-    console.log('Currency column already exists in accounts table');
+    log('Currency column already exists in accounts table');
   }
 }
 

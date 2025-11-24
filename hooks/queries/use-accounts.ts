@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { accountRepository } from '@/repositories/account.repository';
 import { Account, CreateAccountInput, DecryptedAccount, UpdateAccountInput } from '@/db/schema/types';
+import { logPerformance } from '@/utils/logger';
 
 const QUERY_KEYS = {
   all: ['accounts'] as const,
@@ -15,7 +16,7 @@ export function useAccounts(filters?: { type?: Account['type'] }) {
     queryKey: QUERY_KEYS.list(filters),
     queryFn: async () => {
       const startTime = Date.now();
-      console.log('[Performance] useAccounts query started');
+      logPerformance('useAccounts query started', 0);
       
       const queryStartTime = Date.now();
       let accounts;
@@ -25,15 +26,15 @@ export function useAccounts(filters?: { type?: Account['type'] }) {
         accounts = await accountRepository.findAll();
       }
       const queryEndTime = Date.now();
-      console.log(`[Performance] useAccounts query fetch: ${queryEndTime - queryStartTime}ms (${accounts.length} accounts)`);
+      logPerformance('useAccounts query fetch', queryEndTime - queryStartTime, `${accounts.length} accounts`);
 
       const decryptStartTime = Date.now();
       const result = await accountRepository.decryptAccounts(accounts);
       const decryptEndTime = Date.now();
-      console.log(`[Performance] useAccounts decrypt: ${decryptEndTime - decryptStartTime}ms (${result.length} accounts)`);
+      logPerformance('useAccounts decrypt', decryptEndTime - decryptStartTime, `${result.length} accounts`);
       
       const endTime = Date.now();
-      console.log(`[Performance] useAccounts query completed in ${endTime - startTime}ms`);
+      logPerformance('useAccounts query completed', endTime - startTime);
       
       return result;
     },
@@ -45,18 +46,18 @@ export function useAccount(id: number) {
     queryKey: QUERY_KEYS.detail(id),
     queryFn: async () => {
       const startTime = Date.now();
-      console.log(`[Performance] useAccount(${id}) query started`);
+      logPerformance(`useAccount(${id}) query started`, 0);
       
       const account = await accountRepository.findById(id);
       if (!account) {
         const endTime = Date.now();
-        console.log(`[Performance] useAccount(${id}) query completed in ${endTime - startTime}ms (not found)`);
+        logPerformance(`useAccount(${id}) query completed`, endTime - startTime, 'not found');
         return null;
       }
       const result = await accountRepository.decryptAccount(account);
       
       const endTime = Date.now();
-      console.log(`[Performance] useAccount(${id}) query completed in ${endTime - startTime}ms`);
+      logPerformance(`useAccount(${id}) query completed`, endTime - startTime);
       
       return result;
     },

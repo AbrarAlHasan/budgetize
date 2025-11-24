@@ -2,6 +2,7 @@ import * as AuthSession from "expo-auth-session";
 import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
 import { supabase } from "./client";
+import { log, logError, logWarn } from "@/utils/logger";
 
 // Complete the OAuth session in the browser
 WebBrowser.maybeCompleteAuthSession();
@@ -32,7 +33,7 @@ export async function signInWithGoogle(): Promise<{ error: Error | null }> {
     // Create redirect URL using expo-linking
     const redirectUri = Linking.createURL("/");
 
-    console.log("Starting Google OAuth with redirect URI:", redirectUri);
+    log("Starting Google OAuth with redirect URI:", redirectUri);
 
     // Use authorization code flow with PKCE (recommended for mobile apps)
     // This is more secure than implicit flow and doesn't require client_secret
@@ -53,14 +54,14 @@ export async function signInWithGoogle(): Promise<{ error: Error | null }> {
 
     // Prompt the user to authenticate with Google
     const result = await request.promptAsync(discovery);
-    console.log("Google OAuth result:", result);
+    log("Google OAuth result:", result);
     
     if (result.type === "success") {
       // Extract the authorization code from the result
       const code = result.params.code;
 
       if (!code) {
-        console.error("OAuth result params:", result.params);
+        logError("OAuth result params:", result.params);
         return {
           error: new Error(
             "No authorization code received from Google OAuth."
@@ -68,7 +69,7 @@ export async function signInWithGoogle(): Promise<{ error: Error | null }> {
         };
       }
 
-      console.log("Google authorization code received, exchanging for tokens...");
+      log("Google authorization code received, exchanging for tokens...");
 
       // Exchange the authorization code for tokens (including ID token)
       try {
@@ -92,7 +93,7 @@ export async function signInWithGoogle(): Promise<{ error: Error | null }> {
           if (codeVerifier) {
             tokenRequestParams.append("code_verifier", codeVerifier);
           } else {
-            console.warn(
+            logWarn(
               "PKCE is enabled but code_verifier not found. Token exchange may fail if PKCE is required."
             );
           }
@@ -109,7 +110,7 @@ export async function signInWithGoogle(): Promise<{ error: Error | null }> {
 
         if (!tokenResponse.ok) {
           const errorText = await tokenResponse.text();
-          console.error("Token exchange failed:", errorText);
+          logError("Token exchange failed:", errorText);
           return {
             error: new Error(
               `Token exchange failed: ${errorText}. Make sure your Google OAuth client is configured as a Web application and doesn't require a client secret for public clients.`
@@ -118,13 +119,13 @@ export async function signInWithGoogle(): Promise<{ error: Error | null }> {
         }
 
         const tokenData = await tokenResponse.json();
-        console.log("Token exchange response received");
+        log("Token exchange response received");
 
         // Extract the ID token from the token response
         const idToken = tokenData.id_token;
 
         if (!idToken) {
-          console.error("Token response:", tokenData);
+          logError("Token response:", tokenData);
           return {
             error: new Error(
               "No ID token received after code exchange. Token response: " +
@@ -133,7 +134,7 @@ export async function signInWithGoogle(): Promise<{ error: Error | null }> {
           };
         }
 
-        console.log("Google ID token received, signing in to Supabase...");
+        log("Google ID token received, signing in to Supabase...");
 
         // Use the ID token to sign in to Supabase
         const { data, error: supabaseError } =
@@ -143,7 +144,7 @@ export async function signInWithGoogle(): Promise<{ error: Error | null }> {
           });
 
         if (supabaseError) {
-          console.error("Supabase sign-in error:", supabaseError);
+          logError("Supabase sign-in error:", supabaseError);
           return { error: supabaseError };
         }
 
@@ -153,10 +154,10 @@ export async function signInWithGoogle(): Promise<{ error: Error | null }> {
           };
         }
 
-        console.log("Google OAuth login successful");
+        log("Google OAuth login successful");
         return { error: null };
       } catch (exchangeError) {
-        console.error("Token exchange error:", exchangeError);
+        logError("Token exchange error:", exchangeError);
         return { error: exchangeError as Error };
       }
     } else if (result.type === "cancel") {
@@ -165,7 +166,7 @@ export async function signInWithGoogle(): Promise<{ error: Error | null }> {
       return { error: new Error(`OAuth flow failed: ${result.type}`) };
     }
   } catch (error) {
-    console.error("Unexpected error during Google sign-in:", error);
+    logError("Unexpected error during Google sign-in:", error);
     return { error: error as Error };
   }
 }
@@ -177,12 +178,12 @@ export async function signOut(): Promise<{ error: Error | null }> {
   try {
     const { error } = await supabase.auth.signOut();
     if (error) {
-      console.error("Sign out error:", error);
+      logError("Sign out error:", error);
       return { error };
     }
     return { error: null };
   } catch (error) {
-    console.error("Unexpected error during sign out:", error);
+    logError("Unexpected error during sign out:", error);
     return { error: error as Error };
   }
 }
@@ -197,12 +198,12 @@ export async function getSession() {
       error,
     } = await supabase.auth.getSession();
     if (error) {
-      console.error("Get session error:", error);
+      logError("Get session error:", error);
       return { session: null, error };
     }
     return { session, error: null };
   } catch (error) {
-    console.error("Unexpected error getting session:", error);
+    logError("Unexpected error getting session:", error);
     return { session: null, error: error as Error };
   }
 }

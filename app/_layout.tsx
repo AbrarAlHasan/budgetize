@@ -20,6 +20,7 @@ import { colorScheme, useColorScheme } from "nativewind";
 import { PostHogProvider } from "posthog-react-native";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
+import { logError } from "@/utils/logger";
 
 export const unstable_settings = {
   anchor: "(tabs)",
@@ -66,7 +67,7 @@ export default function RootLayout() {
         const completed = onboardingStorage.isCompleted();
         setShowOnboarding(!completed);
       } catch (error) {
-        console.error("Error initializing app:", error);
+        logError("Error initializing app:", error);
         setThemeSynced(true); // Still mark as synced even on error
       } finally {
         // Mark as ready regardless of errors

@@ -3,6 +3,7 @@ import { transactionRepository } from '@/repositories/transaction.repository';
 import { useSettingsStore } from '@/store/settings-store';
 import { incomePreferenceKey } from '@/utils/income-preference';
 import { Transaction } from '@/db/schema/types';
+import { logPerformance } from '@/utils/logger';
 
 const QUERY_KEYS = {
   all: ['account-balances'] as const,
@@ -18,7 +19,7 @@ export function useAccountBalances() {
     gcTime: 1000 * 60 * 10, // Keep in cache for 10 minutes
     queryFn: async (): Promise<Map<number, number>> => {
       const startTime = Date.now();
-      console.log('[Performance] useAccountBalances query started');
+      logPerformance('useAccountBalances query started', 0);
       
       // Use optimized method that only fetches and decrypts amounts with account_id and type
       // Filter by income preference in the query if needed
@@ -36,7 +37,7 @@ export function useAccountBalances() {
       }
 
       const endTime = Date.now();
-      console.log(`[Performance] useAccountBalances query completed in ${endTime - startTime}ms`);
+      logPerformance('useAccountBalances query completed', endTime - startTime);
 
       return balanceMap;
     },

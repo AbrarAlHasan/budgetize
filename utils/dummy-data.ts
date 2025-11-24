@@ -4,6 +4,8 @@ import { accountRepository } from '@/repositories/account.repository';
 import { categoryRepository } from '@/repositories/category.repository';
 import { tagRepository } from '@/repositories/tag.repository';
 import { transactionRepository } from '@/repositories/transaction.repository';
+import { format } from 'date-fns';
+import { log } from '@/utils/logger';
 
 const YEARS_TO_GENERATE = 2; // Generate data for 2 years
 const TRANSACTIONS_PER_DAY = 50; // 50 transactions per day
@@ -185,7 +187,8 @@ async function seedAccounts(): Promise<Account[]> {
 async function seedTransactions(
   accounts: Account[],
   categoryMap: Map<string, number>,
-  tagMap: Map<string, number>
+  tagMap: Map<string, number>,
+  onProgress?: (progress: number) => void
 ): Promise<number> {
   let transactionCount = 0;
   const now = new Date();
@@ -193,8 +196,8 @@ async function seedTransactions(
   startDate.setFullYear(now.getFullYear() - YEARS_TO_GENERATE);
   startDate.setHours(0, 0, 0, 0);
 
-  console.log(`[dummy-data] Generating ${TRANSACTIONS_PER_DAY} transactions per day for ${DAYS_IN_TWO_YEARS} days...`);
-  console.log(`[dummy-data] Start date: ${startDate.toISOString()}, End date: ${now.toISOString()}`);
+  log(`[dummy-data] Generating ${TRANSACTIONS_PER_DAY} transactions per day for ${DAYS_IN_TWO_YEARS} days...`);
+  log(`[dummy-data] Start date: ${startDate.toISOString()}, End date: ${now.toISOString()}`);
 
   // Get non-credit accounts for income transactions
   const nonCreditAccounts = accounts.filter(acc => acc.type !== 'credit');
@@ -211,9 +214,16 @@ async function seedTransactions(
 
     const isToday = targetDate.toDateString() === now.toDateString();
     
-    // Progress logging every 100 days
-    if (dayOffset % 100 === 0) {
-      console.log(`[dummy-data] Progress: ${dayOffset}/${DAYS_IN_TWO_YEARS} days (${transactionCount} transactions so far)`);
+    // Calculate and report progress
+    const totalDays = Math.min(DAYS_IN_TWO_YEARS, Math.ceil((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
+    const progress = Math.min(100, Math.round(((dayOffset + 1) / totalDays) * 100));
+    
+    // Report progress every 10 days or on the last day
+    if (dayOffset % 10 === 0 || dayOffset === totalDays - 1) {
+      if (onProgress) {
+        onProgress(progress);
+      }
+      log(`[dummy-data] Progress: ${dayOffset + 1}/${totalDays} days (${progress}%) - ${transactionCount} transactions so far`);
     }
 
     // Generate income transactions (1-2 per day for non-credit accounts)
@@ -229,7 +239,7 @@ async function seedTransactions(
         category_id: categoryMap.get(incomeCategory) ?? null,
         amount: incomeAmount,
         type: 'income',
-        date: incomeDate.toISOString(),
+        date: format(incomeDate, 'yyyy-MM-dd'),
         note: `${incomeCategory} payout`,
         payment_mode: 'bank-transfer',
         tag_ids: pickRandomTags(tagMap, 1),
@@ -254,7 +264,7 @@ async function seedTransactions(
         category_id: categoryMap.get(expenseCategory) ?? null,
         amount: expenseAmount,
         type: 'expense',
-        date: expenseDate.toISOString(),
+        date: format(expenseDate, 'yyyy-MM-dd'),
         note: `${expenseCategory} expense`,
         payment_mode: pickRandomItem(PAYMENT_MODES),
         tag_ids: pickRandomTags(tagMap, 2),
@@ -264,19 +274,36 @@ async function seedTransactions(
     }
   }
 
-  console.log(`[dummy-data] Completed! Generated ${transactionCount} transactions.`);
+  log(`[dummy-data] Completed! Generated ${transactionCount} transactions.`);
   return transactionCount;
 }
 
-export async function resetAppWithDummyData(): Promise<DummySeedSummary> {
+export async function resetAppWithDummyData(
+  onProgress?: (progress: number) => void
+): Promise<DummySeedSummary> {
+  if (onProgress) onProgress(5);
   await clearExistingData();
 
+  if (onProgress) onProgress(10);
   // Run sequentially to avoid overlapping transactions on SQLite
   const categoryMap = await seedCategories();
+  
+  if (onProgress) onProgress(15);
   const tagMap = await seedTags();
+  
+  if (onProgress) onProgress(20);
   const accounts = await seedAccounts();
 
-  const transactions = await seedTransactions(accounts, categoryMap, tagMap);
+  if (onProgress) onProgress(25);
+  const transactions = await seedTransactions(accounts, categoryMap, tagMap, (transactionProgress) => {
+    // Map transaction progress (0-100) to overall progress (25-100)
+    if (onProgress) {
+      const overallProgress = 25 + (transactionProgress * 0.75);
+      onProgress(Math.round(overallProgress));
+    }
+  });
+
+  if (onProgress) onProgress(100);
 
   return {
     accounts: accounts.length,

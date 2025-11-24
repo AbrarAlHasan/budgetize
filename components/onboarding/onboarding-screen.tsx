@@ -28,6 +28,7 @@ import { restoreAppData, pickBackupFile } from '@/utils/backup';
 import { useSettingsStore } from '@/store/settings-store';
 import { useNotificationStore } from '@/store/notification-store';
 import { seedDefaultCategoriesAndTags } from '@/utils/seed-defaults';
+import { logError } from '@/utils/logger';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -173,7 +174,7 @@ const DataSetupSlide: React.FC<{
         onComplete();
       }, 300);
     } catch (error) {
-      console.error('Error seeding default data:', error);
+      logError('Error seeding default data:', error);
       // Still complete onboarding even if seeding fails
       Alert.alert(
         'Setup Complete',
@@ -223,7 +224,7 @@ const DataSetupSlide: React.FC<{
         );
       }
     } catch (error) {
-      console.error("Restore failed:", error);
+      logError("Restore failed:", error);
       setIsRestoring(false);
       setSelectedOption(null);
       Alert.alert(

@@ -39,7 +39,7 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
         set({ preferences });
       }
     } catch (error) {
-      console.error('Error loading notification preferences:', error);
+      logError('Error loading notification preferences:', error);
     } finally {
       set({ isLoading: false });
     }
@@ -60,7 +60,7 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
     try {
       await SecureStore.setItemAsync(NOTIFICATION_STORE_KEY, JSON.stringify(newPreferences));
     } catch (error) {
-      console.error('Error saving notification preferences:', error);
+      logError('Error saving notification preferences:', error);
     }
 
     // Schedule notifications
@@ -79,7 +79,7 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
     try {
       await SecureStore.setItemAsync(NOTIFICATION_STORE_KEY, JSON.stringify(get().preferences));
     } catch (error) {
-      console.error('Error saving notification preferences:', error);
+      logError('Error saving notification preferences:', error);
     }
   },
 }));

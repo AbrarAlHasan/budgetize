@@ -1,6 +1,7 @@
 import { createBackupFile, restoreAppData } from './backup';
 import { uploadBackup, listBackups, downloadBackup, cleanupOldBackups, CloudBackup } from '@/services/supabase/storage';
 import { Paths } from 'expo-file-system';
+import { logError } from '@/utils/logger';
 
 /**
  * Upload local backup to cloud
@@ -24,7 +25,7 @@ export async function uploadBackupToCloud(userId: string): Promise<{ error: Erro
 
     return { error: null, success: true };
   } catch (error) {
-    console.error('Unexpected error uploading backup to cloud:', error);
+    logError('Unexpected error uploading backup to cloud:', error);
     return { error: error as Error, success: false };
   }
 }
@@ -61,7 +62,7 @@ export async function restoreFromCloudBackup(
 
     return { error: null, success: true };
   } catch (error) {
-    console.error('Unexpected error restoring from cloud backup:', error);
+    logError('Unexpected error restoring from cloud backup:', error);
     return { error: error as Error, success: false };
   }
 }

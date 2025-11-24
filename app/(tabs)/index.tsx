@@ -15,6 +15,7 @@ import { tagRepository } from "@/repositories/tag.repository";
 import { transactionTagRepository } from "@/repositories/transaction-tag.repository";
 import { transactionRepository } from "@/repositories/transaction.repository";
 import { useSettingsStore } from "@/store/settings-store";
+import { logPerformance } from "@/utils/logger";
 import { useUIStore } from "@/store/ui-store";
 import { getCurrencySymbol } from "@/utils/currencies";
 import {
@@ -122,7 +123,7 @@ export default function DashboardScreen() {
     ],
     queryFn: async () => {
       const startTime = Date.now();
-      console.log("[Performance] Dashboard latest transactions query started");
+      logPerformance("Dashboard latest transactions query started", 0);
 
       const filterOptions = useFilters
         ? {
@@ -164,9 +165,7 @@ export default function DashboardScreen() {
           filterOptions
         );
       const queryEndTime = Date.now();
-      console.log(
-        `[Performance] Dashboard query fetch: ${queryEndTime - queryStartTime}ms (${rawTransactions.length} transactions)`
-      );
+      logPerformance("Dashboard query fetch", queryEndTime - queryStartTime, `${rawTransactions.length} transactions`);
 
       // Decrypt only the transactions we need
       const decryptStartTime = Date.now();
@@ -174,9 +173,7 @@ export default function DashboardScreen() {
         rawTransactions
       );
       const decryptEndTime = Date.now();
-      console.log(
-        `[Performance] Dashboard decrypt: ${decryptEndTime - decryptStartTime}ms (${decrypted.length} transactions)`
-      );
+      logPerformance("Dashboard decrypt", decryptEndTime - decryptStartTime, `${decrypted.length} transactions`);
 
       const filterStartTime = Date.now();
       const filtered = filterTransactionsByIncomePreference(
@@ -184,16 +181,10 @@ export default function DashboardScreen() {
         settings.incomeCalculationEnabled
       );
       const filterEndTime = Date.now();
-      console.log(
-        `[Performance] Dashboard filter: ${filterEndTime - filterStartTime}ms`
-      );
+      logPerformance("Dashboard filter", filterEndTime - filterStartTime);
 
       const endTime = Date.now();
-      console.log(
-        `[Performance] Dashboard latest transactions query completed in ${
-          endTime - startTime
-        }ms (${filtered.length} transactions)`
-      );
+      logPerformance("Dashboard latest transactions query completed", endTime - startTime, `${filtered.length} transactions`);
 
       return filtered;
     },

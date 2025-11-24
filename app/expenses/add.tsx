@@ -150,13 +150,9 @@ export default function AddTransactionScreen() {
     }
 
     try {
-      // Combine selected date with current time and convert to ISO string
-      const selectedDateWithTime = new Date(date);
-      const now = new Date();
-      selectedDateWithTime.setHours(now.getHours());
-      selectedDateWithTime.setMinutes(now.getMinutes());
-      selectedDateWithTime.setSeconds(now.getSeconds());
-      selectedDateWithTime.setMilliseconds(now.getMilliseconds());
+      // Format date as YYYY-MM-DD to avoid timezone issues
+      // Store only the date part without time/timezone to ensure consistency
+      const dateString = format(date, "yyyy-MM-dd");
 
       if (isEditMode && transactionId) {
         await updateTransaction.mutateAsync({
@@ -165,7 +161,7 @@ export default function AddTransactionScreen() {
           category_id: categoryId,
           amount: amountValue,
           type,
-          date: selectedDateWithTime.toISOString(),
+          date: dateString,
           note: note.trim() || null,
           payment_mode: paymentMode.trim(),
           tag_ids: selectedTagIds.length > 0 ? selectedTagIds : undefined,
@@ -177,7 +173,7 @@ export default function AddTransactionScreen() {
         category_id: categoryId,
         amount: amountValue,
         type,
-        date: selectedDateWithTime.toISOString(),
+        date: dateString,
         note: note.trim() || null,
         payment_mode: paymentMode.trim(),
         tag_ids: selectedTagIds.length > 0 ? selectedTagIds : undefined,

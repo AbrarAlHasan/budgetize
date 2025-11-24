@@ -1,6 +1,7 @@
 import * as Notifications from 'expo-notifications';
 import { SchedulableTriggerInputTypes } from 'expo-notifications';
 import { Platform } from 'react-native';
+import { log, logError, logWarn } from '@/utils/logger';
 
 // Configure notification behavior
 Notifications.setNotificationHandler({
@@ -62,7 +63,7 @@ export async function requestNotificationPermissions(): Promise<boolean> {
     }
 
     if (finalStatus !== 'granted') {
-      console.warn('Notification permissions not granted');
+      logWarn('Notification permissions not granted');
       return false;
     }
 
@@ -78,7 +79,7 @@ export async function requestNotificationPermissions(): Promise<boolean> {
 
     return true;
   } catch (error) {
-    console.error('Error requesting notification permissions:', error);
+    logError('Error requesting notification permissions:', error);
     return false;
   }
 }
@@ -102,10 +103,10 @@ export async function cancelNotifications(identifierPrefix: string): Promise<voi
 
     // Verify cancellation (optional, for debugging)
     if (notificationsToCancel.length > 0) {
-      console.log(`Canceled ${notificationsToCancel.length} notification(s) with prefix: ${identifierPrefix}`);
+      log(`Canceled ${notificationsToCancel.length} notification(s) with prefix: ${identifierPrefix}`);
     }
   } catch (error) {
-    console.error('Error canceling notifications:', error);
+    logError('Error canceling notifications:', error);
   }
 }
 
@@ -153,7 +154,7 @@ export async function scheduleDailyNotifications(
         },
       });
     } catch (error) {
-      console.error(`Error scheduling notification ${identifier}:`, error);
+      logError(`Error scheduling notification ${identifier}:`, error);
     }
   }
 }
@@ -165,7 +166,7 @@ export async function getScheduledNotifications(): Promise<Notifications.Notific
   try {
     return await Notifications.getAllScheduledNotificationsAsync();
   } catch (error) {
-    console.error('Error getting scheduled notifications:', error);
+    logError('Error getting scheduled notifications:', error);
     return [];
   }
 }
@@ -178,7 +179,7 @@ export async function areNotificationsEnabled(): Promise<boolean> {
     const { status } = await Notifications.getPermissionsAsync();
     return status === 'granted';
   } catch (error) {
-    console.error('Error checking notification permissions:', error);
+    logError('Error checking notification permissions:', error);
     return false;
   }
 }

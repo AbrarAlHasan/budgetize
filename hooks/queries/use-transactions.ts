@@ -48,25 +48,25 @@ export function useTransactions(filters?: {
     queryKey: [...QUERY_KEYS.list(filters), incomePreferenceKey(incomeEnabled)],
     queryFn: async () => {
       const startTime = Date.now();
-      console.log('[Performance] useTransactions query started', filters ? `with filters: ${JSON.stringify(filters)}` : '');
+      logPerformance('useTransactions query started', 0, filters ? `with filters: ${JSON.stringify(filters)}` : '');
       
       const queryStartTime = Date.now();
       const transactions = await transactionRepository.findAllWithFilters(filters);
       const queryEndTime = Date.now();
-      console.log(`[Performance] useTransactions query fetch: ${queryEndTime - queryStartTime}ms (${transactions.length} transactions)`);
+      logPerformance('useTransactions query fetch', queryEndTime - queryStartTime, `${transactions.length} transactions`);
 
       const decryptStartTime = Date.now();
       const decrypted = await transactionRepository.decryptTransactions(transactions);
       const decryptEndTime = Date.now();
-      console.log(`[Performance] useTransactions decrypt: ${decryptEndTime - decryptStartTime}ms (${decrypted.length} transactions)`);
+      logPerformance('useTransactions decrypt', decryptEndTime - decryptStartTime, `${decrypted.length} transactions`);
 
       const filterStartTime = Date.now();
       const result = filterTransactionsByIncomePreference(decrypted, incomeEnabled);
       const filterEndTime = Date.now();
-      console.log(`[Performance] useTransactions filter: ${filterEndTime - filterStartTime}ms`);
+      logPerformance('useTransactions filter', filterEndTime - filterStartTime);
       
       const endTime = Date.now();
-      console.log(`[Performance] useTransactions query completed in ${endTime - startTime}ms (${result.length} transactions)`);
+      logPerformance('useTransactions query completed', endTime - startTime, `${result.length} transactions`);
       
       return result;
     },
@@ -95,7 +95,7 @@ export function useTransactionsPaginated(filters?: {
     queryKey: [...QUERY_KEYS.list(filters), 'paginated', incomePreferenceKey(incomeEnabled)],
     queryFn: async ({ pageParam = 0 }) => {
       const startTime = Date.now();
-      console.log(`[Performance] useTransactionsPaginated query started (page: ${pageParam})`, filters ? `with filters: ${JSON.stringify(filters)}` : '');
+      logPerformance('useTransactionsPaginated query started', 0, `page: ${pageParam}${filters ? `, filters: ${JSON.stringify(filters)}` : ''}`);
       
       const queryStartTime = Date.now();
       const result = await transactionRepository.findAllWithFiltersPaginated(
@@ -104,17 +104,17 @@ export function useTransactionsPaginated(filters?: {
         pageParam * TRANSACTIONS_PER_PAGE
       );
       const queryEndTime = Date.now();
-      console.log(`[Performance] useTransactionsPaginated query fetch: ${queryEndTime - queryStartTime}ms (${result.transactions.length} transactions)`);
+      logPerformance('useTransactionsPaginated query fetch', queryEndTime - queryStartTime, `${result.transactions.length} transactions`);
 
       const decryptStartTime = Date.now();
       const decrypted = await transactionRepository.decryptTransactions(result.transactions);
       const decryptEndTime = Date.now();
-      console.log(`[Performance] useTransactionsPaginated decrypt: ${decryptEndTime - decryptStartTime}ms (${decrypted.length} transactions)`);
+      logPerformance('useTransactionsPaginated decrypt', decryptEndTime - decryptStartTime, `${decrypted.length} transactions`);
 
       const filterStartTime = Date.now();
       const filtered = filterTransactionsByIncomePreference(decrypted, incomeEnabled);
       const filterEndTime = Date.now();
-      console.log(`[Performance] useTransactionsPaginated filter: ${filterEndTime - filterStartTime}ms`);
+      logPerformance('useTransactionsPaginated filter', filterEndTime - filterStartTime);
       
       const queryResult = {
         transactions: filtered,
@@ -123,7 +123,7 @@ export function useTransactionsPaginated(filters?: {
       };
       
       const endTime = Date.now();
-      console.log(`[Performance] useTransactionsPaginated query completed in ${endTime - startTime}ms (page: ${pageParam}, ${filtered.length} transactions, hasMore: ${result.hasMore})`);
+      logPerformance('useTransactionsPaginated query completed', endTime - startTime, `page: ${pageParam}, ${filtered.length} transactions, hasMore: ${result.hasMore}`);
       
       return queryResult;
     },

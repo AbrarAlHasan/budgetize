@@ -101,6 +101,7 @@ export default function FiltersScreen() {
 
   const handleApply = () => {
     // Update date filters
+    // If only one date is selected, use it for both start and end to filter for that single day
     if (startDate && endDate) {
       setDateRangeFilter(
         filterContext,
@@ -108,9 +109,13 @@ export default function FiltersScreen() {
         format(endDate, "yyyy-MM-dd")
       );
     } else if (startDate) {
-      setDateRangeFilter(filterContext, format(startDate, "yyyy-MM-dd"), null);
+      // If only start date is selected, use it for both start and end
+      const dateStr = format(startDate, "yyyy-MM-dd");
+      setDateRangeFilter(filterContext, dateStr, dateStr);
     } else if (endDate) {
-      setDateRangeFilter(filterContext, null, format(endDate, "yyyy-MM-dd"));
+      // If only end date is selected, use it for both start and end
+      const dateStr = format(endDate, "yyyy-MM-dd");
+      setDateRangeFilter(filterContext, dateStr, dateStr);
     } else {
       setDateRangeFilter(filterContext, null, null);
     }
@@ -229,6 +234,10 @@ export default function FiltersScreen() {
                   // If end date is before new start date, clear it
                   if (endDate && date && date > endDate) {
                     setEndDate(null);
+                  }
+                  // If no end date is set, automatically set it to the same date for single-day filtering
+                  if (!endDate && date) {
+                    setEndDate(date);
                   }
                   // Automatically open end date picker after start date is selected
                   setTimeout(() => {

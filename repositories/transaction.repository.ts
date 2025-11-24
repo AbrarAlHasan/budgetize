@@ -12,9 +12,42 @@ import {
 } from "@/services/encryption";
 import { BaseRepository } from "./base.repository";
 import { transactionTagRepository } from "./transaction-tag.repository";
+import { logPerformance, logError } from "@/utils/logger";
 
 export class TransactionRepository extends BaseRepository<Transaction> {
-  protected tableName = "transactions";
+  protected tableName = "transactions"
+
+  /**
+   * Helper method to add date filter conditions to a query
+   * Handles the case where startDate and endDate are the same (single day filter)
+   */
+  private addDateFilterConditions(
+    conditions: string[],
+    params: any[],
+    startDate?: string,
+    endDate?: string,
+    tableAlias: string = "t"
+  ): void {
+    // Normalize dates by trimming whitespace for accurate comparison
+    const normalizedStartDate = startDate?.trim();
+    const normalizedEndDate = endDate?.trim();
+    
+    if (normalizedStartDate && normalizedEndDate && normalizedStartDate === normalizedEndDate) {
+      // Same date - use equality check for better performance and clarity
+      conditions.push(`${tableAlias}.date = ?`);
+      params.push(normalizedStartDate);
+    } else {
+      // Different dates or only one date provided
+      if (normalizedStartDate) {
+        conditions.push(`${tableAlias}.date >= ?`);
+        params.push(normalizedStartDate);
+      }
+      if (normalizedEndDate) {
+        conditions.push(`${tableAlias}.date <= ?`);
+        params.push(normalizedEndDate);
+      }
+    }
+  }
   protected primaryKey = "id";
 
   /**
@@ -139,7 +172,7 @@ export class TransactionRepository extends BaseRepository<Transaction> {
       return transaction;
     } catch (error) {
       await db.execAsync("ROLLBACK");
-      console.error("Error creating transaction:", error);
+      logError("Error creating transaction:", error);
       throw new Error(
         error instanceof Error ? error.message : "Failed to create transaction"
       );
@@ -211,7 +244,7 @@ export class TransactionRepository extends BaseRepository<Transaction> {
       return transaction;
     } catch (error) {
       await db.execAsync("ROLLBACK");
-      console.error("Error updating transaction:", error);
+      logError("Error updating transaction:", error);
       throw new Error(
         error instanceof Error ? error.message : "Failed to update transaction"
       );
@@ -237,12 +270,23 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     startDate: string,
     endDate: string
   ): Promise<Transaction[]> {
-    return this.executeQuery<Transaction>(
-      `SELECT * FROM ${this.tableName} 
+    // Normalize dates by trimming whitespace for accurate comparison
+    const normalizedStartDate = startDate.trim();
+    const normalizedEndDate = endDate.trim();
+    
+    // If start and end dates are the same, use equality check for better performance
+    if (normalizedStartDate === normalizedEndDate) {
+      const query = `SELECT * FROM ${this.tableName} 
+         WHERE date = ? AND deleted_at IS NULL 
+         ORDER BY date DESC, created_at DESC`;
+      const params = [normalizedStartDate];
+      return this.executeQuery<Transaction>(query, params);
+    }
+    const query = `SELECT * FROM ${this.tableName} 
        WHERE date >= ? AND date <= ? AND deleted_at IS NULL 
-       ORDER BY date DESC, created_at DESC`,
-      [startDate, endDate]
-    );
+       ORDER BY date DESC, created_at DESC`;
+    const params = [normalizedStartDate, normalizedEndDate];
+    return this.executeQuery<Transaction>(query, params);
   }
 
   async findByType(type: Transaction["type"]): Promise<Transaction[]> {
@@ -301,15 +345,8 @@ export class TransactionRepository extends BaseRepository<Transaction> {
       params.push(...categoryIds);
     }
 
-    if (filters?.startDate) {
-      conditions.push("t.date >= ?");
-      params.push(filters.startDate);
-    }
-
-    if (filters?.endDate) {
-      conditions.push("t.date <= ?");
-      params.push(filters.endDate);
-    }
+    // Handle date filters
+    this.addDateFilterConditions(conditions, params, filters?.startDate, filters?.endDate);
 
     // Handle transaction type filters (support both single and array)
     const types = filters?.types || (filters?.type ? [filters.type] : []);
@@ -399,15 +436,8 @@ export class TransactionRepository extends BaseRepository<Transaction> {
       params.push(...categoryIds);
     }
 
-    if (filters?.startDate) {
-      conditions.push("t.date >= ?");
-      params.push(filters.startDate);
-    }
-
-    if (filters?.endDate) {
-      conditions.push("t.date <= ?");
-      params.push(filters.endDate);
-    }
+    // Handle date filters
+    this.addDateFilterConditions(conditions, params, filters?.startDate, filters?.endDate);
 
     // Handle transaction type filters
     const types = filters?.types || (filters?.type ? [filters.type] : []);
@@ -467,13 +497,19 @@ export class TransactionRepository extends BaseRepository<Transaction> {
       countConditions.push(`t.category_id IN (${placeholders})`);
       countParams.push(...categoryIds);
     }
-    if (filters?.startDate) {
-      countConditions.push("t.date >= ?");
+    // Handle date filters for count query
+    if (filters?.startDate && filters?.endDate && filters.startDate === filters.endDate) {
+      countConditions.push("t.date = ?");
       countParams.push(filters.startDate);
-    }
-    if (filters?.endDate) {
-      countConditions.push("t.date <= ?");
-      countParams.push(filters.endDate);
+    } else {
+      if (filters?.startDate) {
+        countConditions.push("t.date >= ?");
+        countParams.push(filters.startDate);
+      }
+      if (filters?.endDate) {
+        countConditions.push("t.date <= ?");
+        countParams.push(filters.endDate);
+      }
     }
     if (types.length > 0) {
       const placeholders = types.map(() => "?").join(",");
@@ -649,15 +685,8 @@ export class TransactionRepository extends BaseRepository<Transaction> {
       params.push(...categoryIds);
     }
 
-    if (filters?.startDate) {
-      conditions.push("t.date >= ?");
-      params.push(filters.startDate);
-    }
-
-    if (filters?.endDate) {
-      conditions.push("t.date <= ?");
-      params.push(filters.endDate);
-    }
+    // Handle date filters
+    this.addDateFilterConditions(conditions, params, filters?.startDate, filters?.endDate);
 
     // Handle transaction type filters
     const types = filters?.types || (filters?.type ? [filters.type] : []);
@@ -782,15 +811,8 @@ export class TransactionRepository extends BaseRepository<Transaction> {
       params.push(...categoryIds);
     }
 
-    if (filters?.startDate) {
-      conditions.push("t.date >= ?");
-      params.push(filters.startDate);
-    }
-
-    if (filters?.endDate) {
-      conditions.push("t.date <= ?");
-      params.push(filters.endDate);
-    }
+    // Handle date filters
+    this.addDateFilterConditions(conditions, params, filters?.startDate, filters?.endDate);
 
     // Handle transaction type filters - only expenses for category breakdown
     const types =
@@ -915,15 +937,8 @@ export class TransactionRepository extends BaseRepository<Transaction> {
       params.push(...categoryIds);
     }
 
-    if (filters?.startDate) {
-      conditions.push("t.date >= ?");
-      params.push(filters.startDate);
-    }
-
-    if (filters?.endDate) {
-      conditions.push("t.date <= ?");
-      params.push(filters.endDate);
-    }
+    // Handle date filters
+    this.addDateFilterConditions(conditions, params, filters?.startDate, filters?.endDate);
 
     // Handle transaction type filters - only expenses for daily patterns
     const types =
@@ -1059,15 +1074,8 @@ export class TransactionRepository extends BaseRepository<Transaction> {
       params.push(...categoryIds);
     }
 
-    if (filters?.startDate) {
-      conditions.push("t.date >= ?");
-      params.push(filters.startDate);
-    }
-
-    if (filters?.endDate) {
-      conditions.push("t.date <= ?");
-      params.push(filters.endDate);
-    }
+    // Handle date filters
+    this.addDateFilterConditions(conditions, params, filters?.startDate, filters?.endDate);
 
     // Handle transaction type filters - allow both income and expenses for monthly trends
     const types =
@@ -1215,15 +1223,8 @@ export class TransactionRepository extends BaseRepository<Transaction> {
       params.push(...categoryIds);
     }
 
-    if (filters?.startDate) {
-      conditions.push("t.date >= ?");
-      params.push(filters.startDate);
-    }
-
-    if (filters?.endDate) {
-      conditions.push("t.date <= ?");
-      params.push(filters.endDate);
-    }
+    // Handle date filters
+    this.addDateFilterConditions(conditions, params, filters?.startDate, filters?.endDate);
 
     // Handle transaction type filters - only expenses for tag breakdown
     const types =
@@ -1349,15 +1350,8 @@ export class TransactionRepository extends BaseRepository<Transaction> {
       params.push(...categoryIds);
     }
 
-    if (filters?.startDate) {
-      conditions.push("t.date >= ?");
-      params.push(filters.startDate);
-    }
-
-    if (filters?.endDate) {
-      conditions.push("t.date <= ?");
-      params.push(filters.endDate);
-    }
+    // Handle date filters
+    this.addDateFilterConditions(conditions, params, filters?.startDate, filters?.endDate);
 
     // Handle transaction type filters - allow both income and expenses for account breakdown
     const types =
@@ -1395,7 +1389,7 @@ export class TransactionRepository extends BaseRepository<Transaction> {
       account_id: number;
     }>(query, params);
     const queryEndTime = Date.now();
-    console.log(`[Performance] calculateAccountBreakdown query fetch: ${queryEndTime - queryStartTime}ms (${results.length} transactions)`);
+    logPerformance('calculateAccountBreakdown query fetch', queryEndTime - queryStartTime, `${results.length} transactions`);
 
     // Decrypt amounts in batches to avoid overwhelming the system
     const decryptStartTime = Date.now();
@@ -1409,7 +1403,7 @@ export class TransactionRepository extends BaseRepository<Transaction> {
       })
     );
     const decryptEndTime = Date.now();
-    console.log(`[Performance] calculateAccountBreakdown decrypt: ${decryptEndTime - decryptStartTime}ms (${decryptedAmounts.length} transactions)`);
+    logPerformance('calculateAccountBreakdown decrypt', decryptEndTime - decryptStartTime, `${decryptedAmounts.length} transactions`);
 
     // Group by account
     const accountMap = new Map<
@@ -1467,15 +1461,8 @@ export class TransactionRepository extends BaseRepository<Transaction> {
       params.push(...accountIds);
     }
 
-    if (filters?.startDate) {
-      conditions.push('t.date >= ?');
-      params.push(filters.startDate);
-    }
-
-    if (filters?.endDate) {
-      conditions.push('t.date <= ?');
-      params.push(filters.endDate);
-    }
+    // Handle date filters
+    this.addDateFilterConditions(conditions, params, filters?.startDate, filters?.endDate);
 
     const types = filters?.types || (filters?.type ? [filters.type] : ['expense']); // Default to expense
     if (types.length > 0) {
@@ -1576,15 +1563,8 @@ export class TransactionRepository extends BaseRepository<Transaction> {
       params.push(...categoryIds);
     }
 
-    if (filters?.startDate) {
-      conditions.push("t.date >= ?");
-      params.push(filters.startDate);
-    }
-
-    if (filters?.endDate) {
-      conditions.push("t.date <= ?");
-      params.push(filters.endDate);
-    }
+    // Handle date filters
+    this.addDateFilterConditions(conditions, params, filters?.startDate, filters?.endDate);
 
     // Handle transaction type filters
     const types = filters?.types || (filters?.type ? [filters.type] : []);
@@ -1614,8 +1594,6 @@ export class TransactionRepository extends BaseRepository<Transaction> {
       " AND "
     )} ORDER BY t.date DESC, t.created_at DESC LIMIT ?`;
     params.push(limit);
-
-    console.log({ query, params });
 
     return this.executeQuery<Transaction>(query, params);
   }
@@ -1658,15 +1636,8 @@ export class TransactionRepository extends BaseRepository<Transaction> {
       params.push(...categoryIds);
     }
 
-    if (filters?.startDate) {
-      conditions.push('t.date >= ?');
-      params.push(filters.startDate);
-    }
-
-    if (filters?.endDate) {
-      conditions.push('t.date <= ?');
-      params.push(filters.endDate);
-    }
+    // Handle date filters
+    this.addDateFilterConditions(conditions, params, filters?.startDate, filters?.endDate);
 
     // Handle transaction type filters
     const types = filters?.types || (filters?.type ? [filters.type] : []);

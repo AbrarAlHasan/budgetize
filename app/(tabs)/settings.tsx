@@ -10,6 +10,7 @@ import { onboardingStorage } from "@/storage/onboarding";
 import { useAuthStore } from "@/store/auth-store";
 import { useNotificationStore } from "@/store/notification-store";
 import { useSettingsStore } from "@/store/settings-store";
+import { log, logError } from "@/utils/logger";
 import { createBackupFile, restoreAppData } from "@/utils/backup";
 import { clearDatabase } from "@/utils/clear-database";
 import { uploadBackupToCloud } from "@/utils/cloud-backup";
@@ -55,9 +56,10 @@ export default function SettingsScreen() {
   const [showDeveloperOptions, setShowDeveloperOptions] = useState(false);
   const [settingsTapCount, setSettingsTapCount] = useState(0);
   const tapTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [dummyDataProgress, setDummyDataProgress] = useState(0);
 
   useEffect(() => {
-    console.log(Paths.document.uri);
+    log(Paths.document.uri);
     loadPreferences();
     loadSettings();
     checkPermissions();
@@ -175,19 +177,24 @@ export default function SettingsScreen() {
   const runDummyDataSeed = async () => {
     try {
       setIsSeedingDummyData(true);
-      const summary = await resetAppWithDummyData();
+      setDummyDataProgress(0);
+      const summary = await resetAppWithDummyData((progress) => {
+        setDummyDataProgress(progress);
+      });
+      setDummyDataProgress(100);
       Alert.alert(
         "Dummy Data Ready",
         `Generated ${summary.transactions} transactions across ${summary.accounts} accounts.\nPull to refresh to see the latest data.`
       );
     } catch (error) {
-      console.error("Failed to seed dummy data:", error);
+      logError("Failed to seed dummy data:", error);
       Alert.alert(
         "Seeding Failed",
         "Could not generate dummy data. Check the Metro logs for more details."
       );
     } finally {
       setIsSeedingDummyData(false);
+      setDummyDataProgress(0);
     }
   };
 
@@ -243,14 +250,14 @@ export default function SettingsScreen() {
           );
         }
       } catch (shareError) {
-        console.error("Share error:", shareError);
+        logError("Share error:", shareError);
         Alert.alert(
           "Backup Created",
           `Backup file created at: ${zipPath}\nFailed to open share dialog.`
         );
       }
     } catch (error) {
-      console.error("Backup failed:", error);
+      logError("Backup failed:", error);
       Alert.alert(
         "Backup Failed",
         "An unexpected error occurred while creating the backup."
@@ -289,7 +296,7 @@ export default function SettingsScreen() {
         );
       }
     } catch (error) {
-      console.error("Restore failed:", error);
+      logError("Restore failed:", error);
       Alert.alert(
         "Restore Failed",
         "An unexpected error occurred while restoring the backup."
@@ -332,7 +339,7 @@ export default function SettingsScreen() {
         [{ text: "OK" }]
       );
     } catch (error) {
-      console.error("Failed to clear database:", error);
+      logError("Failed to clear database:", error);
       Alert.alert(
         "Clear Failed",
         "An error occurred while clearing the database. Please try again."
@@ -762,7 +769,7 @@ export default function SettingsScreen() {
                       // Trigger backup list refresh
                       setBackupListRefreshTrigger(prev => prev + 1);
                     } catch (error) {
-                      console.error('Error uploading to cloud:', error);
+                      logError('Error uploading to cloud:', error);
                       Alert.alert('Error', 'An unexpected error occurred.');
                     } finally {
                       setIsUploadingToCloud(false);
@@ -854,9 +861,22 @@ export default function SettingsScreen() {
                       Clears DB and injects 12 months of sample data
                     </Text>
                     {isSeedingDummyData && (
-                      <Text className="text-xs text-red-500 mt-1">
-                        Seeding dummy data...
-                      </Text>
+                      <View className="mt-3">
+                        <View className="flex-row items-center justify-between mb-1">
+                          <Text className="text-xs text-gray-600 dark:text-gray-400">
+                            Generating data...
+                          </Text>
+                          <Text className="text-xs font-semibold text-blue-600 dark:text-blue-400">
+                            {dummyDataProgress}%
+                          </Text>
+                        </View>
+                        <View className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                          <View
+                            className="h-full bg-blue-600 rounded-full"
+                            style={{ width: `${dummyDataProgress}%` }}
+                          />
+                        </View>
+                      </View>
                     )}
                   </View>
                 </View>

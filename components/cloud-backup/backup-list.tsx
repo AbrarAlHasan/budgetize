@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { BackupItem } from './backup-item';
+import { logError } from '@/utils/logger';
 
 interface BackupListProps {
   userId: string;
@@ -23,13 +24,13 @@ export function BackupList({ userId, refreshTrigger }: BackupListProps) {
     try {
       const { backups: backupList, error } = await getCloudBackups(userId);
       if (error) {
-        console.error('Error loading backups:', error);
+        logError('Error loading backups:', error);
         Alert.alert('Error', 'Failed to load backups. Please try again.');
         return;
       }
       setBackups(backupList);
     } catch (error) {
-      console.error('Unexpected error loading backups:', error);
+      logError('Unexpected error loading backups:', error);
       Alert.alert('Error', 'An unexpected error occurred.');
     } finally {
       setIsLoading(false);
@@ -65,7 +66,7 @@ export function BackupList({ userId, refreshTrigger }: BackupListProps) {
               Alert.alert('Success', 'Backup restored successfully!');
               loadBackups();
             } catch (error) {
-              console.error('Error restoring backup:', error);
+              logError('Error restoring backup:', error);
               Alert.alert('Error', 'An unexpected error occurred.');
             } finally {
               setRestoringBackupId(null);
@@ -97,7 +98,7 @@ export function BackupList({ userId, refreshTrigger }: BackupListProps) {
               Alert.alert('Success', 'Backup deleted successfully!');
               loadBackups();
             } catch (error) {
-              console.error('Error deleting backup:', error);
+              logError('Error deleting backup:', error);
               Alert.alert('Error', 'An unexpected error occurred.');
             } finally {
               setDeletingBackupId(null);

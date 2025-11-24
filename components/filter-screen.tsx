@@ -85,12 +85,17 @@ export function FilterScreen({ visible, onClose, onApply, context = 'dashboard' 
 
   const handleApply = () => {
     // Sync all local state to the filter store
+    // If only one date is selected, use it for both start and end to filter for that single day
     if (startDate && endDate) {
       setDateRangeFilter(context, format(startDate, 'yyyy-MM-dd'), format(endDate, 'yyyy-MM-dd'));
     } else if (startDate) {
-      setDateRangeFilter(context, format(startDate, 'yyyy-MM-dd'), null);
+      // If only start date is selected, use it for both start and end
+      const dateStr = format(startDate, 'yyyy-MM-dd');
+      setDateRangeFilter(context, dateStr, dateStr);
     } else if (endDate) {
-      setDateRangeFilter(context, null, format(endDate, 'yyyy-MM-dd'));
+      // If only end date is selected, use it for both start and end
+      const dateStr = format(endDate, 'yyyy-MM-dd');
+      setDateRangeFilter(context, dateStr, dateStr);
     } else {
       setDateRangeFilter(context, null, null);
     }

@@ -1,5 +1,6 @@
 import { categoryRepository } from '@/repositories/category.repository';
 import { tagRepository } from '@/repositories/tag.repository';
+import { log, logError } from '@/utils/logger';
 
 // Default categories that users commonly need
 const DEFAULT_CATEGORIES = [
@@ -53,7 +54,7 @@ export async function seedDefaultCategoriesAndTags(): Promise<void> {
         await categoryRepository.create({ name: categoryName });
       } catch (error) {
         // Category might already exist, ignore error
-        console.log(`Category "${categoryName}" might already exist, skipping...`);
+        log(`Category "${categoryName}" might already exist, skipping...`);
       }
     }
 
@@ -63,13 +64,13 @@ export async function seedDefaultCategoriesAndTags(): Promise<void> {
         await tagRepository.create({ name: tagName });
       } catch (error) {
         // Tag might already exist, ignore error
-        console.log(`Tag "${tagName}" might already exist, skipping...`);
+        log(`Tag "${tagName}" might already exist, skipping...`);
       }
     }
 
-    console.log('✓ Default categories and tags seeded successfully');
+    log('✓ Default categories and tags seeded successfully');
   } catch (error) {
-    console.error('Error seeding default categories and tags:', error);
+    logError('Error seeding default categories and tags:', error);
     throw error;
   }
 }

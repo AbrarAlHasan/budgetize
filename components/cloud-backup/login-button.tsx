@@ -2,6 +2,7 @@ import { useAuthStore } from "@/store/auth-store";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { ActivityIndicator, Alert, Text, TouchableOpacity } from "react-native";
+import { logError } from "@/utils/logger";
 
 export function LoginButton() {
   const { login, isLoading } = useAuthStore();
@@ -12,7 +13,7 @@ export function LoginButton() {
     try {
       const { error } = await login();
       if (error) {
-        console.error("Login error:", error);
+        logError("Login error:", error);
         
         // Show user-friendly error message
         let errorMessage = error.message || 'Failed to login with Google. Please try again.';
@@ -27,7 +28,7 @@ export function LoginButton() {
         Alert.alert('Login Failed', errorMessage, [{ text: 'OK' }]);
       }
     } catch (error) {
-      console.error("Login error:", error);
+      logError("Login error:", error);
       Alert.alert(
         'Login Failed',
         'An unexpected error occurred. Please try again.',

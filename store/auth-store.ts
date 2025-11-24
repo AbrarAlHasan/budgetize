@@ -1,6 +1,7 @@
 import { getSession, onAuthStateChange, signInWithGoogle, signOut } from '@/services/supabase/auth';
 import { Session, User } from '@supabase/supabase-js';
 import { create } from 'zustand';
+import { logError } from '@/utils/logger';
 
 interface AuthStore {
   user: User | null;
@@ -26,7 +27,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       const { session, error } = await getSession();
       
       if (error) {
-        console.error('Error initializing auth:', error);
+        logError('Error initializing auth:', error);
         set({ user: null, session: null, isAuthenticated: false, isLoading: false });
         return;
       }
@@ -47,7 +48,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         });
       });
     } catch (error) {
-      console.error('Unexpected error initializing auth:', error);
+      logError('Unexpected error initializing auth:', error);
       set({ user: null, session: null, isAuthenticated: false, isLoading: false });
     }
   },

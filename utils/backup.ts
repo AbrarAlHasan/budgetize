@@ -3,6 +3,7 @@ import { Directory, File, Paths } from "expo-file-system";
 import * as SecureStore from "expo-secure-store";
 import * as Sharing from "expo-sharing";
 import { unzip, zip } from "react-native-zip-archive";
+import { log, logWarn, logError } from "@/utils/logger";
 
 interface BackupMetadata {
   createdAt: string;
@@ -26,15 +27,15 @@ export async function createBackupFile(): Promise<string | null> {
 
   try {
     const uri = Paths.document.uri;
-    console.log("Starting backup process...");
+    log("Starting backup process...");
 
     // 1. Force WAL checkpoint to ensure all data is in main database file
     try {
       const db = await getDatabase();
       await db.execAsync("PRAGMA wal_checkpoint(FULL)");
-      console.log("✓ WAL checkpoint completed");
+      log("✓ WAL checkpoint completed");
     } catch (error) {
-      console.warn("⚠ Failed to run WAL checkpoint:", error);
+      logWarn("⚠ Failed to run WAL checkpoint:", error);
       // Continue anyway - backup will still work
     }
 
@@ -44,11 +45,11 @@ export async function createBackupFile(): Promise<string | null> {
       try {
         tempBackupDir.delete();
       } catch (error) {
-        console.warn("⚠ Failed to delete existing temp directory:", error);
+        logWarn("⚠ Failed to delete existing temp directory:", error);
       }
     }
     tempBackupDir.create({ intermediates: true });
-    console.log("✓ Temporary backup directory created");
+    log("✓ Temporary backup directory created");
 
     // 3. Copy SQLite database file
     const dbPath = `${uri}/SQLite/budgetize.db`;
@@ -58,9 +59,9 @@ export async function createBackupFile(): Promise<string | null> {
       const destDbPath = `${tempBackupDir.uri}/database.sqlite`;
       const destDbFile = new File(destDbPath);
       sourceDbFile.copy(destDbFile);
-      console.log("✓ Database copied");
+      log("✓ Database copied");
     } else {
-      console.warn("⚠ Database file not found, continuing without it");
+      logWarn("⚠ Database file not found, continuing without it");
     }
 
     // 4. Copy MMKV storage directory
@@ -83,7 +84,7 @@ export async function createBackupFile(): Promise<string | null> {
           const destMmkvPath = `${tempBackupDir.uri}/mmkv`;
           const destMmkvDir = new Directory(destMmkvPath);
           mmkvDir.copy(destMmkvDir);
-          console.log("✓ MMKV storage copied from:", mmkvPath);
+          log("✓ MMKV storage copied from:", mmkvPath);
           mmkvCopied = true;
           break;
         }
@@ -94,7 +95,7 @@ export async function createBackupFile(): Promise<string | null> {
     }
 
     if (!mmkvCopied) {
-      console.warn("⚠ MMKV directory not found, continuing without it");
+      logWarn("⚠ MMKV directory not found, continuing without it");
     }
 
     // 5. Read encryption key and settings from SecureStore and save them
@@ -111,12 +112,12 @@ export async function createBackupFile(): Promise<string | null> {
         const keyFilePath = `${tempBackupDir.uri}/encryption_key.txt`;
         const keyFile = new File(keyFilePath);
         keyFile.write(encryptionKey);
-        console.log("✓ Encryption key saved");
+        log("✓ Encryption key saved");
       } else {
-        console.warn("⚠ Encryption key not found in SecureStore");
+        logWarn("⚠ Encryption key not found in SecureStore");
       }
     } catch (error) {
-      console.warn("⚠ Failed to read encryption key:", error);
+      logWarn("⚠ Failed to read encryption key:", error);
     }
 
     // Save app settings (theme, currency, income calculation)
@@ -126,12 +127,12 @@ export async function createBackupFile(): Promise<string | null> {
         const settingsFilePath = `${tempBackupDir.uri}/app_settings.txt`;
         const settingsFile = new File(settingsFilePath);
         settingsFile.write(appSettings);
-        console.log("✓ App settings saved");
+        log("✓ App settings saved");
       } else {
-        console.warn("⚠ App settings not found in SecureStore");
+        logWarn("⚠ App settings not found in SecureStore");
       }
     } catch (error) {
-      console.warn("⚠ Failed to read app settings:", error);
+      logWarn("⚠ Failed to read app settings:", error);
     }
 
     // Save notification preferences
@@ -143,12 +144,12 @@ export async function createBackupFile(): Promise<string | null> {
         const notifFilePath = `${tempBackupDir.uri}/notification_preferences.txt`;
         const notifFile = new File(notifFilePath);
         notifFile.write(notificationPrefs);
-        console.log("✓ Notification preferences saved");
+        log("✓ Notification preferences saved");
       } else {
-        console.warn("⚠ Notification preferences not found in SecureStore");
+        logWarn("⚠ Notification preferences not found in SecureStore");
       }
     } catch (error) {
-      console.warn("⚠ Failed to read notification preferences:", error);
+      logWarn("⚠ Failed to read notification preferences:", error);
     }
 
     // 6. Create metadata.json
@@ -159,7 +160,7 @@ export async function createBackupFile(): Promise<string | null> {
     const metadataFilePath = `${tempBackupDir.uri}/metadata.json`;
     const metadataFile = new File(metadataFilePath);
     metadataFile.write(JSON.stringify(metadata, null, 2));
-    console.log("✓ Metadata created");
+    log("✓ Metadata created");
 
     // 7. Generate unique backup filename with timestamp
     const now = new Date();
@@ -174,29 +175,29 @@ export async function createBackupFile(): Promise<string | null> {
 
     // 8. Zip the backup-temp directory
     await zip(tempBackupDir.uri, backupZipPath);
-    console.log("✓ Backup ZIP created:", backupZipPath);
+    log("✓ Backup ZIP created:", backupZipPath);
 
     // 9. Clean up temporary directory
     if (tempBackupDir.exists) {
       try {
         tempBackupDir.delete();
-        console.log("✓ Temporary directory cleaned up");
+        log("✓ Temporary directory cleaned up");
       } catch (error) {
-        console.warn("⚠ Failed to clean up temp directory:", error);
+        logWarn("⚠ Failed to clean up temp directory:", error);
       }
     }
 
-    console.log("✓ Backup file created successfully");
+    log("✓ Backup file created successfully");
     return backupZipPath;
   } catch (error) {
-    console.error("ERROR IN BACKUP:", error);
+    logError("ERROR IN BACKUP:", error);
 
     // Clean up on error
     if (tempBackupDir?.exists) {
       try {
         tempBackupDir.delete();
       } catch (cleanupError) {
-        console.error("Failed to clean up temp directory:", cleanupError);
+        logError("Failed to clean up temp directory:", cleanupError);
       }
     }
 
@@ -224,18 +225,18 @@ export async function backupAppData(): Promise<string | null> {
       const isAvailable = await Sharing.isAvailableAsync();
       if (isAvailable) {
         await Sharing.shareAsync(backupPath);
-        console.log("✓ Backup shared via system dialog");
+        log("✓ Backup shared via system dialog");
       } else {
-        console.warn("⚠ Sharing not available on this platform");
+        logWarn("⚠ Sharing not available on this platform");
       }
     } catch (error) {
-      console.warn("⚠ Failed to share backup:", error);
+      logWarn("⚠ Failed to share backup:", error);
       // Continue anyway - backup file is still created
     }
 
     return backupPath;
   } catch (error) {
-    console.error("ERROR IN BACKUP:", error);
+    logError("ERROR IN BACKUP:", error);
     return null;
   }
 }
@@ -254,12 +255,12 @@ export async function pickBackupFile(): Promise<string | null> {
     const file = Array.isArray(fileResult) ? fileResult[0] : fileResult;
 
     if (file && file.exists) {
-      console.log("✓ Backup file selected:", file.uri);
+      log("✓ Backup file selected:", file.uri);
       return file.uri;
     }
     return null;
   } catch (error) {
-    console.error("ERROR PICKING BACKUP FILE:", error);
+    logError("ERROR PICKING BACKUP FILE:", error);
     return null;
   }
 }
@@ -285,20 +286,20 @@ export async function restoreAppData(backupZipPath?: string): Promise<boolean> {
 
   try {
     const uri = Paths.document.uri;
-    console.log("Starting restore process...");
+    log("Starting restore process...");
 
     // 1. Pick backup file if not provided
     if (!backupPath) {
       backupPath = await pickBackupFile();
       if (!backupPath) {
-        console.warn("⚠ No backup file selected");
+        logWarn("⚠ No backup file selected");
         return false;
       }
     }
 
     const backupFile = new File(backupPath);
     if (!backupFile.exists) {
-      console.error("ERROR: Backup file does not exist:", backupPath);
+      logError("ERROR: Backup file does not exist:", backupPath);
       return false;
     }
 
@@ -308,15 +309,15 @@ export async function restoreAppData(backupZipPath?: string): Promise<boolean> {
       try {
         tempRestoreDir.delete();
       } catch (error) {
-        console.warn("⚠ Failed to delete existing temp directory:", error);
+        logWarn("⚠ Failed to delete existing temp directory:", error);
       }
     }
     tempRestoreDir.create({ intermediates: true });
-    console.log("✓ Temporary restore directory created");
+    log("✓ Temporary restore directory created");
 
     // 3. Extract the backup ZIP file
     await unzip(backupPath, tempRestoreDir.uri);
-    console.log("✓ Backup ZIP extracted");
+    log("✓ Backup ZIP extracted");
 
     // 4. Read and verify metadata
     const metadataPath = `${tempRestoreDir.uri}/metadata.json`;
@@ -324,17 +325,17 @@ export async function restoreAppData(backupZipPath?: string): Promise<boolean> {
     if (metadataFile.exists) {
       const metadataContent = metadataFile.textSync();
       const metadata: BackupMetadata = JSON.parse(metadataContent);
-      console.log("✓ Backup metadata:", metadata);
+      log("✓ Backup metadata:", metadata);
     } else {
-      console.warn("⚠ Metadata file not found in backup");
+      logWarn("⚠ Metadata file not found in backup");
     }
 
     // 5. Close database connection before restoring
     try {
       await closeDatabase();
-      console.log("✓ Database connection closed");
+      log("✓ Database connection closed");
     } catch (error) {
-      console.warn("⚠ Failed to close database:", error);
+      logWarn("⚠ Failed to close database:", error);
       // Continue anyway
     }
 
@@ -356,18 +357,18 @@ export async function restoreAppData(backupZipPath?: string): Promise<boolean> {
       if (targetDbFile.exists) {
         try {
           targetDbFile.delete();
-          console.log("✓ Existing database deleted");
+          log("✓ Existing database deleted");
         } catch (error) {
-          console.warn("⚠ Failed to delete existing database:", error);
+          logWarn("⚠ Failed to delete existing database:", error);
           // Continue anyway - try to overwrite
         }
       }
 
       // Copy the restored database
       restoredDbFile.copy(targetDbFile);
-      console.log("✓ Database restored");
+      log("✓ Database restored");
     } else {
-      console.warn("⚠ Database file not found in backup");
+      logWarn("⚠ Database file not found in backup");
     }
 
     // 7. Restore MMKV storage
@@ -391,7 +392,7 @@ export async function restoreAppData(backupZipPath?: string): Promise<boolean> {
         try {
           tempRestoreMmkvDir.delete();
         } catch (error) {
-          console.warn(
+          logWarn(
             "⚠ Failed to delete existing temp restore folder:",
             error
           );
@@ -407,11 +408,11 @@ export async function restoreAppData(backupZipPath?: string): Promise<boolean> {
       if (nestedMmkvDir.exists) {
         // Nested structure: restore-temp/mmkv/moneyManagerStorage/
         sourceMmkvDir = nestedMmkvDir;
-        console.log("✓ Found nested MMKV structure");
+        log("✓ Found nested MMKV structure");
       } else {
         // Flat structure: restore-temp/mmkv/ (files directly)
         sourceMmkvDir = restoredMmkvDir;
-        console.log("✓ Found flat MMKV structure");
+        log("✓ Found flat MMKV structure");
       }
 
       // Create temporary restore directory
@@ -460,7 +461,7 @@ export async function restoreAppData(backupZipPath?: string): Promise<boolean> {
             }
           }
         }
-        console.log(
+        log(
           `✓ MMKV files copied to temporary folder (${filesCopied} files)`
         );
 
@@ -475,9 +476,9 @@ export async function restoreAppData(backupZipPath?: string): Promise<boolean> {
           ) {
             try {
               existingItem.delete();
-              console.log(`✓ Deleted existing MMKV file: ${existingItem.name}`);
+              log(`✓ Deleted existing MMKV file: ${existingItem.name}`);
             } catch (error) {
-              console.warn(
+              logWarn(
                 `⚠ Failed to delete existing MMKV file ${existingItem.name}:`,
                 error
               );
@@ -488,11 +489,11 @@ export async function restoreAppData(backupZipPath?: string): Promise<boolean> {
           ) {
             try {
               existingItem.delete();
-              console.log(
+              log(
                 `✓ Deleted existing MMKV directory: ${existingItem.name}`
               );
             } catch (error) {
-              console.warn(
+              logWarn(
                 `⚠ Failed to delete existing MMKV directory ${existingItem.name}:`,
                 error
               );
@@ -530,12 +531,12 @@ export async function restoreAppData(backupZipPath?: string): Promise<boolean> {
         // Delete the temporary restore folder
         try {
           tempRestoreMmkvDir.delete();
-          console.log("✓ Temporary restore folder cleaned up");
+          log("✓ Temporary restore folder cleaned up");
         } catch (error) {
-          console.warn("⚠ Failed to delete temporary restore folder:", error);
+          logWarn("⚠ Failed to delete temporary restore folder:", error);
         }
 
-        console.log("✓ MMKV storage restored");
+        log("✓ MMKV storage restored");
       } catch (error) {
         // Clean up temp folder on error
         try {
@@ -543,16 +544,16 @@ export async function restoreAppData(backupZipPath?: string): Promise<boolean> {
             tempRestoreMmkvDir.delete();
           }
         } catch (cleanupError) {
-          console.warn(
+          logWarn(
             "⚠ Failed to cleanup temp folder on error:",
             cleanupError
           );
         }
-        console.warn("⚠ Failed to restore MMKV storage:", error);
+        logWarn("⚠ Failed to restore MMKV storage:", error);
         throw error;
       }
     } else {
-      console.warn("⚠ MMKV directory not found in backup");
+      logWarn("⚠ MMKV directory not found in backup");
     }
 
     // 8. Restore encryption key and settings
@@ -572,12 +573,12 @@ export async function restoreAppData(backupZipPath?: string): Promise<boolean> {
           ENCRYPTION_KEY_STORAGE_KEY,
           encryptionKey
         );
-        console.log("✓ Encryption key restored");
+        log("✓ Encryption key restored");
       } catch (error) {
-        console.warn("⚠ Failed to restore encryption key:", error);
+        logWarn("⚠ Failed to restore encryption key:", error);
       }
     } else {
-      console.warn("⚠ Encryption key not found in backup");
+      logWarn("⚠ Encryption key not found in backup");
     }
 
     // Restore app settings (theme, currency, income calculation)
@@ -589,12 +590,12 @@ export async function restoreAppData(backupZipPath?: string): Promise<boolean> {
 
       try {
         await SecureStore.setItemAsync(SETTINGS_STORE_KEY, appSettings);
-        console.log("✓ App settings restored");
+        log("✓ App settings restored");
       } catch (error) {
-        console.warn("⚠ Failed to restore app settings:", error);
+        logWarn("⚠ Failed to restore app settings:", error);
       }
     } else {
-      console.warn("⚠ App settings not found in backup");
+      logWarn("⚠ App settings not found in backup");
     }
 
     // Restore notification preferences
@@ -609,20 +610,20 @@ export async function restoreAppData(backupZipPath?: string): Promise<boolean> {
           NOTIFICATION_STORE_KEY,
           notificationPrefs
         );
-        console.log("✓ Notification preferences restored");
+        log("✓ Notification preferences restored");
       } catch (error) {
-        console.warn("⚠ Failed to restore notification preferences:", error);
+        logWarn("⚠ Failed to restore notification preferences:", error);
       }
     } else {
-      console.warn("⚠ Notification preferences not found in backup");
+      logWarn("⚠ Notification preferences not found in backup");
     }
 
     // 9. Reopen database connection (will trigger migrations if needed)
     try {
       await getDatabase();
-      console.log("✓ Database connection reopened");
+      log("✓ Database connection reopened");
     } catch (error) {
-      console.error("ERROR reopening database:", error);
+      logError("ERROR reopening database:", error);
       return false;
     }
 
@@ -630,23 +631,23 @@ export async function restoreAppData(backupZipPath?: string): Promise<boolean> {
     if (tempRestoreDir.exists) {
       try {
         tempRestoreDir.delete();
-        console.log("✓ Temporary directory cleaned up");
+        log("✓ Temporary directory cleaned up");
       } catch (error) {
-        console.warn("⚠ Failed to clean up temp directory:", error);
+        logWarn("⚠ Failed to clean up temp directory:", error);
       }
     }
 
-    console.log("✓ Restore completed successfully");
+    log("✓ Restore completed successfully");
     return true;
   } catch (error) {
-    console.error("ERROR IN RESTORE:", error);
+    logError("ERROR IN RESTORE:", error);
 
     // Clean up on error
     if (tempRestoreDir?.exists) {
       try {
         tempRestoreDir.delete();
       } catch (cleanupError) {
-        console.error("Failed to clean up temp directory:", cleanupError);
+        logError("Failed to clean up temp directory:", cleanupError);
       }
     }
 
@@ -654,7 +655,7 @@ export async function restoreAppData(backupZipPath?: string): Promise<boolean> {
     try {
       await getDatabase();
     } catch (dbError) {
-      console.error("Failed to reopen database after error:", dbError);
+      logError("Failed to reopen database after error:", dbError);
     }
 
     return false;
@@ -689,7 +690,7 @@ export async function backupSqlLiteData(): Promise<string | null> {
 
     return destinationFile.uri;
   } catch (error) {
-    console.log("ERROR IN GETTING SQLITE DATA", error);
+    logError("ERROR IN GETTING SQLITE DATA", error);
     return null;
   }
 }

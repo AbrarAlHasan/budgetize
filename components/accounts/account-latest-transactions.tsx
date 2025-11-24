@@ -32,7 +32,7 @@ export function AccountLatestTransactions({ accountId }: AccountLatestTransactio
     queryKey: ['account-latest-transactions', accountId],
     queryFn: async () => {
       const startTime = Date.now();
-      console.log(`[Performance] AccountLatestTransactions query started for account ${accountId}`);
+      logPerformance(`AccountLatestTransactions query started for account ${accountId}`, 0);
       
       // Fetch only latest 5 transactions directly from database
       const rawTransactions = await transactionRepository.findLatestTransactionsForAccount(accountId, 5);
@@ -42,7 +42,7 @@ export function AccountLatestTransactions({ accountId }: AccountLatestTransactio
       const filtered = filterTransactionsByIncomePreference(decrypted, incomeCalculationEnabled);
       
       const endTime = Date.now();
-      console.log(`[Performance] AccountLatestTransactions query completed in ${endTime - startTime}ms (${filtered.length} transactions)`);
+      logPerformance(`AccountLatestTransactions query completed`, endTime - startTime, `${filtered.length} transactions`);
       
       return filtered;
     },

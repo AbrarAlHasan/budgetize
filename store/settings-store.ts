@@ -45,7 +45,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
         await SecureStore.setItemAsync(SETTINGS_STORE_KEY, JSON.stringify(settings));
       }
     } catch (error) {
-      console.error('Error loading settings:', error);
+      logError('Error loading settings:', error);
     } finally {
       set({ isLoading: false });
     }
@@ -63,7 +63,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
     try {
       await SecureStore.setItemAsync(SETTINGS_STORE_KEY, JSON.stringify(newSettings));
     } catch (error) {
-      console.error('Error saving settings:', error);
+      logError('Error saving settings:', error);
     }
   },
 
@@ -79,7 +79,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
     try {
       await SecureStore.setItemAsync(SETTINGS_STORE_KEY, JSON.stringify(newSettings));
     } catch (error) {
-      console.error('Error saving settings:', error);
+      logError('Error saving settings:', error);
     }
   },
 
@@ -95,7 +95,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
     try {
       await SecureStore.setItemAsync(SETTINGS_STORE_KEY, JSON.stringify(newSettings));
     } catch (error) {
-      console.error('Error saving settings:', error);
+      logError('Error saving settings:', error);
     }
   },
 }));

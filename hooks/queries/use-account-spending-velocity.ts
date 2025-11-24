@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { transactionRepository } from '@/repositories/transaction.repository';
 import { startOfMonth, endOfMonth, format, differenceInDays, getDaysInMonth } from 'date-fns';
+import { logPerformance } from '@/utils/logger';
 
 const QUERY_KEY = ['accountSpendingVelocity'];
 
@@ -21,7 +22,7 @@ export function useAccountSpendingVelocity(accountId: number) {
     queryKey: [...QUERY_KEY, accountId],
     queryFn: async (): Promise<AccountSpendingVelocity> => {
       const startTime = Date.now();
-      console.log(`[Performance] useAccountSpendingVelocity(${accountId}) query started`);
+      logPerformance(`useAccountSpendingVelocity(${accountId}) query started`, 0);
       
       const now = new Date();
       
@@ -65,7 +66,7 @@ export function useAccountSpendingVelocity(accountId: number) {
       };
       
       const endTime = Date.now();
-      console.log(`[Performance] useAccountSpendingVelocity(${accountId}) query completed in ${endTime - startTime}ms`);
+      logPerformance(`useAccountSpendingVelocity(${accountId}) query completed`, endTime - startTime);
 
       return result;
     },

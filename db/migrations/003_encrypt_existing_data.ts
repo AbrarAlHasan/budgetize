@@ -1,5 +1,6 @@
 import * as SQLite from 'expo-sqlite';
 import { encrypt, encryptAmount, isEncrypted } from '@/services/encryption';
+import { log } from '@/utils/logger';
 
 /**
  * Migration to encrypt existing data in all tables
@@ -10,7 +11,7 @@ import { encrypt, encryptAmount, isEncrypted } from '@/services/encryption';
  * - Transactions: already encrypted (but we verify)
  */
 export async function encryptExistingData(db: SQLite.SQLiteDatabase): Promise<void> {
-  console.log('Starting data encryption migration...');
+  log('Starting data encryption migration...');
   
   await db.execAsync('BEGIN TRANSACTION');
   
@@ -27,7 +28,7 @@ export async function encryptExistingData(db: SQLite.SQLiteDatabase): Promise<vo
       payment_due_date: string | null;
     }>('SELECT id, name, bank_name, CAST(credit_limit AS TEXT) as credit_limit, billing_start_date, billing_end_date, payment_due_date FROM accounts WHERE deleted_at IS NULL');
 
-    console.log(`Encrypting ${accounts.length} accounts...`);
+    log(`Encrypting ${accounts.length} accounts...`);
     
     for (const account of accounts) {
       const updates: string[] = [];
@@ -99,7 +100,7 @@ export async function encryptExistingData(db: SQLite.SQLiteDatabase): Promise<vo
       name: string;
     }>('SELECT id, name FROM categories WHERE deleted_at IS NULL');
 
-    console.log(`Encrypting ${categories.length} categories...`);
+    log(`Encrypting ${categories.length} categories...`);
     
     for (const category of categories) {
       if (category.name && !isEncrypted(category.name)) {
@@ -117,7 +118,7 @@ export async function encryptExistingData(db: SQLite.SQLiteDatabase): Promise<vo
       name: string;
     }>('SELECT id, name FROM tags WHERE deleted_at IS NULL');
 
-    console.log(`Encrypting ${tags.length} tags...`);
+    log(`Encrypting ${tags.length} tags...`);
     
     for (const tag of tags) {
       if (tag.name && !isEncrypted(tag.name)) {
@@ -137,7 +138,7 @@ export async function encryptExistingData(db: SQLite.SQLiteDatabase): Promise<vo
       payment_mode: string;
     }>('SELECT id, amount, note, payment_mode FROM transactions WHERE deleted_at IS NULL LIMIT 100');
 
-    console.log(`Verifying ${transactions.length} transactions (sample)...`);
+    log(`Verifying ${transactions.length} transactions (sample)...`);
     
     let transactionUpdates = 0;
     for (const transaction of transactions) {
@@ -180,7 +181,7 @@ export async function encryptExistingData(db: SQLite.SQLiteDatabase): Promise<vo
     }
     
     if (transactionUpdates > 0) {
-      console.log(`Updated ${transactionUpdates} transactions that were not encrypted`);
+      log(`Updated ${transactionUpdates} transactions that were not encrypted`);
       
       // Encrypt remaining transactions in batches
       const allTransactions = await db.getAllAsync<{
@@ -226,10 +227,10 @@ export async function encryptExistingData(db: SQLite.SQLiteDatabase): Promise<vo
     }
     
     await db.execAsync('COMMIT');
-    console.log('Data encryption migration completed successfully');
+    log('Data encryption migration completed successfully');
   } catch (error) {
     await db.execAsync('ROLLBACK');
-    console.error('Error during data encryption migration:', error);
+    logError('Error during data encryption migration:', error);
     throw error;
   }
 }

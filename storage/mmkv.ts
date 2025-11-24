@@ -1,5 +1,6 @@
 import { createMMKV } from 'react-native-mmkv';
 import type { StateStorage } from 'zustand/middleware';
+import { logError } from '@/utils/logger';
 
 // Create MMKV instance for fast persistent storage
 export const mmkv = createMMKV({
@@ -26,7 +27,7 @@ export const asyncStorage = {
       const value = mmkv.getString(key);
       return value ?? null;
     } catch (error) {
-      console.error('MMKV getItem error:', error);
+      logError('MMKV getItem error:', error);
       return null;
     }
   },
@@ -34,7 +35,7 @@ export const asyncStorage = {
     try {
       mmkv.set(key, value);
     } catch (error) {
-      console.error('MMKV setItem error:', error);
+      logError('MMKV setItem error:', error);
       throw error;
     }
   },
@@ -42,7 +43,7 @@ export const asyncStorage = {
     try {
       mmkv.remove(key);
     } catch (error) {
-      console.error('MMKV removeItem error:', error);
+      logError('MMKV removeItem error:', error);
       throw error;
     }
   },

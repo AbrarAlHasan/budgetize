@@ -41,7 +41,7 @@ export class TagRepository extends BaseRepository<Tag> {
       return tag;
     } catch (error) {
       await db.execAsync('ROLLBACK');
-      console.error('Error creating tag:', error);
+      logError('Error creating tag:', error);
       throw new Error(error instanceof Error ? error.message : 'Failed to create tag');
     }
   }
@@ -69,7 +69,7 @@ export class TagRepository extends BaseRepository<Tag> {
       return tag;
     } catch (error) {
       await db.execAsync('ROLLBACK');
-      console.error('Error updating tag:', error);
+      logError('Error updating tag:', error);
       throw new Error(error instanceof Error ? error.message : 'Failed to update tag');
     }
   }
@@ -118,7 +118,7 @@ export class TagRepository extends BaseRepository<Tag> {
       return tag;
     } catch (error) {
       await db.execAsync('ROLLBACK');
-      console.error('Error reactivating tag:', error);
+      logError('Error reactivating tag:', error);
       throw new Error(error instanceof Error ? error.message : 'Failed to reactivate tag');
     }
   }

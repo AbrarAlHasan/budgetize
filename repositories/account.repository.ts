@@ -1,5 +1,6 @@
 import { BaseRepository } from './base.repository';
 import { Account, CreateAccountInput, DecryptedAccount, UpdateAccountInput } from '@/db/schema/types';
+import { logError } from '@/utils/logger';
 import { encrypt, decrypt, encryptAmount, decryptAmount } from '@/services/encryption';
 import { getDatabase } from '@/db/sqlite/db';
 import * as SQLite from 'expo-sqlite';
@@ -52,7 +53,7 @@ export class AccountRepository extends BaseRepository<Account> {
       return account;
     } catch (error) {
       await db.execAsync('ROLLBACK');
-      console.error('Error creating account:', error);
+      logError('Error creating account:', error);
       throw new Error(error instanceof Error ? error.message : 'Failed to create account');
     }
   }
@@ -112,7 +113,7 @@ export class AccountRepository extends BaseRepository<Account> {
       return account;
     } catch (error) {
       await db.execAsync('ROLLBACK');
-      console.error('Error updating account:', error);
+      logError('Error updating account:', error);
       throw new Error(error instanceof Error ? error.message : 'Failed to update account');
     }
   }
