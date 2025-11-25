@@ -26,6 +26,22 @@
         "EXPO_PUBLIC_POST_HOG_API_KEY": "phc_2u30SojaAHwMWKNI6Sb72G9GUaVNVhMWl1ChMeaVSM2",
         "EXPO_PUBLIC_POST_HOG_HOST": "https://us.i.posthog.com"
       }
+    },
+    "production-apk": {
+      "android": {
+        "buildType": "apk",
+        "autoIncrement": "versionCode"
+      },
+      "channel": "production",
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://vujcvquohckehaltpjxw.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ1amN2cXVvaGNrZWhhbHRwanh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTcyNTI0NTc2OSwiZXhwIjoyMDQwODIxNzY5fQ.nRlmFPfpOCKUTAxj7DU5c9Q5W3xM0_1jrqiDryjTZCc",
+        "EXPO_PUBLIC_ANDROID_GOOGLE_CLIENT_ID": "992503429521-8f4j0urmjkmngpvlohs5p0a83indsefk.apps.googleusercontent.com",
+        "EXPO_PUBLIC_IOS_GOOGLE_CLIENT_ID": "992503429521-t5lvig90604vitb0tbk9es2bsm6puvrv.apps.googleusercontent.com",
+        "EXPO_PUBLIC_BACKUP_BUCKET": "transactions",
+        "EXPO_PUBLIC_POST_HOG_API_KEY": "phc_2u30SojaAHwMWKNI6Sb72G9GUaVNVhMWl1ChMeaVSM2",
+        "EXPO_PUBLIC_POST_HOG_HOST": "https://us.i.posthog.com"
+      }
     }
   },
   "submit": {

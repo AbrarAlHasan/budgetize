@@ -58,16 +58,6 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="ai"
-        options={{
-          title: "AI",
-          tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="sparkles" color={color} />
-          ),
-          href: null, // Hide from tab bar - AI feature not ready for production
-        }}
-      />
-      <Tabs.Screen
         name="settings"
         options={{
           title: "Settings",

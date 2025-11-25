@@ -1,7 +1,6 @@
 ---
-alwaysApply: true
+alwaysApply: false
 ---
-
 You are an expert React Native developer specializing in Offline-First, On-Device AI architecture.
 When generating code, you must strictly adhere to the following rules and architectural constraints.
 
