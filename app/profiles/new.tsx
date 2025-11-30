@@ -1,0 +1,18 @@
+// This file redirects to the unified form screen in create mode
+// Since this file exists, /profiles/new matches here first, so we redirect to the dynamic route
+import { router } from "expo-router";
+import { useEffect } from "react";
+import { View } from "react-native";
+
+export default function NewProfileScreen() {
+  useEffect(() => {
+    // Use replace to avoid adding to history and prevent loops
+    router.replace({
+      pathname: "/profiles/[id]",
+      params: { id: "new" },
+    });
+  }, []);
+
+  return <View style={{ flex: 1 }} />;
+}
+

@@ -316,37 +316,39 @@ export default function DashboardScreen() {
       >
         <View className="px-5 pt-6 pb-6">
           {/* Header */}
-          <View className="mb-6 flex-row items-center justify-between">
-            <View>
-              <Text className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-1">
-                Dashboard
-              </Text>
-              <Text className="text-sm text-gray-500 dark:text-gray-400">
-                {format(new Date(), "MMMM yyyy")}
-              </Text>
+          <View className="mb-6">
+            <View className="mb-3 flex-row items-center justify-between">
+              <View>
+                <Text className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-1">
+                  Dashboard
+                </Text>
+                <Text className="text-sm text-gray-500 dark:text-gray-400">
+                  {format(new Date(), "MMMM yyyy")}
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => {
+                  setCurrentFilterContext("dashboard");
+                  router.push({
+                    pathname: "/filters",
+                    params: { context: "dashboard" },
+                  });
+                }}
+                className="flex-row items-center gap-2 px-4 py-2.5 rounded-xl"
+                style={{
+                  backgroundColor: hasActiveFilters ? "#EFF6FF" : "#F3F4F6",
+                }}
+              >
+                <Ionicons
+                  name="filter"
+                  size={20}
+                  color={hasActiveFilters ? "#3B82F6" : "#6B7280"}
+                />
+                {hasActiveFilters && (
+                  <View className="w-2 h-2 rounded-full bg-blue-600" />
+                )}
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity
-              onPress={() => {
-                setCurrentFilterContext("dashboard");
-                router.push({
-                  pathname: "/filters",
-                  params: { context: "dashboard" },
-                });
-              }}
-              className="flex-row items-center gap-2 px-4 py-2.5 rounded-xl"
-              style={{
-                backgroundColor: hasActiveFilters ? "#EFF6FF" : "#F3F4F6",
-              }}
-            >
-              <Ionicons
-                name="filter"
-                size={20}
-                color={hasActiveFilters ? "#3B82F6" : "#6B7280"}
-              />
-              {hasActiveFilters && (
-                <View className="w-2 h-2 rounded-full bg-blue-600" />
-              )}
-            </TouchableOpacity>
           </View>
 
           <ActiveFilterChips context="dashboard" />

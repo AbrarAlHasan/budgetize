@@ -15,12 +15,14 @@ import { queryClient } from "@/hooks/use-query-client";
 import { onboardingStorage } from "@/storage/onboarding";
 import { useAuthStore } from "@/store/auth-store";
 import { useSettingsStore } from "@/store/settings-store";
+import { useProfileStore } from "@/store/profile-store";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { colorScheme, useColorScheme } from "nativewind";
 import { PostHogProvider } from "posthog-react-native";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { logError } from "@/utils/logger";
+import { migrateToProfiles } from "@/db/migrations/006_migrate_to_profiles";
 
 export const unstable_settings = {
   anchor: "(tabs)",
@@ -36,11 +38,18 @@ export default function RootLayout() {
   useEffect(() => {
     const initializeApp = async () => {
       try {
-        // Initialize auth
+        // 1. Run profile migration (creates master.db and migrates existing data)
+        await migrateToProfiles();
+
+        // 2. Initialize auth
         const { initialize: initializeAuth } = useAuthStore.getState();
         await initializeAuth();
 
-        // Load settings first
+        // 3. Load profiles and set default profile
+        const { loadProfiles } = useProfileStore.getState();
+        await loadProfiles();
+
+        // 4. Load settings
         await loadSettings();
 
         // Wait a tick to ensure settings state is updated

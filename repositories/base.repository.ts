@@ -7,6 +7,7 @@ export abstract class BaseRepository<T> {
   protected abstract primaryKey: string;
 
   protected async getDb(): Promise<SQLite.SQLiteDatabase> {
+    // getDatabase() will automatically use current profile from store
     return getDatabase();
   }
 

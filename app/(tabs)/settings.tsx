@@ -1,5 +1,6 @@
 import { BackupList } from "@/components/cloud-backup/backup-list";
 import { LoginButton } from "@/components/cloud-backup/login-button";
+import { DUMMY_DATA_SIZES, DummyDataSize, DummyDataSizeSelector } from "@/components/dummy-data-size-selector";
 import { BottomSheetSelect } from "@/components/ui/bottom-sheet-select";
 import { Card } from "@/components/ui/card";
 import {
@@ -9,14 +10,16 @@ import {
 import { onboardingStorage } from "@/storage/onboarding";
 import { useAuthStore } from "@/store/auth-store";
 import { useNotificationStore } from "@/store/notification-store";
+import { useProfileStore } from "@/store/profile-store";
 import { useSettingsStore } from "@/store/settings-store";
-import { log, logError } from "@/utils/logger";
 import { createBackupFile, restoreAppData } from "@/utils/backup";
 import { clearDatabase } from "@/utils/clear-database";
 import { uploadBackupToCloud } from "@/utils/cloud-backup";
 import { getCurrencyOptions, getCurrencySymbol } from "@/utils/currencies";
 import { resetAppWithDummyData } from "@/utils/dummy-data";
+import { log, logError } from "@/utils/logger";
 import { Ionicons } from "@expo/vector-icons";
+import { BottomSheetModalMethods } from "@gorhom/bottom-sheet/lib/typescript/types";
 import { useQueryClient } from "@tanstack/react-query";
 import { Paths } from "expo-file-system";
 import { router } from "expo-router";
@@ -46,6 +49,7 @@ export default function SettingsScreen() {
     updateTheme,
   } = useSettingsStore();
   const { user, isAuthenticated, isLoading: authLoading, initialize: initializeAuth, logout } = useAuthStore();
+  const { currentProfileId, profiles } = useProfileStore();
   const [permissionGranted, setPermissionGranted] = useState(false);
   const [isSeedingDummyData, setIsSeedingDummyData] = useState(false);
   const [isBackingUp, setIsBackingUp] = useState(false);
@@ -57,6 +61,7 @@ export default function SettingsScreen() {
   const [settingsTapCount, setSettingsTapCount] = useState(0);
   const tapTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [dummyDataProgress, setDummyDataProgress] = useState(0);
+  const dummyDataSizeSheetRef = useRef<BottomSheetModalMethods>(null);
 
   useEffect(() => {
     log(Paths.document.uri);
@@ -174,17 +179,30 @@ export default function SettingsScreen() {
     );
   };
 
-  const runDummyDataSeed = async () => {
+  const runDummyDataSeed = async (size: DummyDataSize) => {
     try {
       setIsSeedingDummyData(true);
       setDummyDataProgress(0);
-      const summary = await resetAppWithDummyData((progress) => {
-        setDummyDataProgress(progress);
-      });
+      
+      const config = DUMMY_DATA_SIZES[size];
+      const summary = await resetAppWithDummyData(
+        {
+          months: config.months,
+          transactionsPerDay: config.transactionsPerDay,
+        },
+        (progress) => {
+          setDummyDataProgress(progress);
+        }
+      );
+      
       setDummyDataProgress(100);
+      
+      // Invalidate queries to refresh UI
+      await queryClient.invalidateQueries();
+      
       Alert.alert(
         "Dummy Data Ready",
-        `Generated ${summary.transactions} transactions across ${summary.accounts} accounts.\nPull to refresh to see the latest data.`
+        `Generated ${summary.transactions} transactions across ${summary.accounts} accounts for the current profile.\n\nSize: ${config.label}\n${config.description}\n\nPull to refresh to see the latest data.`
       );
     } catch (error) {
       logError("Failed to seed dummy data:", error);
@@ -205,13 +223,14 @@ export default function SettingsScreen() {
 
     Alert.alert(
       "Replace Data with Dummy Set?",
-      "This will erase all existing accounts, categories, tags, and transactions, then seed one year of dummy data.",
+      "This will erase all existing accounts, categories, tags, and transactions in the current profile, then seed dummy data.",
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: "Do it",
-          style: "destructive",
-          onPress: runDummyDataSeed,
+          text: "Continue",
+          onPress: () => {
+            dummyDataSizeSheetRef.current?.present();
+          },
         },
       ]
     );
@@ -354,13 +373,16 @@ export default function SettingsScreen() {
       return;
     }
 
+    const currentProfile = profiles.find((p) => p.id === currentProfileId);
+    const profileName = currentProfile?.name || "current profile";
+
     Alert.alert(
-      "Clear All Data",
-      "This will permanently delete ALL data from the database:\n\n• All accounts\n• All transactions\n• All categories\n• All tags\n\nThis action CANNOT be undone. Make sure you have a backup if you want to restore this data later.",
+      "Clear Profile Data",
+      `This will permanently delete ALL data from the "${profileName}" profile:\n\n• All accounts\n• All transactions\n• All categories\n• All tags\n\nNote: This only affects the current profile. Other profiles and profile settings will remain intact.\n\nThis action CANNOT be undone. Make sure you have a backup if you want to restore this data later.`,
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: "Clear All Data",
+          text: "Clear Profile Data",
           style: "destructive",
           onPress: runClearDatabase,
         },
@@ -382,10 +404,43 @@ export default function SettingsScreen() {
                 Settings
               </Text>
             </TouchableOpacity>
-            <Text className="text-sm text-gray-500 dark:text-gray-400">
+            <Text className="text-sm text-gray-500 dark:text-gray-400 mb-3">
               Manage your app preferences
             </Text>
           </View>
+
+          {/* Profiles Section */}
+          <Card className="mb-4">
+            <Text className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+              Profiles
+            </Text>
+            <TouchableOpacity
+              onPress={() => router.push('/profiles')}
+              className="flex-row items-center justify-between py-3"
+            >
+              <View className="flex-row items-center flex-1">
+                <Ionicons
+                  name="person-circle-outline"
+                  size={24}
+                  color="#3B82F6"
+                  style={{ marginRight: 12 }}
+                />
+                <View className="flex-1">
+                  <Text className="text-base font-medium text-gray-900 dark:text-gray-100">
+                    Manage Profiles
+                  </Text>
+                  <Text className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    Create, edit, or switch between profiles
+                  </Text>
+                </View>
+              </View>
+              <Ionicons
+                name="chevron-forward"
+                size={20}
+                color="#9CA3AF"
+              />
+            </TouchableOpacity>
+          </Card>
 
           {/* Appearance Settings */}
           <Card className="mb-4">
@@ -653,10 +708,10 @@ export default function SettingsScreen() {
                 </View>
                 <View className="flex-1">
                   <Text className="text-base font-medium text-gray-900 dark:text-gray-100">
-                    Clear All Data
+                    Clear Profile Data
                   </Text>
                   <Text className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                    Permanently delete all accounts, transactions, categories, and tags
+                    Permanently delete all data from the current profile only
                   </Text>
                   {isClearingDatabase && (
                     <Text className="text-xs text-red-600 dark:text-red-400 mt-1">
@@ -858,7 +913,7 @@ export default function SettingsScreen() {
                       Load Dummy Data
                     </Text>
                     <Text className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                      Clears DB and injects 12 months of sample data
+                      Clears current profile data and injects sample data
                     </Text>
                     {isSeedingDummyData && (
                       <View className="mt-3">
@@ -886,6 +941,12 @@ export default function SettingsScreen() {
           )}
         </View>
       </ScrollView>
+
+      {/* Dummy Data Size Selector Bottom Sheet */}
+      <DummyDataSizeSelector
+        bottomSheetRef={dummyDataSizeSheetRef as React.RefObject<BottomSheetModalMethods>}
+        onSelectSize={runDummyDataSeed}
+      />
     </SafeAreaView>
   );
 }

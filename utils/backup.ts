@@ -1,4 +1,6 @@
 import { closeDatabase, getDatabase } from "@/db/sqlite/db";
+import { getMasterDatabase } from "@/db/sqlite/master-db";
+import { profileRepository } from "@/repositories/profile.repository";
 import { Directory, File, Paths } from "expo-file-system";
 import * as SecureStore from "expo-secure-store";
 import * as Sharing from "expo-sharing";
@@ -29,13 +31,20 @@ export async function createBackupFile(): Promise<string | null> {
     const uri = Paths.document.uri;
     log("Starting backup process...");
 
-    // 1. Force WAL checkpoint to ensure all data is in main database file
+    // 1. Force WAL checkpoint for all profile databases
     try {
-      const db = await getDatabase();
-      await db.execAsync("PRAGMA wal_checkpoint(FULL)");
-      log("✓ WAL checkpoint completed");
+      const profiles = await profileRepository.findAll();
+      for (const profile of profiles) {
+        try {
+          const db = await getDatabase(profile.id);
+          await db.execAsync("PRAGMA wal_checkpoint(FULL)");
+          log(`✓ WAL checkpoint completed for profile ${profile.id}`);
+        } catch (error) {
+          logWarn(`⚠ Failed to run WAL checkpoint for profile ${profile.id}:`, error);
+        }
+      }
     } catch (error) {
-      logWarn("⚠ Failed to run WAL checkpoint:", error);
+      logWarn("⚠ Failed to run WAL checkpoints:", error);
       // Continue anyway - backup will still work
     }
 
@@ -51,20 +60,42 @@ export async function createBackupFile(): Promise<string | null> {
     tempBackupDir.create({ intermediates: true });
     log("✓ Temporary backup directory created");
 
-    // 3. Copy SQLite database file
-    const dbPath = `${uri}/SQLite/budgetize.db`;
-    const sourceDbFile = new File(dbPath);
-
-    if (sourceDbFile.exists) {
-      const destDbPath = `${tempBackupDir.uri}/database.sqlite`;
-      const destDbFile = new File(destDbPath);
-      sourceDbFile.copy(destDbFile);
-      log("✓ Database copied");
+    // 3. Copy master database
+    const masterDbPath = `${uri}/SQLite/master.db`;
+    const masterDbFile = new File(masterDbPath);
+    if (masterDbFile.exists) {
+      const destMasterPath = `${tempBackupDir.uri}/master.db`;
+      const destMasterFile = new File(destMasterPath);
+      masterDbFile.copy(destMasterFile);
+      log("✓ Master database copied");
     } else {
-      logWarn("⚠ Database file not found, continuing without it");
+      logWarn("⚠ Master database file not found");
     }
 
-    // 4. Copy MMKV storage directory
+    // 4. Copy all profile databases
+    try {
+      const profiles = await profileRepository.findAll();
+      const profilesDir = new Directory(`${tempBackupDir.uri}/profiles`);
+      profilesDir.create({ intermediates: true });
+
+      for (const profile of profiles) {
+        const profileDbPath = `${uri}/SQLite/${profile.db_path}`;
+        const profileDbFile = new File(profileDbPath);
+        
+        if (profileDbFile.exists) {
+          const destProfilePath = `${profilesDir.uri}/${profile.db_path}`;
+          const destProfileFile = new File(destProfilePath);
+          profileDbFile.copy(destProfileFile);
+          log(`✓ Profile database copied: ${profile.db_path}`);
+        } else {
+          logWarn(`⚠ Profile database not found: ${profile.db_path}`);
+        }
+      }
+    } catch (error) {
+      logWarn("⚠ Failed to copy profile databases:", error);
+    }
+
+    // 5. Copy MMKV storage directory
     // MMKV typically stores files in platform-specific locations
     // On Android: /data/data/[package]/files/mmkv/[storageId]
     // On iOS: [App Documents]/mmkv/[storageId]
@@ -98,7 +129,7 @@ export async function createBackupFile(): Promise<string | null> {
       logWarn("⚠ MMKV directory not found, continuing without it");
     }
 
-    // 5. Read encryption key and settings from SecureStore and save them
+    // 6. Read encryption key and settings from SecureStore and save them
     const ENCRYPTION_KEY_STORAGE_KEY = "budgetize_encryption_key";
     const SETTINGS_STORE_KEY = "app_settings";
     const NOTIFICATION_STORE_KEY = "notification_preferences";
@@ -330,48 +361,97 @@ export async function restoreAppData(backupZipPath?: string): Promise<boolean> {
       logWarn("⚠ Metadata file not found in backup");
     }
 
-    // 5. Close database connection before restoring
+    // 5. Close database connections before restoring
     try {
-      await closeDatabase();
-      log("✓ Database connection closed");
+      await closeDatabase(); // Closes all profile databases
+      log("✓ Database connections closed");
     } catch (error) {
-      logWarn("⚠ Failed to close database:", error);
+      logWarn("⚠ Failed to close databases:", error);
       // Continue anyway
     }
 
-    // 6. Restore SQLite database
-    const restoredDbPath = `${tempRestoreDir.uri}/database.sqlite`;
-    const restoredDbFile = new File(restoredDbPath);
-
-    if (restoredDbFile.exists) {
-      const dbPath = `${uri}/SQLite/budgetize.db`;
-      const targetDbFile = new File(dbPath);
-
-      // Ensure SQLite directory exists
-      const sqliteDir = new Directory(uri, "SQLite");
-      if (!sqliteDir.exists) {
-        sqliteDir.create({ intermediates: true });
+    // 6. Restore master database
+    const restoredMasterPath = `${tempRestoreDir.uri}/master.db`;
+    const restoredMasterFile = new File(restoredMasterPath);
+    if (restoredMasterFile.exists) {
+      const masterDbPath = `${uri}/SQLite/master.db`;
+      const targetMasterFile = new File(masterDbPath);
+      
+      // Backup existing master.db if it exists
+      if (targetMasterFile.exists) {
+        const backupMasterPath = `${uri}/SQLite/master.db.backup`;
+        const backupMasterFile = new File(backupMasterPath);
+        targetMasterFile.copy(backupMasterFile);
+        log("✓ Backed up existing master.db");
       }
-
-      // Delete existing database file if it exists
-      if (targetDbFile.exists) {
-        try {
-          targetDbFile.delete();
-          log("✓ Existing database deleted");
-        } catch (error) {
-          logWarn("⚠ Failed to delete existing database:", error);
-          // Continue anyway - try to overwrite
-        }
-      }
-
-      // Copy the restored database
-      restoredDbFile.copy(targetDbFile);
-      log("✓ Database restored");
+      
+      restoredMasterFile.copy(targetMasterFile);
+      log("✓ Master database restored");
     } else {
-      logWarn("⚠ Database file not found in backup");
+      logWarn("⚠ Master database not found in backup");
     }
 
-    // 7. Restore MMKV storage
+    // 7. Restore profile databases
+    const profilesDir = new Directory(`${tempRestoreDir.uri}/profiles`);
+    if (profilesDir.exists) {
+      const profileItems = profilesDir.list();
+      for (const item of profileItems) {
+        if (item instanceof File && item.name.endsWith('.db')) {
+          const profileFileName = item.name;
+          const targetProfilePath = `${uri}/SQLite/${profileFileName}`;
+          const targetProfileFile = new File(targetProfilePath);
+          
+          // Backup existing profile DB if it exists
+          if (targetProfileFile.exists) {
+            const backupProfilePath = `${uri}/SQLite/${profileFileName}.backup`;
+            const backupProfileFile = new File(backupProfilePath);
+            targetProfileFile.copy(backupProfileFile);
+            log(`✓ Backed up existing ${profileFileName}`);
+          }
+          
+          item.copy(targetProfileFile);
+          log(`✓ Profile database restored: ${profileFileName}`);
+        }
+      }
+    } else {
+      // Legacy backup: try to restore old budgetize.db as profile_1.db
+      const restoredDbPath = `${tempRestoreDir.uri}/database.sqlite`;
+      const restoredDbFile = new File(restoredDbPath);
+      if (restoredDbFile.exists) {
+        const legacyProfilePath = `${uri}/SQLite/profile_1.db`;
+        const legacyProfileFile = new File(legacyProfilePath);
+        
+        // Backup existing profile_1.db if it exists
+        if (legacyProfileFile.exists) {
+          const backupProfilePath = `${uri}/SQLite/profile_1.db.backup`;
+          const backupProfileFile = new File(backupProfilePath);
+          legacyProfileFile.copy(backupProfileFile);
+          log("✓ Backed up existing profile_1.db");
+        }
+        
+        restoredDbFile.copy(legacyProfileFile);
+        log("✓ Legacy database restored as profile_1.db");
+        
+        // Create master.db entry if it doesn't exist
+        try {
+          const masterDb = await getMasterDatabase();
+          const existingProfiles = await masterDb.getAllAsync<{ id: number }>(
+            'SELECT id FROM profiles WHERE id = 1'
+          );
+          if (existingProfiles.length === 0) {
+            await masterDb.runAsync(
+              `INSERT INTO profiles (id, name, db_path, created_at, updated_at)
+               VALUES (1, 'Personal', 'profile_1.db', datetime('now'), datetime('now'))`
+            );
+            log("✓ Created Personal profile entry in master.db");
+          }
+        } catch (error) {
+          logWarn("⚠ Failed to create profile entry:", error);
+        }
+      }
+    }
+
+    // 8. Restore MMKV storage
     const mmkvStorageId = "moneyManagerStorage";
     const restoredMmkvPath = `${tempRestoreDir.uri}/mmkv`;
     const restoredMmkvDir = new Directory(restoredMmkvPath);
@@ -556,7 +636,7 @@ export async function restoreAppData(backupZipPath?: string): Promise<boolean> {
       logWarn("⚠ MMKV directory not found in backup");
     }
 
-    // 8. Restore encryption key and settings
+    // 9. Restore encryption key and settings
     const ENCRYPTION_KEY_STORAGE_KEY = "budgetize_encryption_key";
     const SETTINGS_STORE_KEY = "app_settings";
     const NOTIFICATION_STORE_KEY = "notification_preferences";
@@ -618,7 +698,7 @@ export async function restoreAppData(backupZipPath?: string): Promise<boolean> {
       logWarn("⚠ Notification preferences not found in backup");
     }
 
-    // 9. Reopen database connection (will trigger migrations if needed)
+    // 10. Reopen database connection (will trigger migrations if needed)
     try {
       await getDatabase();
       log("✓ Database connection reopened");
@@ -627,7 +707,16 @@ export async function restoreAppData(backupZipPath?: string): Promise<boolean> {
       return false;
     }
 
-    // 10. Clean up temporary directory
+    // 11. Reload profiles from master.db after restore
+    try {
+      const { useProfileStore } = await import('@/store/profile-store');
+      await useProfileStore.getState().loadProfiles();
+      log("✓ Profiles reloaded after restore");
+    } catch (error) {
+      logWarn("⚠ Failed to reload profiles:", error);
+    }
+
+    // 12. Clean up temporary directory
     if (tempRestoreDir.exists) {
       try {
         tempRestoreDir.delete();
