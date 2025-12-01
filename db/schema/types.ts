@@ -135,3 +135,52 @@ export interface UpdateCategoryInput {
   name: string;
 }
 
+export type ExchangeType = 'lent' | 'borrowed';
+export type ExchangeStatus = 'pending' | 'paid' | 'received';
+
+export interface Exchange {
+  id: number;
+  person_name: string; // Encrypted string
+  amount: string; // Encrypted string
+  type: ExchangeType;
+  status: ExchangeStatus;
+  date: string; // ISO date string
+  due_date: string | null; // ISO date string
+  note: string | null; // Encrypted string
+  created_at: string; // ISO date string
+  updated_at: string; // ISO date string
+  deleted_at: string | null; // ISO date string
+  remote_id: string | null;
+  is_synced: number; // SQLite boolean (0 or 1)
+}
+
+export type DecryptedExchange = Omit<
+  Exchange,
+  'person_name' | 'amount' | 'note'
+> & {
+  person_name: string;
+  amount: number;
+  note: string | null;
+};
+
+export interface CreateExchangeInput {
+  person_name: string; // Will be encrypted
+  amount: number; // Will be encrypted
+  type: ExchangeType;
+  status?: ExchangeStatus; // Defaults to 'pending'
+  date: string;
+  due_date?: string | null;
+  note?: string | null; // Will be encrypted
+}
+
+export interface UpdateExchangeInput {
+  id: number;
+  person_name?: string; // Will be encrypted
+  amount?: number; // Will be encrypted
+  type?: ExchangeType;
+  status?: ExchangeStatus;
+  date?: string;
+  due_date?: string | null;
+  note?: string | null; // Will be encrypted
+}
+

@@ -4,9 +4,11 @@ import { HapticTab } from "@/components/haptic-tab";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useSettingsStore } from "@/store/settings-store";
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  const { settings } = useSettingsStore();
 
   return (
     <Tabs
@@ -45,6 +47,16 @@ export default function TabLayout() {
           title: "Expenses",
           tabBarIcon: ({ color }) => (
             <IconSymbol size={28} name="list.bullet" color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="exchanges"
+        options={{
+          title: "Exchange",
+          href: settings.exchangeEnabled ? undefined : null,
+          tabBarIcon: ({ color }) => (
+            <IconSymbol size={28} name="arrow.left.arrow.right.circle.fill" color={color} />
           ),
         }}
       />

@@ -3,6 +3,7 @@ import * as SQLite from "expo-sqlite";
 import { encryptExistingData } from "./003_encrypt_existing_data";
 import { addCurrencyToAccounts } from "./004_add_currency_to_accounts";
 import { makePaymentModeNullable } from "./006_make_payment_mode_nullable";
+import { addExchangesTable } from "./007_add_exchanges_table";
 
 const INITIAL_SCHEMA_SQL = `
 -- Accounts table
@@ -269,6 +270,56 @@ CREATE INDEX IF NOT EXISTS idx_transactions_type_date ON transactions(type, date
     } catch (error) {
       logError("Error applying migration 006_make_payment_mode_nullable:", error);
       throw error;
+    }
+  }
+
+  // Run migration 7 (add exchanges table)
+  if (!appliedVersions.has(7)) {
+    try {
+      log("Starting migration 007_add_exchanges_table...");
+      await addExchangesTable(db);
+
+      // Verify table was created before marking migration as complete
+      const verifyResult = await db.getAllAsync<{ name: string }>(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='exchanges' LIMIT 1"
+      );
+      
+      if (verifyResult.length === 0) {
+        logError("CRITICAL: Migration 007 completed but exchanges table not found!");
+        throw new Error("Migration 007_add_exchanges_table completed but exchanges table was not created");
+      }
+      
+      log(`Migration 007 verification: exchanges table exists (${verifyResult.length} found)`);
+
+      // Record migration
+      await db.runAsync(
+        "INSERT OR IGNORE INTO schema_migrations (version, name) VALUES (?, ?)",
+        [7, "007_add_exchanges_table"]
+      );
+
+      log("Migration 007_add_exchanges_table applied and verified successfully");
+    } catch (error) {
+      logError("Error applying migration 007_add_exchanges_table:", error);
+      throw error;
+    }
+  } else {
+    // Even if migration is marked as applied, verify table exists
+    const verifyResult = await db.getAllAsync<{ name: string }>(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='exchanges' LIMIT 1"
+    );
+    
+    if (verifyResult.length === 0) {
+      logError("WARNING: Migration 7 is marked as applied but exchanges table is missing! Re-running migration...");
+      // Remove the migration record and re-run
+      await db.runAsync("DELETE FROM schema_migrations WHERE version = 7");
+      await addExchangesTable(db);
+      await db.runAsync(
+        "INSERT OR IGNORE INTO schema_migrations (version, name) VALUES (?, ?)",
+        [7, "007_add_exchanges_table"]
+      );
+      log("Migration 007_add_exchanges_table re-applied successfully");
+    } else {
+      log(`Migration 7 verification: exchanges table exists (already applied)`);
     }
   }
 }

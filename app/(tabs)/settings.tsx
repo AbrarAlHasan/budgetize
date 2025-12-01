@@ -10,16 +10,17 @@ import { onboardingStorage } from "@/storage/onboarding";
 import { useAuthStore } from "@/store/auth-store";
 import { useNotificationStore } from "@/store/notification-store";
 import { useSettingsStore } from "@/store/settings-store";
-import { log, logError } from "@/utils/logger";
 import { createBackupFile, restoreAppData } from "@/utils/backup";
 import { clearDatabase } from "@/utils/clear-database";
 import { uploadBackupToCloud } from "@/utils/cloud-backup";
 import { getCurrencyOptions, getCurrencySymbol } from "@/utils/currencies";
 import { resetAppWithDummyData } from "@/utils/dummy-data";
+import { log, logError } from "@/utils/logger";
 import { Ionicons } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
+import Constants from "expo-constants";
 import { Paths } from "expo-file-system";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import * as Sharing from "expo-sharing";
 import { colorScheme } from "nativewind";
 import { useEffect, useRef, useState } from "react";
@@ -36,6 +37,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function SettingsScreen() {
   const queryClient = useQueryClient();
+  const params = useLocalSearchParams<{ focusAccount?: string }>();
+  const scrollViewRef = useRef<ScrollView>(null);
   const { preferences, loadPreferences, updateReminderSettings, isLoading } =
     useNotificationStore();
   const {
@@ -44,6 +47,7 @@ export default function SettingsScreen() {
     updateIncomeCalculationEnabled,
     updateCurrency,
     updateTheme,
+    updateExchangeEnabled,
   } = useSettingsStore();
   const { user, isAuthenticated, isLoading: authLoading, initialize: initializeAuth, logout } = useAuthStore();
   const [permissionGranted, setPermissionGranted] = useState(false);
@@ -65,6 +69,21 @@ export default function SettingsScreen() {
     checkPermissions();
     initializeAuth();
   }, []);
+
+  // Scroll to account section when focusAccount parameter is present
+  const [accountSectionY, setAccountSectionY] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (params.focusAccount === "true" && accountSectionY !== null && scrollViewRef.current) {
+      // Wait for layout to complete before scrolling
+      setTimeout(() => {
+        scrollViewRef.current?.scrollTo({
+          y: accountSectionY - 20, // Add some padding at the top
+          animated: true,
+        });
+      }, 300);
+    }
+  }, [params.focusAccount, accountSectionY]);
 
   const checkPermissions = async () => {
     const granted = await requestNotificationPermissions();
@@ -370,7 +389,11 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50 dark:bg-black" edges={["top"]}>
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        ref={scrollViewRef}
+        className="flex-1" 
+        showsVerticalScrollIndicator={false}
+      >
         <View className="px-5 pt-6 pb-6">
           {/* Header */}
           <View className="mb-6">
@@ -528,6 +551,37 @@ export default function SettingsScreen() {
                 </View>
               )}
             </View>
+
+            {/* Exchange Feature Toggle */}
+            <View className="mb-4">
+              <View className="flex-row items-center justify-between mb-2">
+                <View className="flex-1">
+                  <View className="flex-row items-center">
+                    <Ionicons name="swap-horizontal" size={18} color="#3B82F6" style={{ marginRight: 8 }} />
+                    <Text className="text-base font-medium text-gray-900 dark:text-gray-100">
+                      Exchange Feature
+                    </Text>
+                  </View>
+                  <Text className="text-sm text-gray-500 dark:text-gray-400 mt-0.5 ml-7">
+                    Track money lent and borrowed
+                  </Text>
+                </View>
+                <Switch
+                  onValueChange={updateExchangeEnabled}
+                  value={settings.exchangeEnabled}
+                  trackColor={{ false: "#D1D5DB", true: "#3B82F6" }}
+                  thumbColor="#FFFFFF"
+                />
+              </View>
+              {settings.exchangeEnabled && (
+                <View className="mt-2 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg flex-row items-start">
+                  <Ionicons name="checkmark-circle" size={18} color="#10B981" style={{ marginRight: 8, marginTop: 2 }} />
+                  <Text className="text-sm text-green-800 dark:text-green-200 flex-1">
+                    Exchange feature is enabled. You can now track money you've lent to others or borrowed from others.
+                  </Text>
+                </View>
+              )}
+            </View>
           </Card>
 
           {/* Data Management */}
@@ -670,7 +724,13 @@ export default function SettingsScreen() {
           </Card>
 
           {/* Account Section */}
-          <Card className="mb-4">
+          <Card 
+            className="mb-4" 
+            onLayout={(event) => {
+              const { y } = event.nativeEvent.layout;
+              setAccountSectionY(y);
+            }}
+          >
             <Text className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
               Account
             </Text>
@@ -884,6 +944,13 @@ export default function SettingsScreen() {
               </TouchableOpacity>
             </Card>
           )}
+
+          {/* Version Number */}
+          <View className="items-center py-6">
+            <Text className="text-xs text-gray-400 dark:text-gray-500">
+              Version {Constants.expoConfig?.version || "1.0.0"}
+            </Text>
+          </View>
         </View>
       </ScrollView>
     </SafeAreaView>

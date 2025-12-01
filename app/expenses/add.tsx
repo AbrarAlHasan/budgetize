@@ -99,6 +99,13 @@ export default function AddTransactionScreen() {
     }
   }, [transaction, isEditMode]);
 
+  // Auto-select account if only one is available
+  useEffect(() => {
+    if (accounts && accounts.length === 1 && accountId === null && !isEditMode) {
+      setAccountId(accounts[0].id);
+    }
+  }, [accounts, accountId, isEditMode]);
+
   // Update header color based on transaction type
   useEffect(() => {
     const headerColor = type === "expense" ? "#EF4444" : "#10B981";

@@ -5,12 +5,14 @@ import { pickBackupFile, restoreAppData } from '@/utils/backup';
 import { logError } from '@/utils/logger';
 import { seedDefaultCategoriesAndTags } from '@/utils/seed-defaults';
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import React, { useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Dimensions,
   Platform,
+  ScrollView,
   StatusBar,
   StyleSheet,
   Text,
@@ -34,7 +36,7 @@ import Animated, {
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 interface OnboardingScreenProps {
-  onComplete: () => void;
+  onComplete: (navigateToCloudBackup?: boolean) => void;
 }
 
 const DataSetupSlide: React.FC<{
@@ -47,7 +49,7 @@ const DataSetupSlide: React.FC<{
   const { loadSettings } = useSettingsStore();
   const { loadPreferences } = useNotificationStore();
   const [isRestoring, setIsRestoring] = useState(false);
-  const [selectedOption, setSelectedOption] = useState<'new' | 'existing' | null>(null);
+  const [selectedOption, setSelectedOption] = useState<'new' | 'existing' | 'cloud' | null>(null);
   
   const inputRange = [
     (index - 1) * SCREEN_WIDTH,
@@ -78,9 +80,11 @@ const DataSetupSlide: React.FC<{
 
   const newButtonScale = useSharedValue(1);
   const existingButtonScale = useSharedValue(1);
+  const cloudButtonScale = useSharedValue(1);
   const uploadIconRotation = useSharedValue(0);
   const newButtonPulse = useSharedValue(1);
   const existingButtonPulse = useSharedValue(1);
+  const cloudButtonPulse = useSharedValue(1);
   const iconHeartbeat = useSharedValue(1);
 
   // Heartbeat animation for main icon - continuous
@@ -116,11 +120,20 @@ const DataSetupSlide: React.FC<{
         -1,
         true
       );
+      cloudButtonPulse.value = withRepeat(
+        withSequence(
+          withTiming(1.02, { duration: 1500 }),
+          withTiming(1, { duration: 1500 })
+        ),
+        -1,
+        true
+      );
     } else {
       newButtonPulse.value = withTiming(1, { duration: 300 });
       existingButtonPulse.value = withTiming(1, { duration: 300 });
+      cloudButtonPulse.value = withTiming(1, { duration: 300 });
     }
-  }, [selectedOption, isRestoring, newButtonPulse, existingButtonPulse]);
+  }, [selectedOption, isRestoring, newButtonPulse, existingButtonPulse, cloudButtonPulse]);
 
   const newButtonAnimatedStyle = useAnimatedStyle(() => ({
     transform: [
@@ -131,6 +144,12 @@ const DataSetupSlide: React.FC<{
   const existingButtonAnimatedStyle = useAnimatedStyle(() => ({
     transform: [
       { scale: existingButtonScale.value * existingButtonPulse.value }
+    ],
+  }));
+
+  const cloudButtonAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { scale: cloudButtonScale.value * cloudButtonPulse.value }
     ],
   }));
 
@@ -235,6 +254,31 @@ const DataSetupSlide: React.FC<{
     }
   };
 
+  const handleCloudBackup = async () => {
+    cloudButtonScale.value = withSequence(
+      withSpring(0.95, { damping: 10 }),
+      withSpring(1, { damping: 10 })
+    );
+    setSelectedOption('cloud');
+    
+    try {
+      // Seed default categories and tags first
+      await seedDefaultCategoriesAndTags();
+      // Small delay for visual feedback
+      setTimeout(() => {
+        onComplete(true); // Pass flag to navigate to cloud backup
+      }, 300);
+    } catch (error) {
+      logError('Error seeding default data:', error);
+      // Still complete onboarding even if seeding fails
+      Alert.alert(
+        'Setup Complete',
+        'Your account has been created. Some default categories and tags could not be created, but you can add them manually later.',
+        [{ text: 'OK', onPress: () => onComplete(true) }]
+      );
+    }
+  };
+
   const step = ONBOARDING_STEPS[index];
 
   return (
@@ -257,30 +301,24 @@ const DataSetupSlide: React.FC<{
         />
       </View>
 
-      {/* Main Icon */}
-      <Animated.View style={[styles.iconContainer, styles.dataSetupIconContainer, containerAnimatedStyle]}>
-        <View
-          style={[
-            styles.iconCircle,
-            styles.dataSetupIconCircle,
-            {
-              backgroundColor: step.color + '30',
-              shadowColor: step.color,
-            },
-          ]}
-        >
-          <Animated.View style={[styles.iconInnerCircle, styles.dataSetupIconInnerCircle, { backgroundColor: step.color }, iconHeartbeatStyle]}>
-            <Ionicons name={step.icon as any} size={60} color="#FFFFFF" />
+      <ScrollView 
+        style={styles.dataSetupScrollView}
+        contentContainerStyle={styles.dataSetupScrollContent}
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+      >
+        {/* Content */}
+        <Animated.View style={[styles.content, styles.dataSetupContent, containerAnimatedStyle]}>
+        {/* Compact Header with Icon */}
+        <View style={styles.dataSetupHeader}>
+          <Animated.View style={[styles.dataSetupCompactIcon, { backgroundColor: step.color + '20' }, iconHeartbeatStyle]}>
+            <Ionicons name={step.icon as any} size={36} color={step.color} />
           </Animated.View>
+          <Text style={styles.dataSetupTitle}>{step.title}</Text>
+          <Text style={styles.dataSetupDescription}>{step.description}</Text>
         </View>
-      </Animated.View>
 
-      {/* Content */}
-      <Animated.View style={[styles.content, styles.dataSetupContent, containerAnimatedStyle]}>
-        <Text style={styles.title}>{step.title}</Text>
-        <Text style={styles.description}>{step.description}</Text>
-
-        {/* Option Buttons */}
+        {/* Option Buttons - Compact Grid */}
         <View style={styles.optionsContainer}>
           {/* New Data Option */}
           <Animated.View style={newButtonAnimatedStyle}>
@@ -298,24 +336,24 @@ const DataSetupSlide: React.FC<{
               activeOpacity={0.8}
             >
               <View style={[
-                styles.optionIconContainer, 
+                styles.optionIconContainerCompact, 
                 { backgroundColor: selectedOption === 'new' ? step.color : step.color + '15' }
               ]}>
                 <Ionicons
                   name="add-circle"
-                  size={40}
+                  size={28}
                   color={selectedOption === 'new' ? '#FFFFFF' : step.color}
                 />
               </View>
               <Text
                 style={[
-                  styles.optionTitle,
+                  styles.optionTitleCompact,
                   selectedOption === 'new' && styles.optionTitleSelected,
                 ]}
               >
                 Start Fresh
               </Text>
-              <Text style={styles.optionDescription}>
+              <Text style={styles.optionDescriptionCompact}>
                 Create a new account and begin tracking from scratch
               </Text>
             </TouchableOpacity>
@@ -337,38 +375,78 @@ const DataSetupSlide: React.FC<{
               activeOpacity={0.8}
             >
               <View style={[
-                styles.optionIconContainer, 
+                styles.optionIconContainerCompact, 
                 { backgroundColor: selectedOption === 'existing' ? step.color : step.color + '15' }
               ]}>
                 {isRestoring ? (
                   <Animated.View style={uploadIconAnimatedStyle}>
-                    <ActivityIndicator size="large" color="#FFFFFF" />
+                    <ActivityIndicator size="small" color="#FFFFFF" />
                   </Animated.View>
                 ) : (
                   <Ionicons
                     name="cloud-upload"
-                    size={40}
+                    size={28}
                     color={selectedOption === 'existing' ? '#FFFFFF' : step.color}
                   />
                 )}
               </View>
               <Text
                 style={[
-                  styles.optionTitle,
+                  styles.optionTitleCompact,
                   selectedOption === 'existing' && styles.optionTitleSelected,
                 ]}
               >
                 {isRestoring ? 'Restoring...' : 'Use Existing Data'}
               </Text>
-              <Text style={styles.optionDescription}>
+              <Text style={styles.optionDescriptionCompact}>
                 {isRestoring
                   ? 'Please wait while we restore your backup'
                   : 'Upload a backup file to restore your previous data'}
               </Text>
             </TouchableOpacity>
           </Animated.View>
+
+          {/* Cloud Backup Option */}
+          <Animated.View style={cloudButtonAnimatedStyle}>
+            <TouchableOpacity
+              style={[
+                styles.optionButton,
+                selectedOption === 'cloud' && [
+                  styles.optionButtonSelected,
+                  { backgroundColor: step.color + '10', borderColor: step.color },
+                ],
+                { borderColor: step.color },
+              ]}
+              onPress={handleCloudBackup}
+              disabled={isRestoring || selectedOption !== null}
+              activeOpacity={0.8}
+            >
+              <View style={[
+                styles.optionIconContainerCompact, 
+                { backgroundColor: selectedOption === 'cloud' ? step.color : step.color + '15' }
+              ]}>
+                <Ionicons
+                  name="cloud"
+                  size={28}
+                  color={selectedOption === 'cloud' ? '#FFFFFF' : step.color}
+                />
+              </View>
+              <Text
+                style={[
+                  styles.optionTitleCompact,
+                  selectedOption === 'cloud' && styles.optionTitleSelected,
+                ]}
+              >
+                Cloud Backup
+              </Text>
+              <Text style={styles.optionDescriptionCompact}>
+                Login with your account to enable automatic cloud backup
+              </Text>
+            </TouchableOpacity>
+          </Animated.View>
         </View>
       </Animated.View>
+      </ScrollView>
     </View>
   );
 };
@@ -727,24 +805,46 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: '100%',
   },
+  dataSetupScrollView: {
+    flex: 1,
+    width: '100%',
+  },
+  dataSetupScrollContent: {
+    flexGrow: 1,
+    paddingBottom: 120,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+  },
   dataSetupContent: {
-    paddingBottom: 200, // Extra padding for bottom section
+    width: '100%',
+    alignItems: 'center',
     justifyContent: 'flex-start',
-    paddingTop: 10,
   },
-  dataSetupIconContainer: {
-    marginTop: Platform.OS === 'ios' ? 100 : 80, // Extra margin to avoid notch
-    marginBottom: 20,
+  dataSetupHeader: {
+    alignItems: 'center',
+    marginBottom: 32,
+    width: '100%',
   },
-  dataSetupIconCircle: {
-    width: 150,
-    height: 150,
-    borderRadius: 75,
+  dataSetupCompactIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
   },
-  dataSetupIconInnerCircle: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+  dataSetupTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#111827',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  dataSetupDescription: {
+    fontSize: 15,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 22,
+    paddingHorizontal: 16,
   },
   title: {
     fontSize: 32,
@@ -860,27 +960,31 @@ const styles = StyleSheet.create({
   },
   optionsContainer: {
     width: '100%',
-    gap: 16,
-    marginTop: 16,
+    gap: 12,
     paddingBottom: 20,
   },
   optionButton: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    padding: 20,
+    borderRadius: 20,
+    padding: 16,
     alignItems: 'center',
     borderWidth: 2,
     borderStyle: 'dashed',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+    minHeight: 140,
+    justifyContent: 'center',
   },
   optionButtonSelected: {
     borderStyle: 'solid',
-    borderWidth: 3,
+    borderWidth: 2.5,
     backgroundColor: '#FFFFFF',
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 5,
   },
   optionIconContainer: {
     width: 70,
@@ -890,11 +994,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 12,
   },
+  optionIconContainerCompact: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
   optionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#111827',
     marginBottom: 8,
+    textAlign: 'center',
+  },
+  optionTitleCompact: {
+    fontSize: 17,
+    fontWeight: 'bold',
+    color: '#111827',
+    marginBottom: 6,
     textAlign: 'center',
   },
   optionTitleSelected: {
@@ -905,6 +1024,13 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     textAlign: 'center',
     lineHeight: 20,
+  },
+  optionDescriptionCompact: {
+    fontSize: 13,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 18,
+    paddingHorizontal: 8,
   },
 });
 

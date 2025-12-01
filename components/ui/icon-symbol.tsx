@@ -25,6 +25,7 @@ const MAPPING = {
   'chart.bar.xaxis': 'assessment',
   'doc.text.fill': 'description',
   'gearshape.fill': 'settings',
+  'arrow.left.arrow.right.circle.fill': 'compare-arrows',
 } as IconMapping;
 
 /**

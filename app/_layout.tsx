@@ -18,6 +18,7 @@ import { useSettingsStore } from "@/store/settings-store";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { colorScheme, useColorScheme } from "nativewind";
 import { PostHogProvider } from "posthog-react-native";
+import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { logError } from "@/utils/logger";
@@ -94,9 +95,20 @@ export default function RootLayout() {
     }
   }, [settings.theme]);
 
-  const handleOnboardingComplete = () => {
+  const handleOnboardingComplete = (navigateToCloudBackup?: boolean) => {
     onboardingStorage.setCompleted();
     setShowOnboarding(false);
+    
+    // Navigate to settings with focus on account section if cloud backup was selected
+    if (navigateToCloudBackup) {
+      // Use setTimeout to ensure navigation happens after onboarding is dismissed
+      setTimeout(() => {
+        router.push({
+          pathname: "/(tabs)/settings",
+          params: { focusAccount: "true" },
+        });
+      }, 100);
+    }
   };
 
   // Show loading spinner while initializing or syncing theme

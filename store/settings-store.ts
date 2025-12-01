@@ -8,6 +8,7 @@ interface AppSettings {
   incomeCalculationEnabled: boolean;
   currency: string; // Global currency code (e.g., 'USD', 'EUR', 'INR')
   theme: 'light' | 'dark' | 'auto'; // Theme preference
+  exchangeEnabled: boolean; // Exchange feature (money lent/borrowed tracking)
 }
 
 interface SettingsStore {
@@ -17,12 +18,14 @@ interface SettingsStore {
   updateIncomeCalculationEnabled: (enabled: boolean) => Promise<void>;
   updateCurrency: (currency: string) => Promise<void>;
   updateTheme: (theme: 'light' | 'dark' | 'auto') => Promise<void>;
+  updateExchangeEnabled: (enabled: boolean) => Promise<void>;
 }
 
 const defaultSettings: AppSettings = {
   incomeCalculationEnabled: true, // Default to enabled
   currency: 'INR', // Default to INR
   theme: 'auto', // Default to system preference
+  exchangeEnabled: true, // Default to enabled
 };
 
 export const useSettingsStore = create<SettingsStore>((set, get) => ({
@@ -88,6 +91,22 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
     const newSettings: AppSettings = {
       ...get().settings,
       theme,
+    };
+
+    set({ settings: newSettings });
+
+    // Save to secure store
+    try {
+      await SecureStore.setItemAsync(SETTINGS_STORE_KEY, JSON.stringify(newSettings));
+    } catch (error) {
+      logError('Error saving settings:', error);
+    }
+  },
+
+  updateExchangeEnabled: async (enabled: boolean) => {
+    const newSettings: AppSettings = {
+      ...get().settings,
+      exchangeEnabled: enabled,
     };
 
     set({ settings: newSettings });
