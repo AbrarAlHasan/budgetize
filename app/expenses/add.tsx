@@ -9,20 +9,18 @@ import { Card } from "@/components/ui/card";
 import { TransactionType } from "@/db/schema/types";
 import { useAccounts } from "@/hooks/queries/use-accounts";
 import { useCategories } from "@/hooks/queries/use-categories";
-import { useTags } from "@/hooks/queries/use-tags";
-import { useTagsForTransaction } from "@/hooks/queries/use-tags";
-import { useCreateTransaction, useUpdateTransaction, useDeleteTransaction, useTransaction } from "@/hooks/queries/use-transactions";
+import { useTags, useTagsForTransaction } from "@/hooks/queries/use-tags";
+import { useCreateTransaction, useDeleteTransaction, useTransaction, useUpdateTransaction } from "@/hooks/queries/use-transactions";
+import { transactionTagRepository } from "@/repositories/transaction-tag.repository";
 import { useSettingsStore } from "@/store/settings-store";
 import { getCurrencySymbol } from "@/utils/currencies";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { format, parseISO } from "date-fns";
 import { router, Stack, useLocalSearchParams } from "expo-router";
-import { transactionTagRepository } from "@/repositories/transaction-tag.repository";
-import { ActivityIndicator } from "react-native";
 import { useEffect, useRef, useState } from "react";
 import {
-  Alert,
+  ActivityIndicator, Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -30,7 +28,7 @@ import {
   TextInput,
   TouchableOpacity,
   TouchableWithoutFeedback,
-  View,
+  View
 } from "react-native";
 
 export default function AddTransactionScreen() {
@@ -85,7 +83,7 @@ export default function AddTransactionScreen() {
       setCategoryId(transaction.category_id);
       setDate(parseISO(transaction.date));
       setNote(transaction.note || "");
-      setPaymentMode(transaction.payment_mode);
+      setPaymentMode(transaction.payment_mode || "");
     }
   }, [transaction, isEditMode]);
 
@@ -144,11 +142,6 @@ export default function AddTransactionScreen() {
       return;
     }
 
-    if (!paymentMode.trim()) {
-      Alert.alert("Error", "Payment mode is required");
-      return;
-    }
-
     try {
       // Format date as YYYY-MM-DD to avoid timezone issues
       // Store only the date part without time/timezone to ensure consistency
@@ -163,7 +156,7 @@ export default function AddTransactionScreen() {
           type,
           date: dateString,
           note: note.trim() || null,
-          payment_mode: paymentMode.trim(),
+          payment_mode: paymentMode.trim() || null,
           tag_ids: selectedTagIds.length > 0 ? selectedTagIds : undefined,
         });
         Alert.alert("Success", "Transaction updated successfully");
@@ -175,7 +168,7 @@ export default function AddTransactionScreen() {
         type,
         date: dateString,
         note: note.trim() || null,
-        payment_mode: paymentMode.trim(),
+        payment_mode: paymentMode.trim() || null,
         tag_ids: selectedTagIds.length > 0 ? selectedTagIds : undefined,
       });
         Alert.alert("Success", "Transaction created successfully");
@@ -514,7 +507,7 @@ export default function AddTransactionScreen() {
                 <View className="flex-row items-center mb-2">
                   <Ionicons name="card" size={16} color="#6B7280" />
                   <Text className="text-xs text-gray-500 dark:text-gray-400 ml-2 uppercase tracking-wide">
-                    Payment Mode
+                    Payment Mode (Optional)
                   </Text>
                 </View>
                 <TextInput

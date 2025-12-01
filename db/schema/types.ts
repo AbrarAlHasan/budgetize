@@ -45,7 +45,7 @@ export interface Transaction {
   type: TransactionType;
   date: string; // ISO date string
   note: string | null; // Encrypted string
-  payment_mode: string; // Encrypted string
+  payment_mode: string | null; // Encrypted string
   created_at: string; // ISO date string
   updated_at: string; // ISO date string
   deleted_at: string | null; // ISO date string
@@ -101,7 +101,7 @@ export interface CreateTransactionInput {
   type: TransactionType;
   date: string;
   note?: string | null; // Will be encrypted
-  payment_mode: string; // Will be encrypted
+  payment_mode?: string | null; // Will be encrypted
   tag_ids?: number[];
 }
 
@@ -113,7 +113,7 @@ export interface UpdateTransactionInput {
   type?: TransactionType;
   date?: string;
   note?: string | null; // Will be encrypted
-  payment_mode?: string; // Will be encrypted
+  payment_mode?: string | null; // Will be encrypted
   tag_ids?: number[];
 }
 

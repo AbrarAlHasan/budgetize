@@ -2,6 +2,7 @@ import { log, logError } from "@/utils/logger";
 import * as SQLite from "expo-sqlite";
 import { encryptExistingData } from "./003_encrypt_existing_data";
 import { addCurrencyToAccounts } from "./004_add_currency_to_accounts";
+import { makePaymentModeNullable } from "./006_make_payment_mode_nullable";
 
 const INITIAL_SCHEMA_SQL = `
 -- Accounts table
@@ -29,7 +30,7 @@ CREATE TABLE IF NOT EXISTS transactions (
   type TEXT NOT NULL CHECK(type IN ('expense', 'income')),
   date TEXT NOT NULL,
   note TEXT,
-  payment_mode TEXT NOT NULL,
+        payment_mode TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now')),
   deleted_at TEXT,
@@ -249,6 +250,24 @@ CREATE INDEX IF NOT EXISTS idx_transactions_type_date ON transactions(type, date
       log("Migration 005_add_composite_indexes applied successfully");
     } catch (error) {
       logError("Error applying migration 005_add_composite_indexes:", error);
+      throw error;
+    }
+  }
+
+  // Run migration 6 (make payment_mode nullable)
+  if (!appliedVersions.has(6)) {
+    try {
+      await makePaymentModeNullable(db);
+
+      // Record migration
+      await db.runAsync(
+        "INSERT OR IGNORE INTO schema_migrations (version, name) VALUES (?, ?)",
+        [6, "006_make_payment_mode_nullable"]
+      );
+
+      log("Migration 006_make_payment_mode_nullable applied successfully");
+    } catch (error) {
+      logError("Error applying migration 006_make_payment_mode_nullable:", error);
       throw error;
     }
   }

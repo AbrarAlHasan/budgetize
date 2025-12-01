@@ -126,7 +126,7 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     // Encrypt sensitive fields
     const encryptedAmount = await encryptAmount(input.amount);
     const encryptedNote = input.note ? await encrypt(input.note) : null;
-    const encryptedPaymentMode = await encrypt(input.payment_mode);
+    const encryptedPaymentMode = input.payment_mode ? await encrypt(input.payment_mode) : null;
 
     const db = await getDatabase();
 
@@ -208,7 +208,7 @@ export class TransactionRepository extends BaseRepository<Transaction> {
         updateData.note = input.note ? await encrypt(input.note) : null;
       }
       if (input.payment_mode !== undefined) {
-        updateData.payment_mode = await encrypt(input.payment_mode);
+        updateData.payment_mode = input.payment_mode ? await encrypt(input.payment_mode) : null;
       }
 
       // Update transaction
@@ -552,12 +552,12 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     Omit<Transaction, "amount" | "note" | "payment_mode"> & {
       amount: number;
       note: string | null;
-      payment_mode: string;
+      payment_mode: string | null;
     }
   > {
     const amount = await decryptAmount(transaction.amount);
     const note = transaction.note ? await decrypt(transaction.note) : null;
-    const payment_mode = await decrypt(transaction.payment_mode);
+    const payment_mode = transaction.payment_mode ? await decrypt(transaction.payment_mode) : null;
 
     return {
       ...transaction,
@@ -577,7 +577,7 @@ export class TransactionRepository extends BaseRepository<Transaction> {
       Omit<Transaction, "amount" | "note" | "payment_mode"> & {
         amount: number;
         note: string | null;
-        payment_mode: string;
+        payment_mode: string | null;
       }
     >
   > {
@@ -592,7 +592,7 @@ export class TransactionRepository extends BaseRepository<Transaction> {
       Omit<Transaction, "amount" | "note" | "payment_mode"> & {
         amount: number;
         note: string | null;
-        payment_mode: string;
+        payment_mode: string | null;
       }
     > = [];
 
@@ -609,7 +609,7 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     );
 
     const paymentModes = await Promise.all(
-        batch.map((t) => decrypt(t.payment_mode))
+        batch.map((t) => (t.payment_mode ? decrypt(t.payment_mode) : Promise.resolve(null)))
     );
 
       // Combine results for this batch

@@ -11,7 +11,7 @@ interface TransactionItemProps {
   type: 'expense' | 'income';
   date: string;
   note?: string | null;
-  payment_mode: string;
+  payment_mode: string | null;
   accountName?: string;
   currencySymbol?: string; // Currency symbol from account
   tags?: Array<{ id: number; name: string }>;
