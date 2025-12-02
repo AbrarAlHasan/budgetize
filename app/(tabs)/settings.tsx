@@ -16,6 +16,7 @@ import { uploadBackupToCloud } from "@/utils/cloud-backup";
 import { getCurrencyOptions, getCurrencySymbol } from "@/utils/currencies";
 import { resetAppWithDummyData } from "@/utils/dummy-data";
 import { log, logError } from "@/utils/logger";
+import { useInAppUpdates } from "@/hooks/use-in-app-updates";
 import { Ionicons } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
 import Constants from "expo-constants";
@@ -50,12 +51,14 @@ export default function SettingsScreen() {
     updateExchangeEnabled,
   } = useSettingsStore();
   const { user, isAuthenticated, isLoading: authLoading, initialize: initializeAuth, logout } = useAuthStore();
+  const { checkAndPromptUpdate } = useInAppUpdates({ autoCheck: false });
   const [permissionGranted, setPermissionGranted] = useState(false);
   const [isSeedingDummyData, setIsSeedingDummyData] = useState(false);
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
   const [isClearingDatabase, setIsClearingDatabase] = useState(false);
   const [isUploadingToCloud, setIsUploadingToCloud] = useState(false);
+  const [isCheckingForUpdates, setIsCheckingForUpdates] = useState(false);
   const [backupListRefreshTrigger, setBackupListRefreshTrigger] = useState(0);
   const [showDeveloperOptions, setShowDeveloperOptions] = useState(false);
   const [settingsTapCount, setSettingsTapCount] = useState(0);
@@ -385,6 +388,22 @@ export default function SettingsScreen() {
         },
       ]
     );
+  };
+
+  const handleCheckForUpdates = async () => {
+    if (isCheckingForUpdates) {
+      return;
+    }
+
+    setIsCheckingForUpdates(true);
+    try {
+      // Pass true to show message even if no update is available
+      await checkAndPromptUpdate(true);
+    } catch (error) {
+      logError("Failed to check for updates:", error);
+    } finally {
+      setIsCheckingForUpdates(false);
+    }
   };
 
   return (
@@ -944,6 +963,42 @@ export default function SettingsScreen() {
               </TouchableOpacity>
             </Card>
           )}
+
+          {/* App Updates */}
+          <Card className="mb-4">
+            <Text className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+              App Updates
+            </Text>
+
+            <TouchableOpacity
+              onPress={handleCheckForUpdates}
+              className="flex-row items-center justify-between py-3"
+              activeOpacity={0.7}
+              disabled={isCheckingForUpdates}
+              style={{ opacity: isCheckingForUpdates ? 0.6 : 1 }}
+            >
+              <View className="flex-row items-center gap-3 flex-1">
+                <View className="bg-blue-100 dark:bg-blue-900/30 rounded-full p-2">
+                  {isCheckingForUpdates ? (
+                    <ActivityIndicator size="small" color="#3B82F6" />
+                  ) : (
+                    <Ionicons name="refresh" size={20} color="#3B82F6" />
+                  )}
+                </View>
+                <View className="flex-1">
+                  <Text className="text-base font-medium text-gray-900 dark:text-gray-100">
+                    Check for Updates
+                  </Text>
+                  <Text className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                    {isCheckingForUpdates
+                      ? "Checking for updates..."
+                      : "Check if a new version is available"}
+                  </Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+            </TouchableOpacity>
+          </Card>
 
           {/* Version Number */}
           <View className="items-center py-6">

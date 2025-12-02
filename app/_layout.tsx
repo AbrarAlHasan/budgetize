@@ -12,6 +12,7 @@ import "../global.css";
 
 import { OnboardingScreen } from "@/components/onboarding/onboarding-screen";
 import { queryClient } from "@/hooks/use-query-client";
+import { useInAppUpdates } from "@/hooks/use-in-app-updates";
 import { onboardingStorage } from "@/storage/onboarding";
 import { useAuthStore } from "@/store/auth-store";
 import { useSettingsStore } from "@/store/settings-store";
@@ -33,6 +34,13 @@ export default function RootLayout() {
   const [isReady, setIsReady] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [themeSynced, setThemeSynced] = useState(false);
+
+  // Initialize in-app updates (only checks after app is ready and onboarding complete)
+  useInAppUpdates({
+    autoCheck: isReady && !showOnboarding, // Only check after initialization and onboarding
+    daysBeforePrompt: 2,
+    immediateUpdate: false,
+  });
 
   useEffect(() => {
     const initializeApp = async () => {
