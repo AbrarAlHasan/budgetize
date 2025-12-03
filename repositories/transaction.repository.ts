@@ -130,6 +130,27 @@ export class TransactionRepository extends BaseRepository<Transaction> {
 
     const db = await getDatabase();
 
+    // Verify category_id column exists, add it if missing (safety check)
+    try {
+      const tableInfo = await db.getAllAsync<{ name: string }>(
+        "PRAGMA table_info(transactions)"
+      );
+      const hasCategoryId = tableInfo.some((col) => col.name === "category_id");
+
+      if (!hasCategoryId) {
+        logError("category_id column missing from transactions table. Adding it now...");
+        await db.execAsync(
+          "ALTER TABLE transactions ADD COLUMN category_id INTEGER REFERENCES categories(id)"
+        );
+        await db.execAsync(
+          "CREATE INDEX IF NOT EXISTS idx_transactions_category_id ON transactions(category_id)"
+        );
+      }
+    } catch (error) {
+      logError("Error checking/adding category_id column:", error);
+      // Continue anyway - if column exists, the error will be caught below
+    }
+
     // Start transaction
     await db.execAsync("BEGIN TRANSACTION");
 

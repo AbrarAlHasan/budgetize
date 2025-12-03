@@ -1,7 +1,8 @@
+import { Alert } from "@/components/ui/alert";
 import { logError } from "@/utils/logger";
 import * as ExpoInAppUpdates from "expo-in-app-updates";
 import { useCallback, useEffect } from "react";
-import { Alert, Platform } from "react-native";
+import { Platform } from "react-native";
 
 interface UpdateCheckResult {
   updateAvailable: boolean;
@@ -141,7 +142,6 @@ export function useInAppUpdates(options?: {
             [
               {
                 text: "Update",
-                isPreferred: true,
                 onPress: async () => {
                   try {
                     await startUpdate(Platform.OS === "android");

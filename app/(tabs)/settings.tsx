@@ -2,6 +2,8 @@ import { BackupList } from "@/components/cloud-backup/backup-list";
 import { LoginButton } from "@/components/cloud-backup/login-button";
 import { BottomSheetSelect } from "@/components/ui/bottom-sheet-select";
 import { Card } from "@/components/ui/card";
+import { useCustomAlert } from "@/hooks/use-custom-alert";
+import { useInAppUpdates } from "@/hooks/use-in-app-updates";
 import {
   REMINDER_TIMES,
   requestNotificationPermissions,
@@ -16,7 +18,6 @@ import { uploadBackupToCloud } from "@/utils/cloud-backup";
 import { getCurrencyOptions, getCurrencySymbol } from "@/utils/currencies";
 import { resetAppWithDummyData } from "@/utils/dummy-data";
 import { log, logError } from "@/utils/logger";
-import { useInAppUpdates } from "@/hooks/use-in-app-updates";
 import { Ionicons } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
 import Constants from "expo-constants";
@@ -27,7 +28,6 @@ import { colorScheme } from "nativewind";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   ScrollView,
   Switch,
   Text,
@@ -40,6 +40,7 @@ export default function SettingsScreen() {
   const queryClient = useQueryClient();
   const params = useLocalSearchParams<{ focusAccount?: string }>();
   const scrollViewRef = useRef<ScrollView>(null);
+  const { alert } = useCustomAlert();
   const { preferences, loadPreferences, updateReminderSettings, isLoading } =
     useNotificationStore();
   const {
@@ -97,7 +98,7 @@ export default function SettingsScreen() {
     if (enabled && !permissionGranted) {
       const granted = await requestNotificationPermissions();
       if (!granted) {
-        Alert.alert(
+        alert(
           "Permission Required",
           "Please enable notifications in your device settings to receive reminders."
         );
@@ -175,7 +176,7 @@ export default function SettingsScreen() {
   };
 
   const handleResetOnboarding = () => {
-    Alert.alert(
+    alert(
       "Reset Onboarding",
       "This will reset the onboarding screens. You'll need to restart the app to see them again.",
       [
@@ -185,7 +186,7 @@ export default function SettingsScreen() {
           style: "destructive",
           onPress: () => {
             onboardingStorage.reset();
-            Alert.alert(
+            alert(
               "Success!",
               "Onboarding has been reset. Please close and restart the app to see the onboarding screens again.",
               [{ text: "OK" }]
@@ -204,13 +205,13 @@ export default function SettingsScreen() {
         setDummyDataProgress(progress);
       });
       setDummyDataProgress(100);
-      Alert.alert(
+      alert(
         "Dummy Data Ready",
         `Generated ${summary.transactions} transactions across ${summary.accounts} accounts.\nPull to refresh to see the latest data.`
       );
     } catch (error) {
       logError("Failed to seed dummy data:", error);
-      Alert.alert(
+      alert(
         "Seeding Failed",
         "Could not generate dummy data. Check the Metro logs for more details."
       );
@@ -225,7 +226,7 @@ export default function SettingsScreen() {
       return;
     }
 
-    Alert.alert(
+    alert(
       "Replace Data with Dummy Set?",
       "This will erase all existing accounts, categories, tags, and transactions, then seed one year of dummy data.",
       [
@@ -249,7 +250,7 @@ export default function SettingsScreen() {
       // 1. Create the backup file
       const zipPath = await createBackupFile();
       if (!zipPath) {
-        Alert.alert(
+        alert(
           "Backup Failed",
           "Could not create the backup. Please try again."
         );
@@ -261,26 +262,26 @@ export default function SettingsScreen() {
         const isAvailable = await Sharing.isAvailableAsync();
         if (isAvailable) {
           await Sharing.shareAsync(zipPath);
-          Alert.alert(
+          alert(
             "Backup Ready",
             "Backup file created and share dialog opened. Save it to a safe location."
           );
         } else {
-          Alert.alert(
+          alert(
             "Backup Created",
             `Backup file created at: ${zipPath}\nSharing is not available on this platform.`
           );
         }
       } catch (shareError) {
         logError("Share error:", shareError);
-        Alert.alert(
+        alert(
           "Backup Created",
           `Backup file created at: ${zipPath}\nFailed to open share dialog.`
         );
       }
     } catch (error) {
       logError("Backup failed:", error);
-      Alert.alert(
+      alert(
         "Backup Failed",
         "An unexpected error occurred while creating the backup."
       );
@@ -298,7 +299,7 @@ export default function SettingsScreen() {
         await loadSettings();
         await loadPreferences();
 
-        Alert.alert(
+        alert(
           "Restore Complete",
           "Your data has been successfully restored. The app will now use the restored data.",
           [
@@ -312,14 +313,14 @@ export default function SettingsScreen() {
           ]
         );
       } else {
-        Alert.alert(
+        alert(
           "Restore Failed",
           "Could not restore the backup. Please make sure you selected a valid backup file and try again."
         );
       }
     } catch (error) {
       logError("Restore failed:", error);
-      Alert.alert(
+      alert(
         "Restore Failed",
         "An unexpected error occurred while restoring the backup."
       );
@@ -333,7 +334,7 @@ export default function SettingsScreen() {
       return;
     }
 
-    Alert.alert(
+    alert(
       "Import & Restore Data",
       "This will replace all existing data (accounts, transactions, categories, tags, and settings) with the data from the backup file. This action cannot be undone.\n\nMake sure you have a recent backup before proceeding.",
       [
@@ -355,14 +356,14 @@ export default function SettingsScreen() {
       // Invalidate all queries to refresh the UI
       await queryClient.invalidateQueries();
       
-      Alert.alert(
+      alert(
         "Database Cleared",
         "All data has been successfully cleared from the database.",
         [{ text: "OK" }]
       );
     } catch (error) {
       logError("Failed to clear database:", error);
-      Alert.alert(
+      alert(
         "Clear Failed",
         "An error occurred while clearing the database. Please try again."
       );
@@ -376,7 +377,7 @@ export default function SettingsScreen() {
       return;
     }
 
-    Alert.alert(
+    alert(
       "Clear All Data",
       "This will permanently delete ALL data from the database:\n\n• All accounts\n• All transactions\n• All categories\n• All tags\n\nThis action CANNOT be undone. Make sure you have a backup if you want to restore this data later.",
       [
@@ -780,7 +781,7 @@ export default function SettingsScreen() {
                   onPress={async () => {
                     const { error } = await logout();
                     if (error) {
-                      Alert.alert('Error', 'Failed to logout. Please try again.');
+                      alert('Error', 'Failed to logout. Please try again.');
                     }
                   }}
                   className="flex-row items-center justify-center bg-red-600 dark:bg-red-500 px-6 py-3 rounded-xl"
@@ -833,7 +834,7 @@ export default function SettingsScreen() {
                 <TouchableOpacity
                   onPress={async () => {
                     if (!user?.id) {
-                      Alert.alert('Error', 'User ID not found. Please login again.');
+                      alert('Error', 'User ID not found. Please login again.');
                       return;
                     }
 
@@ -841,15 +842,15 @@ export default function SettingsScreen() {
                     try {
                       const { error, success } = await uploadBackupToCloud(user.id);
                       if (error || !success) {
-                        Alert.alert('Error', 'Failed to upload backup to cloud. Please try again.');
+                        alert('Error', 'Failed to upload backup to cloud. Please try again.');
                         return;
                       }
-                      Alert.alert('Success', 'Backup uploaded to cloud successfully!');
+                      alert('Success', 'Backup uploaded to cloud successfully!');
                       // Trigger backup list refresh
                       setBackupListRefreshTrigger(prev => prev + 1);
                     } catch (error) {
                       logError('Error uploading to cloud:', error);
-                      Alert.alert('Error', 'An unexpected error occurred.');
+                      alert('Error', 'An unexpected error occurred.');
                     } finally {
                       setIsUploadingToCloud(false);
                     }

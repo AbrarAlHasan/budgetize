@@ -41,5 +41,5 @@ echo ""
 
 # Run EAS update (Android only - excludes web to avoid SQLite WASM issues)
 cd "$PROJECT_ROOT"
-eas update --channel production --platform android --message "Feature Release Exchange Details Screen" --clear-cache
+eas update --channel production --platform android --message "Add Transaction Bug Fixing and Update Alert UI Change for Android" --clear-cache
 

@@ -17,6 +17,7 @@ import { onboardingStorage } from "@/storage/onboarding";
 import { useAuthStore } from "@/store/auth-store";
 import { useSettingsStore } from "@/store/settings-store";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
+import { AlertProvider } from "@/components/ui/alert";
 import { colorScheme, useColorScheme } from "nativewind";
 import { PostHogProvider } from "posthog-react-native";
 import { router } from "expo-router";
@@ -165,27 +166,29 @@ export default function RootLayout() {
       >
         <GestureHandlerRootView style={{ flex: 1 }}>
           <QueryClientProvider client={queryClient}>
-            <BottomSheetModalProvider>
-              <ThemeProvider
-                value={
-                  normalizedColorScheme === "dark" ? DarkTheme : DefaultTheme
-                }
-              >
-                <Stack>
-                  <Stack.Screen
-                    name="(tabs)"
-                    options={{ headerShown: false }}
+            <AlertProvider>
+              <BottomSheetModalProvider>
+                <ThemeProvider
+                  value={
+                    normalizedColorScheme === "dark" ? DarkTheme : DefaultTheme
+                  }
+                >
+                  <Stack>
+                    <Stack.Screen
+                      name="(tabs)"
+                      options={{ headerShown: false }}
+                    />
+                    <Stack.Screen
+                      name="modal"
+                      options={{ presentation: "modal", title: "Modal" }}
+                    />
+                  </Stack>
+                  <StatusBar
+                    style={normalizedColorScheme === "dark" ? "light" : "dark"}
                   />
-                  <Stack.Screen
-                    name="modal"
-                    options={{ presentation: "modal", title: "Modal" }}
-                  />
-                </Stack>
-                <StatusBar
-                  style={normalizedColorScheme === "dark" ? "light" : "dark"}
-                />
-              </ThemeProvider>
-            </BottomSheetModalProvider>
+                </ThemeProvider>
+              </BottomSheetModalProvider>
+            </AlertProvider>
           </QueryClientProvider>
         </GestureHandlerRootView>
       </PostHogProvider>
