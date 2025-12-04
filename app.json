@@ -10,12 +10,15 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.budgetize.app",
+      "bundleIdentifier": "com.suzukibusinesscloud.SalesQA-3.0",
       "googleServicesFile": "./GoogleService-Info.plist",
       "icon": {
         "dark": "./assets/app-icons/ios-dark.png",
         "light": "./assets/app-icons/ios-light.png",
         "tinted": "./assets/app-icons/ios-tinted.png"
+      },
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {

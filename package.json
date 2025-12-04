@@ -10,6 +10,7 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "release-android-build": "chmod +x scripts/release-android-build.sh && ./scripts/release-android-build.sh",
+    "release-ios-build": "chmod +x scripts/release-ios-build.sh && ./scripts/release-ios-build.sh",
     "release-android-ota-update": "chmod +x scripts/release-android-ota-update.sh && ./scripts/release-android-ota-update.sh"
   },
   "dependencies": {

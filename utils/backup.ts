@@ -4,6 +4,7 @@ import * as SecureStore from "expo-secure-store";
 import * as Sharing from "expo-sharing";
 import { unzip, zip } from "react-native-zip-archive";
 import { log, logWarn, logError } from "@/utils/logger";
+import { clearEncryptionKeyCache } from "@/services/encryption";
 
 interface BackupMetadata {
   createdAt: string;
@@ -573,7 +574,9 @@ export async function restoreAppData(backupZipPath?: string): Promise<boolean> {
           ENCRYPTION_KEY_STORAGE_KEY,
           encryptionKey
         );
-        log("✓ Encryption key restored");
+        // Clear the encryption key cache so the newly restored key is used
+        clearEncryptionKeyCache();
+        log("✓ Encryption key restored and cache cleared");
       } catch (error) {
         logWarn("⚠ Failed to restore encryption key:", error);
       }

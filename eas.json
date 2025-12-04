@@ -16,6 +16,9 @@
         "buildType": "app-bundle",
         "autoIncrement": "versionCode"
       },
+      "ios": {
+        "distribution": "internal"
+      },
       "channel": "production",
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "https://vujcvquohckehaltpjxw.supabase.co",

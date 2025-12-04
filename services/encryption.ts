@@ -179,3 +179,12 @@ export function isEncrypted(value: string | null | undefined): boolean {
   }
 }
 
+/**
+ * Clear the encryption key cache
+ * This should be called after restoring a backup to ensure the newly restored key is used
+ */
+export function clearEncryptionKeyCache(): void {
+  cachedEncryptionKey = null;
+  keyBytesCache = null;
+}
+
