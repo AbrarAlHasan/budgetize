@@ -11,7 +11,9 @@
     "lint": "expo lint",
     "release-android-build": "chmod +x scripts/release-android-build.sh && ./scripts/release-android-build.sh",
     "release-ios-build": "chmod +x scripts/release-ios-build.sh && ./scripts/release-ios-build.sh",
-    "release-android-ota-update": "chmod +x scripts/release-android-ota-update.sh && ./scripts/release-android-ota-update.sh"
+    "release-android-ota-update": "chmod +x scripts/release-android-ota-update.sh && ./scripts/release-android-ota-update.sh",
+    "release-ios-ota-update": "chmod +x scripts/release-ios-ota-update.sh && ./scripts/release-ios-ota-update.sh",
+    "release-ota-update": "chmod +x scripts/release-ota-update.sh && ./scripts/release-ota-update.sh"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",

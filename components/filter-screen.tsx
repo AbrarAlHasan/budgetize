@@ -2,10 +2,11 @@ import { AccountType, TransactionType } from '@/db/schema/types';
 import { useAccounts } from '@/hooks/queries/use-accounts';
 import { useCategories } from '@/hooks/queries/use-categories';
 import { useTags } from '@/hooks/queries/use-tags';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useUIStore, type FilterContext } from '@/store/ui-store';
 import { Ionicons } from '@expo/vector-icons';
-import { endOfMonth, format, startOfMonth } from 'date-fns';
-import React, { useEffect, useState } from 'react';
+import { endOfMonth, format, startOfMonth, subMonths } from 'date-fns';
+import React, { useEffect, useRef, useState } from 'react';
 import { Modal, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { DatePicker } from './date-picker';
@@ -22,6 +23,9 @@ interface FilterScreenProps {
 }
 
 export function FilterScreen({ visible, onClose, onApply, context = 'dashboard' }: FilterScreenProps) {
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+  const quickFiltersScrollRef = useRef<ScrollView>(null);
   const filters = useUIStore((state) => state.filters[context]);
   const setAccountFilter = useUIStore((state) => state.setAccountFilter);
   const setTagFilter = useUIStore((state) => state.setTagFilter);
@@ -68,6 +72,24 @@ export function FilterScreen({ visible, onClose, onApply, context = 'dashboard' 
     setLocalTransactionType(filters.transactionType);
     setLocalAccountType(filters.accountType);
   }, [filters.startDate, filters.endDate, filters.accountId, filters.categoryId, filters.tagId, filters.transactionType, filters.accountType, getCurrentMonthDates]);
+
+  // Animate quick filters scroll to indicate scrollability
+  useEffect(() => {
+    if (visible && quickFiltersScrollRef.current) {
+      // Delay to ensure the component is fully rendered
+      const timer = setTimeout(() => {
+        // Scroll to the right
+        quickFiltersScrollRef.current?.scrollTo({ x: 100, animated: true });
+        
+        // Then scroll back to the left after a short delay
+        setTimeout(() => {
+          quickFiltersScrollRef.current?.scrollTo({ x: 0, animated: true });
+        }, 600);
+      }, 300);
+
+      return () => clearTimeout(timer);
+    }
+  }, [visible]);
 
   const transactionTypeOptions = [
     { label: 'All Types', value: 'all' },
@@ -128,7 +150,7 @@ export function FilterScreen({ visible, onClose, onApply, context = 'dashboard' 
     clearFilters(context); // This will also reset dates to current month
   };
 
-  const handleQuickFilter = (type: 'today' | 'week' | 'month' | 'year') => {
+  const handleQuickFilter = (type: 'today' | 'week' | 'month' | 'lastMonth' | 'last3Months' | 'last6Months' | 'year') => {
     const today = new Date();
     let start: Date;
     let end: Date = today;
@@ -143,6 +165,19 @@ export function FilterScreen({ visible, onClose, onApply, context = 'dashboard' 
         break;
       case 'month':
         start = startOfMonth(today);
+        end = endOfMonth(today);
+        break;
+      case 'lastMonth':
+        const lastMonth = subMonths(today, 1);
+        start = startOfMonth(lastMonth);
+        end = endOfMonth(lastMonth);
+        break;
+      case 'last3Months':
+        start = startOfMonth(subMonths(today, 2));
+        end = endOfMonth(today);
+        break;
+      case 'last6Months':
+        start = startOfMonth(subMonths(today, 5));
         end = endOfMonth(today);
         break;
       case 'year':
@@ -190,41 +225,125 @@ export function FilterScreen({ visible, onClose, onApply, context = 'dashboard' 
           <ScrollView className="flex-1">
             <View className="p-4">
               {/* Quick Date Filters */}
-              <Card className="mb-4">
-                <Text className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
+              <View className="mb-4">
+                <Text className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 px-1">
                   Quick Filters
                 </Text>
-                <View className="flex-row flex-wrap gap-2">
-                  <Button
-                    variant="outline"
-                    onPress={() => handleQuickFilter('today')}
-                    className="flex-1 min-w-[80px]"
-                  >
-                    Today
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onPress={() => handleQuickFilter('week')}
-                    className="flex-1 min-w-[80px]"
-                  >
-                    Last 7 Days
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onPress={() => handleQuickFilter('month')}
-                    className="flex-1 min-w-[80px]"
-                  >
-                    This Month
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onPress={() => handleQuickFilter('year')}
-                    className="flex-1 min-w-[80px]"
-                  >
-                    This Year
-                  </Button>
-                </View>
-              </Card>
+                <ScrollView 
+                  ref={quickFiltersScrollRef}
+                  horizontal 
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={{ paddingRight: 4 }}
+                >
+                  <View className="flex-row" style={{ gap: 6 }}>
+                    <TouchableOpacity
+                      onPress={() => handleQuickFilter('today')}
+                      activeOpacity={0.7}
+                      className="rounded-lg px-3 py-1.5 border"
+                      style={{
+                        backgroundColor: isDark ? '#1E3A8A' : '#DBEAFE',
+                        borderColor: isDark ? '#3B82F6' : '#93C5FD',
+                        borderWidth: 1,
+                        borderRadius: 8,
+                      }}
+                    >
+                      <Text className="text-xs font-medium" style={{ color: isDark ? '#93C5FD' : '#1E40AF' }}>
+                        Today
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => handleQuickFilter('week')}
+                      activeOpacity={0.7}
+                      className="rounded-lg px-3 py-1.5 border"
+                      style={{
+                        backgroundColor: isDark ? '#581C87' : '#F3E8FF',
+                        borderColor: isDark ? '#8B5CF6' : '#C4B5FD',
+                        borderWidth: 1,
+                        borderRadius: 8,
+                      }}
+                    >
+                      <Text className="text-xs font-medium" style={{ color: isDark ? '#C4B5FD' : '#6B21A8' }}>
+                        7 Days
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => handleQuickFilter('month')}
+                      activeOpacity={0.7}
+                      className="rounded-lg px-3 py-1.5 border"
+                      style={{
+                        backgroundColor: isDark ? '#064E3B' : '#D1FAE5',
+                        borderColor: isDark ? '#10B981' : '#6EE7B7',
+                        borderWidth: 1,
+                        borderRadius: 8,
+                      }}
+                    >
+                      <Text className="text-xs font-medium" style={{ color: isDark ? '#6EE7B7' : '#065F46' }}>
+                        This Month
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => handleQuickFilter('lastMonth')}
+                      activeOpacity={0.7}
+                      className="rounded-lg px-3 py-1.5 border"
+                      style={{
+                        backgroundColor: isDark ? '#7C2D12' : '#FED7AA',
+                        borderColor: isDark ? '#F59E0B' : '#FCD34D',
+                        borderWidth: 1,
+                        borderRadius: 8,
+                      }}
+                    >
+                      <Text className="text-xs font-medium" style={{ color: isDark ? '#FCD34D' : '#92400E' }}>
+                        Last Month
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => handleQuickFilter('last3Months')}
+                      activeOpacity={0.7}
+                      className="rounded-lg px-3 py-1.5 border"
+                      style={{
+                        backgroundColor: isDark ? '#831843' : '#FCE7F3',
+                        borderColor: isDark ? '#EC4899' : '#F9A8D4',
+                        borderWidth: 1,
+                        borderRadius: 8,
+                      }}
+                    >
+                      <Text className="text-xs font-medium" style={{ color: isDark ? '#F9A8D4' : '#9F1239' }}>
+                        3 Months
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => handleQuickFilter('last6Months')}
+                      activeOpacity={0.7}
+                      className="rounded-lg px-3 py-1.5 border"
+                      style={{
+                        backgroundColor: isDark ? '#312E81' : '#E0E7FF',
+                        borderColor: isDark ? '#6366F1' : '#A5B4FC',
+                        borderWidth: 1,
+                        borderRadius: 8,
+                      }}
+                    >
+                      <Text className="text-xs font-medium" style={{ color: isDark ? '#A5B4FC' : '#3730A3' }}>
+                        6 Months
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => handleQuickFilter('year')}
+                      activeOpacity={0.7}
+                      className="rounded-lg px-3 py-1.5 border"
+                      style={{
+                        backgroundColor: isDark ? '#164E63' : '#CFFAFE',
+                        borderColor: isDark ? '#06B6D4' : '#67E8F9',
+                        borderWidth: 1,
+                        borderRadius: 8,
+                      }}
+                    >
+                      <Text className="text-xs font-medium" style={{ color: isDark ? '#67E8F9' : '#164E63' }}>
+                        This Year
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </ScrollView>
+              </View>
 
               {/* Date Range */}
               <Card className="mb-4">
