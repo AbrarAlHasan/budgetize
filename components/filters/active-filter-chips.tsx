@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { format } from 'date-fns';
+import { format, startOfMonth, endOfMonth } from 'date-fns';
 
 import { useUIStore, type FilterContext } from '@/store/ui-store';
 import { useAccounts } from '@/hooks/queries/use-accounts';
@@ -16,6 +16,7 @@ interface ChipItem {
   key: string;
   text: string;
   onRemove: () => void;
+  showRemove?: boolean; // Optional: hide remove button if false
 }
 
 export function ActiveFilterChips({ context }: ActiveFilterChipsProps) {
@@ -112,10 +113,22 @@ export function ActiveFilterChips({ context }: ActiveFilterChipsProps) {
             ? `From ${formatDate(filters.startDate)}`
             : `Until ${formatDate(filters.endDate)}`;
 
+      // Check if the date range is the current month
+      const now = new Date();
+      const currentMonthStart = format(startOfMonth(now), 'yyyy-MM-dd');
+      const currentMonthEnd = format(endOfMonth(now), 'yyyy-MM-dd');
+      const isCurrentMonth = 
+        filters.startDate === currentMonthStart && 
+        filters.endDate === currentMonthEnd;
+
       items.push({
         key: 'date-range',
         text: `Date: ${label}`,
-        onRemove: () => setDateRangeFilter(context, null, null),
+        onRemove: () => {
+          // Reset to current month (mandatory dates)
+          setDateRangeFilter(context, currentMonthStart, currentMonthEnd);
+        },
+        showRemove: !isCurrentMonth, // Hide X icon if it's the current month
       });
     }
 
@@ -157,9 +170,11 @@ export function ActiveFilterChips({ context }: ActiveFilterChipsProps) {
           className="flex-row items-center bg-gray-200 dark:bg-gray-800 rounded-full px-3 py-1.5"
         >
           <Text className="text-sm text-gray-800 dark:text-gray-100 mr-2">{chip.text}</Text>
-          <TouchableOpacity onPress={chip.onRemove} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Ionicons name="close" size={16} color="#6B7280" />
-          </TouchableOpacity>
+          {chip.showRemove !== false && (
+            <TouchableOpacity onPress={chip.onRemove} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Ionicons name="close" size={16} color="#6B7280" />
+            </TouchableOpacity>
+          )}
         </View>
       ))}
     </ScrollView>

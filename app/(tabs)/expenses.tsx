@@ -17,15 +17,28 @@ import { useUIStore } from '@/store/ui-store';
 import { useSettingsStore } from '@/store/settings-store';
 import { getCurrencySymbol } from '@/utils/currencies';
 
+import { endOfMonth, format, startOfMonth } from 'date-fns';
+
 export default function ExpensesScreen() {
   const queryClient = useQueryClient();
   const filters = useUIStore((state) => state.filters.expenses);
+  const setDateRangeFilter = useUIStore((state) => state.setDateRangeFilter);
   const setCurrentFilterContext = useUIStore((state) => state.setCurrentFilterContext);
   const { settings, loadSettings } = useSettingsStore();
 
   React.useEffect(() => {
     loadSettings();
   }, []);
+
+  // Ensure dates are never null - set to current month if null
+  React.useEffect(() => {
+    if (!filters.startDate || !filters.endDate) {
+      const now = new Date();
+      const start = format(startOfMonth(now), 'yyyy-MM-dd');
+      const end = format(endOfMonth(now), 'yyyy-MM-dd');
+      setDateRangeFilter('expenses', start, end);
+    }
+  }, [filters.startDate, filters.endDate, setDateRangeFilter]);
   
   // Invalidate queries when filters change
   const filterKey = React.useMemo(() => 

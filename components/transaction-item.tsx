@@ -1,9 +1,8 @@
-import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
-import { format } from 'date-fns';
 import { cn } from '@/utils/cn';
-import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { format } from 'date-fns';
+import { router } from 'expo-router';
+import { Text, TouchableOpacity, View } from 'react-native';
 
 interface TransactionItemProps {
   id: number;
@@ -18,7 +17,7 @@ interface TransactionItemProps {
   categoryName?: string;
 }
 
-const getCategoryIcon = (categoryName?: string, paymentMode?: string): string => {
+const getCategoryIcon = (categoryName?: string, paymentMode?: string | null): string => {
   if (categoryName) {
     const category = categoryName.toLowerCase();
     if (category.includes('food') || category.includes('restaurant')) return 'restaurant';
@@ -105,10 +104,19 @@ export function TransactionItem({
             </View>
           </View>
 
-          {/* Tags */}
-          {tags && tags.length > 0 && (
+          {/* Category and Tags */}
+          {(categoryName || (tags && tags.length > 0)) && (
             <View className="flex-row flex-wrap gap-1.5 mt-2">
-              {tags.slice(0, 3).map((tag) => (
+              {/* Category */}
+              {categoryName && (
+                <View className="bg-blue-100 dark:bg-blue-900 px-2 py-1 rounded-lg">
+                  <Text className="text-xs text-blue-700 dark:text-blue-300 font-medium">
+                    {categoryName}
+                  </Text>
+                </View>
+              )}
+              {/* Tags */}
+              {tags && tags.length > 0 && tags.slice(0, 3).map((tag) => (
                 <View
                   key={tag.id}
                   className="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-lg"
@@ -118,7 +126,7 @@ export function TransactionItem({
                   </Text>
                 </View>
               ))}
-              {tags.length > 3 && (
+              {tags && tags.length > 3 && (
                 <View className="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-lg">
                   <Text className="text-xs text-gray-600 dark:text-gray-300 font-medium">
                     +{tags.length - 3}

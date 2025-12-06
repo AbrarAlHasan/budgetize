@@ -22,7 +22,7 @@ import { useUIStore } from '@/store/ui-store';
 import { getCurrencySymbol } from '@/utils/currencies';
 import { Ionicons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
-import { endOfMonth, format, startOfMonth, subMonths } from 'date-fns';
+import { endOfMonth, format, parse, startOfMonth, subMonths } from 'date-fns';
 import { router } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import { RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
@@ -31,6 +31,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 export default function ReportsScreen() {
   const queryClient = useQueryClient();
   const filters = useUIStore((state) => state.filters.reports);
+  const setDateRangeFilter = useUIStore((state) => state.setDateRangeFilter);
+  const setAccountIdsFilter = useUIStore((state) => state.setAccountIdsFilter);
+  const setTransactionTypesFilter = useUIStore((state) => state.setTransactionTypesFilter);
+  const setAccountTypesFilter = useUIStore((state) => state.setAccountTypesFilter);
+  const setCategoryIdsFilter = useUIStore((state) => state.setCategoryIdsFilter);
+  const setTagIdsFilter = useUIStore((state) => state.setTagIdsFilter);
   const setCurrentFilterContext = useUIStore((state) => state.setCurrentFilterContext);
   const { settings, loadSettings } = useSettingsStore();
   const [refreshing, setRefreshing] = useState(false);
@@ -39,6 +45,16 @@ export default function ReportsScreen() {
   React.useEffect(() => {
     loadSettings();
   }, []);
+
+  // Ensure dates are never null - set to current month if null
+  React.useEffect(() => {
+    if (!filters.startDate || !filters.endDate) {
+      const now = new Date();
+      const start = format(startOfMonth(now), 'yyyy-MM-dd');
+      const end = format(endOfMonth(now), 'yyyy-MM-dd');
+      setDateRangeFilter('reports', start, end);
+    }
+  }, [filters.startDate, filters.endDate, setDateRangeFilter]);
 
   // Invalidate queries when filters change
   const filterKey = React.useMemo(() => 
@@ -92,6 +108,119 @@ export default function ReportsScreen() {
   const { data: dailyPatterns, isLoading: dailyLoading, isFetching: dailyFetching } = useDailyPatterns(startDateStr, endDateStr, useFilters);
   const { data: monthlyTrends, isLoading: monthlyLoading } = useMonthlyTrends(trendStartDateStr, endDateStr, useFilters);
 
+  // Navigate to expenses with specific month date range (for monthly trends bar clicks)
+  const navigateToExpensesWithMonth = useCallback((
+    monthStartDate: string,
+    monthEndDate: string
+  ) => {
+    // Set filter context to expenses
+    setCurrentFilterContext('expenses');
+    
+    // Set the specific month's date range
+    setDateRangeFilter('expenses', monthStartDate, monthEndDate);
+    
+    // Copy other filters from reports (accounts, transaction types, account types)
+    if (filters.accountIds && filters.accountIds.length > 0) {
+      setAccountIdsFilter('expenses', filters.accountIds);
+    } else {
+      setAccountIdsFilter('expenses', []);
+    }
+    
+    if (filters.transactionTypes && filters.transactionTypes.length > 0) {
+      setTransactionTypesFilter('expenses', filters.transactionTypes);
+    } else {
+      setTransactionTypesFilter('expenses', []);
+    }
+    
+    if (filters.accountTypes && filters.accountTypes.length > 0) {
+      setAccountTypesFilter('expenses', filters.accountTypes);
+    } else {
+      setAccountTypesFilter('expenses', []);
+    }
+    
+    // Clear category and tag filters when clicking a month
+    setCategoryIdsFilter('expenses', []);
+    setTagIdsFilter('expenses', []);
+    
+    // Navigate to expenses tab
+    router.push('/(tabs)/expenses');
+  }, [
+    filters.accountIds,
+    filters.transactionTypes,
+    filters.accountTypes,
+    setCurrentFilterContext,
+    setDateRangeFilter,
+    setAccountIdsFilter,
+    setTransactionTypesFilter,
+    setAccountTypesFilter,
+    setCategoryIdsFilter,
+    setTagIdsFilter,
+  ]);
+
+  // Navigate to expenses with filters applied (for category/tag clicks)
+  const navigateToExpensesWithFilters = useCallback((
+    categoryId?: number,
+    tagId?: number
+  ) => {
+    // Set filter context to expenses
+    setCurrentFilterContext('expenses');
+    
+    // Copy ALL filters from reports to expenses to maintain exact filter context
+    // Date range
+    if (filters.startDate && filters.endDate) {
+      setDateRangeFilter('expenses', filters.startDate, filters.endDate);
+    }
+    
+    // Account filters
+    if (filters.accountIds && filters.accountIds.length > 0) {
+      setAccountIdsFilter('expenses', filters.accountIds);
+    } else {
+      setAccountIdsFilter('expenses', []);
+    }
+    
+    // Transaction type filters
+    if (filters.transactionTypes && filters.transactionTypes.length > 0) {
+      setTransactionTypesFilter('expenses', filters.transactionTypes);
+    } else {
+      setTransactionTypesFilter('expenses', []);
+    }
+    
+    // Account type filters
+    if (filters.accountTypes && filters.accountTypes.length > 0) {
+      setAccountTypesFilter('expenses', filters.accountTypes);
+    } else {
+      setAccountTypesFilter('expenses', []);
+    }
+    
+    // Category filter - replace with clicked category or clear if clicking tag
+    if (categoryId !== undefined) {
+      setCategoryIdsFilter('expenses', [categoryId]);
+    } else {
+      // Clear category filter when clicking tag or monthly trends
+      setCategoryIdsFilter('expenses', []);
+    }
+    
+    // Tag filter - replace with clicked tag or clear if clicking category
+    if (tagId !== undefined) {
+      setTagIdsFilter('expenses', [tagId]);
+    } else {
+      // Clear tag filter when clicking category or monthly trends
+      setTagIdsFilter('expenses', []);
+    }
+    
+    // Navigate to expenses tab
+    router.push('/(tabs)/expenses');
+  }, [
+    filters,
+    setCurrentFilterContext,
+    setDateRangeFilter,
+    setAccountIdsFilter,
+    setTransactionTypesFilter,
+    setAccountTypesFilter,
+    setCategoryIdsFilter,
+    setTagIdsFilter,
+  ]);
+
   // Memoize daily patterns chart data with stable reference
   const dailyChartData = React.useMemo(() => {
     if (!dailyPatterns || dailyPatterns.length === 0) return null;
@@ -112,9 +241,22 @@ export default function ReportsScreen() {
     const data = monthlyTrends.map((t) => ({
       label: t.month.split(' ')[0],
       value: t.totalExpenses,
+      month: t.month, // Keep full month string for date parsing
+      onPress: () => {
+        // Parse month string (format: "MMM yyyy" e.g., "Jan 2024")
+        try {
+          const monthDate = parse(t.month, 'MMM yyyy', new Date());
+          const monthStart = format(startOfMonth(monthDate), 'yyyy-MM-dd');
+          const monthEnd = format(endOfMonth(monthDate), 'yyyy-MM-dd');
+          navigateToExpensesWithMonth(monthStart, monthEnd);
+        } catch (error) {
+          // Fallback: navigate without specific month
+          navigateToExpensesWithFilters();
+        }
+      },
     }));
     return data;
-  }, [monthlyTrends]);
+  }, [monthlyTrends, navigateToExpensesWithMonth, navigateToExpensesWithFilters]);
 
   // Track data keys separately for each chart to prevent unnecessary updates
   const previousDailyKey = React.useRef<string>('');
@@ -379,48 +521,55 @@ export default function ReportsScreen() {
                     const color = colors[index % colors.length];
                     
                     return (
-                      <View key={category.categoryId}>
-                        <View className="flex-row justify-between items-center mb-2">
-                          <View className="flex-row items-center gap-2 flex-1">
-                            <Text className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                              {category.categoryName}
-                            </Text>
-                            {category.isDeleted && (
-                              <View className="bg-gray-200 dark:bg-gray-700 px-2 py-0.5 rounded">
-                                <Text className="text-xs text-gray-600 dark:text-gray-400">
-                                  Deleted
-                                </Text>
-                              </View>
-                            )}
+                      <TouchableOpacity
+                        key={category.categoryId}
+                        activeOpacity={0.7}
+                        onPress={() => navigateToExpensesWithFilters(category.categoryId)}
+                      >
+                        <View>
+                          <View className="flex-row justify-between items-center mb-2">
+                            <View className="flex-row items-center gap-2 flex-1">
+                              <Text className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                                {category.categoryName}
+                              </Text>
+                              {category.isDeleted && (
+                                <View className="bg-gray-200 dark:bg-gray-700 px-2 py-0.5 rounded">
+                                  <Text className="text-xs text-gray-600 dark:text-gray-400">
+                                    Deleted
+                                  </Text>
+                                </View>
+                              )}
+                              <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
+                            </View>
+                            <View className="flex-row items-center gap-2">
+                              <Text className="text-sm font-bold text-gray-900 dark:text-gray-100">
+                                {getCurrencySymbol(settings.currency)}{category.amount.toLocaleString(undefined, {
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2,
+                                })}
+                              </Text>
+                              <Text className="text-xs text-gray-500 dark:text-gray-400">
+                                {category.percentage.toFixed(1)}%
+                              </Text>
+                            </View>
                           </View>
-                          <View className="flex-row items-center gap-2">
-                            <Text className="text-sm font-bold text-gray-900 dark:text-gray-100">
-                              {getCurrencySymbol(settings.currency)}{category.amount.toLocaleString(undefined, {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2,
-                              })}
-                            </Text>
-                            <Text className="text-xs text-gray-500 dark:text-gray-400">
-                              {category.percentage.toFixed(1)}%
-                            </Text>
+                          <AnimatedProgressBar
+                            percentage={category.percentage}
+                            color={color}
+                            height={10}
+                            animationKey={chartAnimationKey}
+                            index={index}
+                          />
+                            <View className="flex-row justify-between items-center mt-1">
+                              <Text className="text-xs text-gray-500 dark:text-gray-400">
+                                {category.count} transactions
+                              </Text>
+                              <Text className="text-xs text-gray-500 dark:text-gray-400">
+                                Avg: {getCurrencySymbol(settings.currency)}{(category.amount / category.count).toFixed(2)}
+                              </Text>
                           </View>
                         </View>
-                        <AnimatedProgressBar
-                          percentage={category.percentage}
-                          color={color}
-                          height={10}
-                          animationKey={chartAnimationKey}
-                          index={index}
-                        />
-                          <View className="flex-row justify-between items-center mt-1">
-                            <Text className="text-xs text-gray-500 dark:text-gray-400">
-                              {category.count} transactions
-                            </Text>
-                            <Text className="text-xs text-gray-500 dark:text-gray-400">
-                              Avg: {getCurrencySymbol(settings.currency)}{(category.amount / category.count).toFixed(2)}
-                            </Text>
-                        </View>
-                      </View>
+                      </TouchableOpacity>
                     );
                   })}
                 </View>
@@ -441,48 +590,55 @@ export default function ReportsScreen() {
                     const color = colors[index % colors.length];
                     
                     return (
-                      <View key={tag.tagId}>
-                        <View className="flex-row justify-between items-center mb-2">
-                          <View className="flex-row items-center gap-2 flex-1">
-                            <Text className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                              {tag.tagName}
-                            </Text>
-                            {tag.isDeleted && (
-                              <View className="bg-gray-200 dark:bg-gray-700 px-2 py-0.5 rounded">
-                                <Text className="text-xs text-gray-600 dark:text-gray-400">
-                                  Deleted
-                                </Text>
-                              </View>
-                            )}
+                      <TouchableOpacity
+                        key={tag.tagId}
+                        activeOpacity={0.7}
+                        onPress={() => navigateToExpensesWithFilters(undefined, tag.tagId)}
+                      >
+                        <View>
+                          <View className="flex-row justify-between items-center mb-2">
+                            <View className="flex-row items-center gap-2 flex-1">
+                              <Text className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                                {tag.tagName}
+                              </Text>
+                              {tag.isDeleted && (
+                                <View className="bg-gray-200 dark:bg-gray-700 px-2 py-0.5 rounded">
+                                  <Text className="text-xs text-gray-600 dark:text-gray-400">
+                                    Deleted
+                                  </Text>
+                                </View>
+                              )}
+                              <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
+                            </View>
+                            <View className="flex-row items-center gap-2">
+                              <Text className="text-sm font-bold text-gray-900 dark:text-gray-100">
+                                {getCurrencySymbol(settings.currency)}{tag.amount.toLocaleString(undefined, {
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2,
+                                })}
+                              </Text>
+                              <Text className="text-xs text-gray-500 dark:text-gray-400">
+                                {tag.percentage.toFixed(1)}%
+                              </Text>
+                            </View>
                           </View>
-                          <View className="flex-row items-center gap-2">
-                            <Text className="text-sm font-bold text-gray-900 dark:text-gray-100">
-                              {getCurrencySymbol(settings.currency)}{tag.amount.toLocaleString(undefined, {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2,
-                              })}
-                            </Text>
-                            <Text className="text-xs text-gray-500 dark:text-gray-400">
-                              {tag.percentage.toFixed(1)}%
-                            </Text>
+                          <AnimatedProgressBar
+                            percentage={tag.percentage}
+                            color={color}
+                            height={10}
+                            animationKey={chartAnimationKey}
+                            index={index}
+                          />
+                            <View className="flex-row justify-between items-center mt-1">
+                              <Text className="text-xs text-gray-500 dark:text-gray-400">
+                                {tag.count} transactions
+                              </Text>
+                              <Text className="text-xs text-gray-500 dark:text-gray-400">
+                                Avg: {getCurrencySymbol(settings.currency)}{(tag.amount / tag.count).toFixed(2)}
+                              </Text>
                           </View>
                         </View>
-                        <AnimatedProgressBar
-                          percentage={tag.percentage}
-                          color={color}
-                          height={10}
-                          animationKey={chartAnimationKey}
-                          index={index}
-                        />
-                          <View className="flex-row justify-between items-center mt-1">
-                            <Text className="text-xs text-gray-500 dark:text-gray-400">
-                              {tag.count} transactions
-                            </Text>
-                            <Text className="text-xs text-gray-500 dark:text-gray-400">
-                              Avg: {getCurrencySymbol(settings.currency)}{(tag.amount / tag.count).toFixed(2)}
-                            </Text>
-                        </View>
-                      </View>
+                      </TouchableOpacity>
                     );
                   })}
                 </View>

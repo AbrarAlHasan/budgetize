@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Text, View } from 'react-native';
+import { Text, View, TouchableOpacity } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -12,6 +12,7 @@ interface BarData {
   label: string;
   value: number;
   color?: string;
+  onPress?: () => void; // Optional callback for bar press
 }
 
 interface SimpleBarChartProps {
@@ -126,6 +127,7 @@ export function SimpleBarChart({
             formattedValue={formattedValue}
             currencySymbol={currencySymbol}
             animationSeed={animationSeed}
+            onPress={item.onPress}
           />
         );
       })}
@@ -174,6 +176,7 @@ function AnimatedBar({
   formattedValue,
   currencySymbol,
   animationSeed,
+  onPress,
 }: {
   item: BarData;
   index: number;
@@ -183,6 +186,7 @@ function AnimatedBar({
   formattedValue: string;
   currencySymbol: string;
   animationSeed: number;
+  onPress?: () => void;
 }) {
   // Animation values for each bar
   const barHeightAnimated = useSharedValue(0);
@@ -238,37 +242,51 @@ function AnimatedBar({
     );
   }, [animationSeed, index, barHeightAnimated, labelOpacity, labelTranslateY]);
   
+  const BarContent = (
+    <View className="w-full" style={{ height: '100%', position: 'relative', justifyContent: 'flex-end' }}>
+      {/* Empty space at top with value label */}
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: `${emptySpace}%`, minHeight: 20, zIndex: 2 }}>
+        {item.value > 0 && (
+          <Animated.View 
+            className="w-full items-center justify-end" 
+            style={[
+              { height: '100%', paddingBottom: 2 },
+              labelAnimatedStyle
+            ]}
+          >
+            <Text className="text-[10px] font-semibold text-gray-900 dark:text-gray-100">
+              {currencySymbol}{formattedValue}
+            </Text>
+          </Animated.View>
+        )}
+      </View>
+      {/* Bar - positioned at bottom, grows upward */}
+      <Animated.View
+        className="w-full rounded-t-lg"
+        style={[
+          {
+            backgroundColor: color,
+            minHeight: item.value > 0 ? 4 : 0,
+          },
+          barAnimatedStyle,
+        ]}
+      />
+    </View>
+  );
+
   return (
     <View className="flex-1 items-center" style={{ height: '100%', zIndex: 1 }}>
-      <View className="w-full" style={{ height: '100%', position: 'relative', justifyContent: 'flex-end' }}>
-        {/* Empty space at top with value label */}
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: `${emptySpace}%`, minHeight: 20, zIndex: 2 }}>
-          {item.value > 0 && (
-            <Animated.View 
-              className="w-full items-center justify-end" 
-              style={[
-                { height: '100%', paddingBottom: 2 },
-                labelAnimatedStyle
-              ]}
-            >
-              <Text className="text-[10px] font-semibold text-gray-900 dark:text-gray-100">
-                {currencySymbol}{formattedValue}
-              </Text>
-            </Animated.View>
-          )}
-        </View>
-        {/* Bar - positioned at bottom, grows upward */}
-        <Animated.View
-          className="w-full rounded-t-lg"
-          style={[
-            {
-              backgroundColor: color,
-              minHeight: item.value > 0 ? 4 : 0,
-            },
-            barAnimatedStyle,
-          ]}
-        />
-      </View>
+      {onPress ? (
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={onPress}
+          style={{ width: '100%', height: '100%' }}
+        >
+          {BarContent}
+        </TouchableOpacity>
+      ) : (
+        BarContent
+      )}
     </View>
   );
 }

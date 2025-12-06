@@ -10,8 +10,8 @@ import { Modal, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { DatePicker } from './date-picker';
 import { TagChip } from './tag-chip';
-import { Button } from './ui/button';
 import { BottomSheetSelect } from './ui/bottom-sheet-select';
+import { Button } from './ui/button';
 import { Card } from './ui/card';
 
 interface FilterScreenProps {
@@ -35,12 +35,22 @@ export function FilterScreen({ visible, onClose, onApply, context = 'dashboard' 
   const { data: categories } = useCategories();
   const { data: tags } = useTags();
 
+  // Get current month as default (memoized)
+  const getCurrentMonthDates = React.useMemo(() => {
+    const now = new Date();
+    return {
+      start: startOfMonth(now),
+      end: endOfMonth(now),
+    };
+  }, []);
+
   // Local state for ALL filters (updates immediately, syncs to store on Apply)
-  const [startDate, setStartDate] = useState<Date | null>(
-    filters.startDate ? new Date(filters.startDate) : null
+  // Dates are mandatory - default to current month if not set
+  const [startDate, setStartDate] = useState<Date>(
+    filters.startDate ? new Date(filters.startDate) : getCurrentMonthDates.start
   );
-  const [endDate, setEndDate] = useState<Date | null>(
-    filters.endDate ? new Date(filters.endDate) : null
+  const [endDate, setEndDate] = useState<Date>(
+    filters.endDate ? new Date(filters.endDate) : getCurrentMonthDates.end
   );
   const [localAccountId, setLocalAccountId] = useState<number | null>(filters.accountId);
   const [localCategoryId, setLocalCategoryId] = useState<number | null>(filters.categoryId);
@@ -50,14 +60,14 @@ export function FilterScreen({ visible, onClose, onApply, context = 'dashboard' 
 
   // Initialize local state when filters change from outside (e.g., clear filters)
   useEffect(() => {
-    setStartDate(filters.startDate ? new Date(filters.startDate) : null);
-    setEndDate(filters.endDate ? new Date(filters.endDate) : null);
+    setStartDate(filters.startDate ? new Date(filters.startDate) : getCurrentMonthDates.start);
+    setEndDate(filters.endDate ? new Date(filters.endDate) : getCurrentMonthDates.end);
     setLocalAccountId(filters.accountId);
     setLocalCategoryId(filters.categoryId);
     setLocalTagId(filters.tagId);
     setLocalTransactionType(filters.transactionType);
     setLocalAccountType(filters.accountType);
-  }, [filters.startDate, filters.endDate, filters.accountId, filters.categoryId, filters.tagId, filters.transactionType, filters.accountType]);
+  }, [filters.startDate, filters.endDate, filters.accountId, filters.categoryId, filters.tagId, filters.transactionType, filters.accountType, getCurrentMonthDates]);
 
   const transactionTypeOptions = [
     { label: 'All Types', value: 'all' },
@@ -85,20 +95,15 @@ export function FilterScreen({ visible, onClose, onApply, context = 'dashboard' 
 
   const handleApply = () => {
     // Sync all local state to the filter store
-    // If only one date is selected, use it for both start and end to filter for that single day
-    if (startDate && endDate) {
-      setDateRangeFilter(context, format(startDate, 'yyyy-MM-dd'), format(endDate, 'yyyy-MM-dd'));
-    } else if (startDate) {
-      // If only start date is selected, use it for both start and end
-      const dateStr = format(startDate, 'yyyy-MM-dd');
-      setDateRangeFilter(context, dateStr, dateStr);
-    } else if (endDate) {
-      // If only end date is selected, use it for both start and end
-      const dateStr = format(endDate, 'yyyy-MM-dd');
-      setDateRangeFilter(context, dateStr, dateStr);
-    } else {
-      setDateRangeFilter(context, null, null);
-    }
+    // Dates are mandatory - always set them (should never be null, but ensure they're set)
+    const finalStartDate = startDate || getCurrentMonthDates.start;
+    const finalEndDate = endDate || getCurrentMonthDates.end;
+    
+    setDateRangeFilter(
+      context,
+      format(finalStartDate, 'yyyy-MM-dd'),
+      format(finalEndDate, 'yyyy-MM-dd')
+    );
     
     setAccountFilter(context, localAccountId);
     setCategoryFilter(context, localCategoryId);
@@ -112,14 +117,15 @@ export function FilterScreen({ visible, onClose, onApply, context = 'dashboard' 
 
   const handleClear = () => {
     // Clear both local state and store
-    setStartDate(null);
-    setEndDate(null);
+    // Dates reset to current month (mandatory)
+    setStartDate(getCurrentMonthDates.start);
+    setEndDate(getCurrentMonthDates.end);
     setLocalAccountId(null);
     setLocalCategoryId(null);
     setLocalTagId(null);
     setLocalTransactionType(null);
     setLocalAccountType(null);
-    clearFilters(context);
+    clearFilters(context); // This will also reset dates to current month
   };
 
   const handleQuickFilter = (type: 'today' | 'week' | 'month' | 'year') => {
@@ -149,12 +155,16 @@ export function FilterScreen({ visible, onClose, onApply, context = 'dashboard' 
     setEndDate(end);
   };
 
+  // Check if any filters are active (dates are always set, so only count if not default)
+  const isDefaultDateRange = 
+    format(startDate, 'yyyy-MM-dd') === format(getCurrentMonthDates.start, 'yyyy-MM-dd') &&
+    format(endDate, 'yyyy-MM-dd') === format(getCurrentMonthDates.end, 'yyyy-MM-dd');
+  
   const hasActiveFilters = 
     localAccountId !== null ||
     localTagId !== null ||
     localCategoryId !== null ||
-    startDate !== null ||
-    endDate !== null ||
+    !isDefaultDateRange ||
     localTransactionType !== null ||
     localAccountType !== null;
 
@@ -226,9 +236,9 @@ export function FilterScreen({ visible, onClose, onApply, context = 'dashboard' 
                   value={startDate}
                   onChange={(date) => {
                     setStartDate(date);
-                    // If end date is before new start date, clear it
+                    // If end date is before new start date, reset it to current month end
                     if (endDate && date && date > endDate) {
-                      setEndDate(null);
+                      setEndDate(getCurrentMonthDates.end);
                     }
                   }}
                 />

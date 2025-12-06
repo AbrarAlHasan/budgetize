@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage, type StateStorage } from 'zustand/middleware';
 import { AccountType, TransactionType } from '@/db/schema/types';
 import { persistentStorage } from '@/storage/mmkv';
+import { endOfMonth, format, startOfMonth } from 'date-fns';
 
 interface FilterState {
   accountId: number | null; // Single account filter (for backward compatibility)
@@ -55,20 +56,36 @@ interface UIStore {
   setSelectedDate: (date: Date | null) => void;
 }
 
-const createInitialFilterState = (): FilterState => ({
-  accountId: null,
-  accountIds: [],
-  tagId: null,
-  tagIds: [],
-  categoryId: null,
-  categoryIds: [],
-  startDate: null,
-  endDate: null,
-  transactionType: null,
-  transactionTypes: [],
-  accountType: null,
-  accountTypes: [],
-});
+/**
+ * Get current month date range as ISO strings
+ */
+const getCurrentMonthDates = () => {
+  const now = new Date();
+  const start = startOfMonth(now);
+  const end = endOfMonth(now);
+  return {
+    startDate: format(start, 'yyyy-MM-dd'),
+    endDate: format(end, 'yyyy-MM-dd'),
+  };
+};
+
+const createInitialFilterState = (): FilterState => {
+  const { startDate, endDate } = getCurrentMonthDates();
+  return {
+    accountId: null,
+    accountIds: [],
+    tagId: null,
+    tagIds: [],
+    categoryId: null,
+    categoryIds: [],
+    startDate, // Default to current month start
+    endDate, // Default to current month end
+    transactionType: null,
+    transactionTypes: [],
+    accountType: null,
+    accountTypes: [],
+  };
+};
 
 const createInitialFilters = (): FiltersByContext => ({
   dashboard: createInitialFilterState(),
@@ -189,10 +206,16 @@ export const useUIStore = create<UIStore>()(
             accountType: accountTypes.length === 1 ? accountTypes[0] : null,
           }),
         })),
-      clearFilters: (context) =>
+      clearFilters: (context) => {
+        const { startDate, endDate } = getCurrentMonthDates();
         set((state) => ({
-          filters: updateFiltersForContext(state.filters, context, createInitialFilterState()),
-        })),
+          filters: updateFiltersForContext(state.filters, context, {
+            ...createInitialFilterState(),
+            startDate, // Reset to current month
+            endDate, // Reset to current month
+          }),
+        }));
+      },
 
       // Form state
       selectedAccountId: null,
@@ -238,10 +261,30 @@ export const useUIStore = create<UIStore>()(
           ? ensureFiltersStructure(persisted.filters)
           : createInitialFilters();
         
+        // Ensure dates are never null - set to current month if null
+        const { startDate: defaultStartDate, endDate: defaultEndDate } = getCurrentMonthDates();
+        const normalizedFiltersWithDates: FiltersByContext = {
+          dashboard: {
+            ...normalizedFilters.dashboard,
+            startDate: normalizedFilters.dashboard.startDate || defaultStartDate,
+            endDate: normalizedFilters.dashboard.endDate || defaultEndDate,
+          },
+          reports: {
+            ...normalizedFilters.reports,
+            startDate: normalizedFilters.reports.startDate || defaultStartDate,
+            endDate: normalizedFilters.reports.endDate || defaultEndDate,
+          },
+          expenses: {
+            ...normalizedFilters.expenses,
+            startDate: normalizedFilters.expenses.startDate || defaultStartDate,
+            endDate: normalizedFilters.expenses.endDate || defaultEndDate,
+          },
+        };
+        
         return {
           ...currentState,
           ...persisted,
-          filters: normalizedFilters,
+          filters: normalizedFiltersWithDates,
         };
       },
     }

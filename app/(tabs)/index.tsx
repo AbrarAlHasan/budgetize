@@ -38,6 +38,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 export default function DashboardScreen() {
   const queryClient = useQueryClient();
   const filters = useUIStore((state) => state.filters.dashboard);
+  const setDateRangeFilter = useUIStore((state) => state.setDateRangeFilter);
   const setCurrentFilterContext = useUIStore(
     (state) => state.setCurrentFilterContext
   );
@@ -46,6 +47,16 @@ export default function DashboardScreen() {
   React.useEffect(() => {
     loadSettings();
   }, []);
+
+  // Ensure dates are never null - set to current month if null
+  React.useEffect(() => {
+    if (!filters.startDate || !filters.endDate) {
+      const now = new Date();
+      const start = format(startOfMonth(now), 'yyyy-MM-dd');
+      const end = format(endOfMonth(now), 'yyyy-MM-dd');
+      setDateRangeFilter('dashboard', start, end);
+    }
+  }, [filters.startDate, filters.endDate, setDateRangeFilter]);
 
   // Invalidate queries when filters change
   const filterKey = React.useMemo(

@@ -47,6 +47,7 @@ export function AccountLatestTransactions({
     data: transactions,
     isLoading,
     isFetching,
+    refetch,
   } = useQuery<DecryptedTransaction[]>({
     queryKey: ["account-latest-transactions", accountId],
     queryFn: async () => {
@@ -84,7 +85,8 @@ export function AccountLatestTransactions({
     enabled: !!accountId,
     placeholderData: (previousData) => previousData ?? [],
     initialData: [],
-    staleTime: 1000, // Consider data fresh for 1 second
+    staleTime: 0, // Always consider data stale to refetch on mount/focus
+    refetchOnMount: 'always', // Always refetch when component mounts
   });
 
   const safeTransactions = transactions ?? [];

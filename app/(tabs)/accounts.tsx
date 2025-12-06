@@ -5,7 +5,7 @@ import { useAccountBalances } from "@/hooks/queries/use-account-balances";
 import { useAccounts } from "@/hooks/queries/use-accounts";
 import { Ionicons } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
-import { router } from "expo-router";
+import { useFocusEffect } from "@react-navigation/native";
 import React from "react";
 import {
   ActivityIndicator,
@@ -29,6 +29,14 @@ export default function AccountsScreen() {
       setCurrentAccountId(accounts[0].id);
     }
   }, [accounts, currentAccountId]);
+
+  // Refetch latest transactions when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      // Refetch account-latest-transactions when screen is focused
+      queryClient.refetchQueries({ queryKey: ["account-latest-transactions"] });
+    }, [queryClient])
+  );
 
   const onRefresh = React.useCallback(async () => {
     setRefreshing(true);
