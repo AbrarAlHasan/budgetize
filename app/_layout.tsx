@@ -46,15 +46,17 @@ export default function RootLayout() {
   useEffect(() => {
     const initializeApp = async () => {
       try {
-        // Initialize auth
-        const { initialize: initializeAuth } = useAuthStore.getState();
-        await initializeAuth();
+        // Initialize auth (just sets up listener, doesn't check session)
+        const { initialize: initializeAuth, checkSession } = useAuthStore.getState();
+        initializeAuth();
+        
+        // Check session only if network is available (runs in background)
+        checkSession(true).catch((error) => {
+          logError("Session check error (non-blocking):", error);
+        });
 
         // Load settings first
         await loadSettings();
-
-        // Wait a tick to ensure settings state is updated
-        await new Promise((resolve) => setTimeout(resolve, 0));
 
         // Get the latest settings after load
         const { settings: loadedSettings } = useSettingsStore.getState();
@@ -69,9 +71,6 @@ export default function RootLayout() {
 
         // Mark theme as synced
         setThemeSynced(true);
-
-        // Wait a bit to ensure NativeWind has processed the colorScheme change
-        await new Promise((resolve) => setTimeout(resolve, 100));
 
         // Then check onboarding
         const completed = onboardingStorage.isCompleted();

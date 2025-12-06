@@ -4,6 +4,7 @@ import { BottomSheetSelect } from "@/components/ui/bottom-sheet-select";
 import { Card } from "@/components/ui/card";
 import { useCustomAlert } from "@/hooks/use-custom-alert";
 import { useInAppUpdates } from "@/hooks/use-in-app-updates";
+import { useNetworkStatus } from "@/hooks/use-network-status";
 import {
   REMINDER_TIMES,
   requestNotificationPermissions,
@@ -51,8 +52,9 @@ export default function SettingsScreen() {
     updateTheme,
     updateExchangeEnabled,
   } = useSettingsStore();
-  const { user, isAuthenticated, isLoading: authLoading, initialize: initializeAuth, logout } = useAuthStore();
+  const { user, isAuthenticated, isLoading: authLoading, logout } = useAuthStore();
   const { checkAndPromptUpdate } = useInAppUpdates({ autoCheck: false });
+  const { isNetworkAvailable } = useNetworkStatus();
   const [permissionGranted, setPermissionGranted] = useState(false);
   const [isSeedingDummyData, setIsSeedingDummyData] = useState(false);
   const [isBackingUp, setIsBackingUp] = useState(false);
@@ -71,7 +73,7 @@ export default function SettingsScreen() {
     loadPreferences();
     loadSettings();
     checkPermissions();
-    initializeAuth();
+    // Auth initialization is handled in background in app/_layout.tsx
   }, []);
 
   // Scroll to account section when focusAccount parameter is present
@@ -755,7 +757,40 @@ export default function SettingsScreen() {
               Account
             </Text>
 
-            {!isAuthenticated ? (
+            {!isNetworkAvailable ? (
+              <View>
+                <View className="p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg mb-4">
+                  <View className="flex-row items-start gap-3">
+                    <Ionicons name="cloud-offline" size={20} color="#F59E0B" />
+                    <Text className="text-sm text-yellow-800 dark:text-yellow-200 flex-1">
+                      Network is not available. Session check will be performed when network becomes available.
+                    </Text>
+                  </View>
+                </View>
+                {isAuthenticated && (
+                  <View className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg mb-4">
+                    <Text className="text-xs text-gray-500 dark:text-gray-400 text-center">
+                      Logged in as {user?.email || 'User'} (session cached)
+                    </Text>
+                  </View>
+                )}
+                {!isAuthenticated && (
+                  <View>
+                    <LoginButton />
+                    <Text className="text-xs text-gray-500 dark:text-gray-400 mt-3 text-center">
+                      Login to enable cloud backup features (requires network)
+                    </Text>
+                  </View>
+                )}
+              </View>
+            ) : authLoading ? (
+              <View className="flex-row items-center justify-center py-4">
+                <ActivityIndicator size="small" color="#3B82F6" />
+                <Text className="text-sm text-gray-500 dark:text-gray-400 ml-2">
+                  Checking session...
+                </Text>
+              </View>
+            ) : !isAuthenticated ? (
               <View>
                 <LoginButton />
                 <Text className="text-xs text-gray-500 dark:text-gray-400 mt-3 text-center">
@@ -799,7 +834,55 @@ export default function SettingsScreen() {
               Cloud Backup
             </Text>
 
-            {!isAuthenticated ? (
+            {/* If network is not available, show disabled state */}
+            {!isNetworkAvailable ? (
+              <View>
+                <View className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg mb-4">
+                  <View className="flex-row items-start gap-3">
+                    <Ionicons name="cloud-offline" size={20} color="#EF4444" />
+                    <Text className="text-sm text-red-800 dark:text-red-200 flex-1">
+                      Network is not available. Cloud backup requires an active internet connection. Please check your network connection.
+                    </Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  disabled={true}
+                  className="flex-row items-center justify-between py-3 mb-3 opacity-50"
+                >
+                  <View className="flex-row items-center gap-3 flex-1">
+                    <View className="bg-blue-100 dark:bg-blue-900/30 rounded-full p-2">
+                      <Ionicons name="cloud-upload" size={20} color="#3B82F6" />
+                    </View>
+                    <View className="flex-1">
+                      <Text className="text-base font-medium text-gray-900 dark:text-gray-100">
+                        Upload Backup to Cloud
+                      </Text>
+                      <Text className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                        Automatically backup to cloud (keeps latest 3 backups)
+                      </Text>
+                      <Text className="text-xs text-red-600 dark:text-red-400 mt-1">
+                        Network not available
+                      </Text>
+                    </View>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+                </TouchableOpacity>
+                <View className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <Text className="text-xs text-gray-500 dark:text-gray-400 text-center">
+                    Cloud backup features disabled - Network required
+                  </Text>
+                </View>
+              </View>
+            ) : authLoading ? (
+              /* Show loading state while checking session */
+              <View className="flex-row items-center justify-center py-4">
+                <ActivityIndicator size="small" color="#3B82F6" />
+                <Text className="text-sm text-gray-500 dark:text-gray-400 ml-2">
+                  Checking session...
+                </Text>
+              </View>
+            ) : !isAuthenticated ? (
+              /* Network available but not authenticated - show login */
               <View>
                 <View className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg mb-4">
                   <View className="flex-row items-start gap-3">
@@ -824,12 +907,16 @@ export default function SettingsScreen() {
                       <Text className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
                         Automatically backup to cloud (keeps latest 3 backups)
                       </Text>
+                      <Text className="text-xs text-red-600 dark:text-red-400 mt-1">
+                        Session not available - Please login
+                      </Text>
                     </View>
                   </View>
                   <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
                 </TouchableOpacity>
               </View>
             ) : (
+              /* Network available and authenticated - enable cloud backup */
               <View>
                 <TouchableOpacity
                   onPress={async () => {
@@ -886,7 +973,9 @@ export default function SettingsScreen() {
                 </TouchableOpacity>
 
                 <View className="mt-2">
-                  {user?.id && <BackupList userId={user.id} refreshTrigger={backupListRefreshTrigger} />}
+                  {user?.id && (
+                    <BackupList userId={user.id} refreshTrigger={backupListRefreshTrigger} />
+                  )}
                 </View>
               </View>
             )}

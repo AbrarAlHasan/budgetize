@@ -1,7 +1,8 @@
 import { getSession, onAuthStateChange, signInWithGoogle, signOut } from '@/services/supabase/auth';
 import { Session, User } from '@supabase/supabase-js';
 import { create } from 'zustand';
-import { logError } from '@/utils/logger';
+import { logError, logWarn } from '@/utils/logger';
+import * as Network from 'expo-network';
 
 interface AuthStore {
   user: User | null;
@@ -9,6 +10,7 @@ interface AuthStore {
   isLoading: boolean;
   isAuthenticated: boolean;
   initialize: () => Promise<void>;
+  checkSession: (skipIfOffline?: boolean) => Promise<void>;
   login: () => Promise<{ error: Error | null }>;
   logout: () => Promise<{ error: Error | null }>;
   setUser: (user: User | null) => void;
@@ -22,33 +24,67 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   isAuthenticated: false,
 
   initialize: async () => {
+    // Just set up auth state change listener, don't check session yet
+    // Session will be checked when network is available via checkSession
+    set({ isLoading: false });
+    
+    // Listen to auth state changes
+    onAuthStateChange((event, session) => {
+      set({
+        user: session?.user ?? null,
+        session: session,
+        isAuthenticated: !!session,
+      });
+    });
+  },
+
+  checkSession: async (skipIfOffline = true) => {
+    // Check network first if skipIfOffline is true
+    if (skipIfOffline) {
+      try {
+        const networkState = await Network.getNetworkStateAsync();
+        const isNetworkAvailable = networkState.isConnected && networkState.isInternetReachable !== false;
+        
+        if (!isNetworkAvailable) {
+          logWarn('Network not available, skipping session check');
+          set({ isLoading: false });
+          return;
+        }
+      } catch (error) {
+        logWarn('Failed to check network status, skipping session check');
+        set({ isLoading: false });
+        return;
+      }
+    }
+
     set({ isLoading: true });
     try {
       const { session, error } = await getSession();
       
       if (error) {
-        logError('Error initializing auth:', error);
-        set({ user: null, session: null, isAuthenticated: false, isLoading: false });
+        // Only log if it's not a timeout (which is expected when offline)
+        if (!error.message.includes("timed out")) {
+          logError('Error checking session:', error);
+        }
+        // If there's an error, clear the session (it might be expired)
+        set({ 
+          user: null, 
+          session: null, 
+          isAuthenticated: false, 
+          isLoading: false 
+        });
         return;
       }
 
+      // Update session state
       set({
         user: session?.user ?? null,
         session: session,
         isAuthenticated: !!session,
         isLoading: false,
       });
-
-      // Listen to auth state changes
-      onAuthStateChange((event, session) => {
-        set({
-          user: session?.user ?? null,
-          session: session,
-          isAuthenticated: !!session,
-        });
-      });
     } catch (error) {
-      logError('Unexpected error initializing auth:', error);
+      logError('Unexpected error checking session:', error);
       set({ user: null, session: null, isAuthenticated: false, isLoading: false });
     }
   },

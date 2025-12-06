@@ -1,8 +1,9 @@
+import { log, logError, logWarn } from "@/utils/logger";
+import { Session } from "@supabase/supabase-js";
 import * as AuthSession from "expo-auth-session";
 import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
 import { supabase } from "./client";
-import { log, logError, logWarn } from "@/utils/logger";
 
 // Complete the OAuth session in the browser
 WebBrowser.maybeCompleteAuthSession();
@@ -189,19 +190,59 @@ export async function signOut(): Promise<{ error: Error | null }> {
 }
 
 /**
- * Get the current session
+ * Get the current session with timeout to prevent hanging when offline
  */
-export async function getSession() {
+export async function getSession(): Promise<{ session: Session | null; error: Error | null }> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
   try {
-    const {
-      data: { session },
-      error,
-    } = await supabase.auth.getSession();
-    if (error) {
-      logError("Get session error:", error);
-      return { session: null, error };
+    // Add timeout to prevent hanging when network is unavailable
+    // Supabase stores sessions locally, so we should be able to read from cache
+    // even when offline, but if it tries to refresh, it might hang
+    const timeoutPromise = new Promise<{ session: null; error: Error }>((resolve) => {
+      timeoutId = setTimeout(() => {
+        resolve({
+          session: null,
+          error: new Error("Session check timed out (likely offline)"),
+        });
+      }, 3000); // 3 second timeout
+    });
+
+    const sessionPromise = supabase.auth.getSession().then((result) => {
+      // Clear timeout if session call completes
+      if (timeoutId) clearTimeout(timeoutId);
+      const {
+        data: { session },
+        error,
+      } = result;
+      if (error) {
+        logError("Get session error:", error);
+        return { session: null, error };
+      }
+      return { session, error: null };
+    }).catch((error) => {
+      // Clear timeout on error
+      if (timeoutId) clearTimeout(timeoutId);
+      logError("Get session exception:", error);
+      return { session: null, error: error as Error };
+    });
+
+    // Race between the actual call and timeout
+    const result = await Promise.race([sessionPromise, timeoutPromise]);
+    
+    // Clear timeout in case it's still running
+    if (timeoutId) clearTimeout(timeoutId);
+    
+    // If timeout won, the session might still be in local storage
+    // Supabase's getSession should read from local storage first, but if it's
+    // trying to refresh the token, it will hang. The timeout prevents that.
+    // If we got a timeout, it means we're likely offline, so return null session
+    // which is fine - the app can work without auth (auth is only for cloud backup)
+    if (result.error && result.error.message.includes("timed out")) {
+      logWarn("Session check timed out (likely offline), continuing without auth");
+      return { session: null, error: null }; // Return no error so app can continue
     }
-    return { session, error: null };
+    
+    return result;
   } catch (error) {
     logError("Unexpected error getting session:", error);
     return { session: null, error: error as Error };
