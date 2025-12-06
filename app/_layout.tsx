@@ -11,19 +11,19 @@ import "react-native-reanimated";
 import "../global.css";
 
 import { OnboardingScreen } from "@/components/onboarding/onboarding-screen";
-import { queryClient } from "@/hooks/use-query-client";
+import { AlertProvider } from "@/components/ui/alert";
 import { useInAppUpdates } from "@/hooks/use-in-app-updates";
+import { queryClient } from "@/hooks/use-query-client";
 import { onboardingStorage } from "@/storage/onboarding";
 import { useAuthStore } from "@/store/auth-store";
 import { useSettingsStore } from "@/store/settings-store";
+import { logError } from "@/utils/logger";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
-import { AlertProvider } from "@/components/ui/alert";
+import { router } from "expo-router";
 import { colorScheme, useColorScheme } from "nativewind";
 import { PostHogProvider } from "posthog-react-native";
-import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
-import { logError } from "@/utils/logger";
 
 export const unstable_settings = {
   anchor: "(tabs)",
@@ -39,7 +39,7 @@ export default function RootLayout() {
   // Initialize in-app updates (only checks after app is ready and onboarding complete)
   useInAppUpdates({
     autoCheck: isReady && !showOnboarding, // Only check after initialization and onboarding
-    daysBeforePrompt: 2,
+    daysBeforePrompt: 0, // Show updates immediately when available
     immediateUpdate: false,
   });
 
@@ -47,9 +47,10 @@ export default function RootLayout() {
     const initializeApp = async () => {
       try {
         // Initialize auth (just sets up listener, doesn't check session)
-        const { initialize: initializeAuth, checkSession } = useAuthStore.getState();
+        const { initialize: initializeAuth, checkSession } =
+          useAuthStore.getState();
         initializeAuth();
-        
+
         // Check session only if network is available (runs in background)
         checkSession(true).catch((error) => {
           logError("Session check error (non-blocking):", error);
@@ -106,7 +107,7 @@ export default function RootLayout() {
   const handleOnboardingComplete = (navigateToCloudBackup?: boolean) => {
     onboardingStorage.setCompleted();
     setShowOnboarding(false);
-    
+
     // Navigate to settings with focus on account section if cloud backup was selected
     if (navigateToCloudBackup) {
       // Use setTimeout to ensure navigation happens after onboarding is dismissed

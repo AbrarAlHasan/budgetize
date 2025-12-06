@@ -9,7 +9,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.budgetize.app</string>
+	<string>com.suzukibusinesscloud.SalesQA-3.0</string>
 	<key>PROJECT_ID</key>
 	<string>budgetize-46bd7</string>
 	<key>STORAGE_BUCKET</key>
@@ -25,6 +25,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:213663698619:ios:908c8d19ffd272f99ea39e</string>
+	<string>1:213663698619:ios:41b4568a9a5da5fa9ea39e</string>
 </dict>
 </plist>

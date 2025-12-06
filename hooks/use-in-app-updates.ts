@@ -1,5 +1,5 @@
 import { Alert } from "@/components/ui/alert";
-import { logError } from "@/utils/logger";
+import { logError, logInfo } from "@/utils/logger";
 import * as ExpoInAppUpdates from "expo-in-app-updates";
 import { useCallback, useEffect } from "react";
 import { Platform } from "react-native";
@@ -37,7 +37,7 @@ export function useInAppUpdates(options?: {
 }) {
   const {
     autoCheck = true,
-    daysBeforePrompt = 2,
+    daysBeforePrompt = 0, // Show updates immediately by default
     immediateUpdate = false,
   } = options || {};
 
@@ -53,6 +53,14 @@ export function useInAppUpdates(options?: {
 
       try {
         const result = await ExpoInAppUpdates.checkForUpdate();
+        logInfo(
+          "Update check result:",
+          JSON.stringify({
+            updateAvailable: result.updateAvailable,
+            daysSinceRelease: result.daysSinceRelease,
+            releaseDate: result.releaseDate,
+          })
+        );
         return {
           updateAvailable: result.updateAvailable,
           daysSinceRelease: result.daysSinceRelease,
@@ -116,54 +124,50 @@ export function useInAppUpdates(options?: {
           return;
         }
 
-        // On Android, if update has been available for more than specified days, start immediate update
-        if (
+        // Update is available - determine if we should use immediate or flexible update flow
+        // Only use immediate update if daysBeforePrompt > 0 and update has been available for that many days
+        const shouldUseImmediate =
           Platform.OS === "android" &&
-          result.daysSinceRelease &&
-          Number(result.daysSinceRelease) >= daysBeforePrompt
-        ) {
+          daysBeforePrompt > 0 &&
+          ((result.daysSinceRelease &&
+            Number(result.daysSinceRelease) >= daysBeforePrompt) ||
+            (result.releaseDate &&
+              getDiffInDays(result.releaseDate) >= daysBeforePrompt));
+
+        // On Android, if update has been available for more than specified days, use immediate update
+        if (shouldUseImmediate) {
           try {
             await startUpdate(true);
             return;
           } catch (updateErr) {
             logError("Failed to start immediate update:", updateErr);
-            // Fall through to show alert
+            // Fall through to show flexible update prompt
           }
         }
 
-        // Check if release date indicates we should prompt
-        if (
-          result.releaseDate &&
-          getDiffInDays(result.releaseDate) >= daysBeforePrompt
-        ) {
-          Alert.alert(
-            "Update Available",
-            "A new version of the app is available with improvements and bug fixes. Would you like to update now?",
-            [
-              {
-                text: "Update",
-                onPress: async () => {
-                  try {
-                    await startUpdate(Platform.OS === "android");
-                  } catch (updateErr) {
-                    logError("Failed to start update:", updateErr);
-                    Alert.alert(
-                      "Update Failed",
-                      "Could not start the update. Please try updating from the App Store or Play Store."
-                    );
-                  }
-                },
+        // Show flexible update prompt (always show if update is available)
+        Alert.alert(
+          "Update Available",
+          "A new version of the app is available with improvements and bug fixes. Would you like to update now?",
+          [
+            {
+              text: "Update",
+              onPress: async () => {
+                try {
+                  // Use flexible update flow (non-blocking) for Android
+                  await startUpdate(false);
+                } catch (updateErr) {
+                  logError("Failed to start update:", updateErr);
+                  Alert.alert(
+                    "Update Failed",
+                    "Could not start the update. Please try updating from the App Store or Play Store."
+                  );
+                }
               },
-              { text: "Later", style: "cancel" },
-            ]
-          );
-        } else if (showNoUpdateMessage) {
-          // Update available but not old enough to prompt
-          Alert.alert(
-            "Up to Date",
-            "You are using the latest version of the app."
-          );
-        }
+            },
+            { text: "Later", style: "cancel" },
+          ]
+        );
       } catch (error) {
         logError("Update check failed:", error);
         if (showNoUpdateMessage) {
