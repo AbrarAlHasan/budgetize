@@ -19,6 +19,7 @@ import { uploadBackupToCloud } from "@/utils/cloud-backup";
 import { getCurrencyOptions, getCurrencySymbol } from "@/utils/currencies";
 import { resetAppWithDummyData } from "@/utils/dummy-data";
 import { log, logError } from "@/utils/logger";
+import { openSupportEmail } from "@/utils/support";
 import { Ionicons } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
 import Constants from "expo-constants";
@@ -406,6 +407,18 @@ export default function SettingsScreen() {
       logError("Failed to check for updates:", error);
     } finally {
       setIsCheckingForUpdates(false);
+    }
+  };
+
+  const handleOpenSupport = async () => {
+    try {
+      await openSupportEmail();
+    } catch (error) {
+      logError("Failed to open support email:", error);
+      alert(
+        "Unable to Open Email",
+        "Please make sure you have an email app installed and configured on your device."
+      );
     }
   };
 
@@ -1083,6 +1096,34 @@ export default function SettingsScreen() {
                     {isCheckingForUpdates
                       ? "Checking for updates..."
                       : "Check if a new version is available"}
+                  </Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+            </TouchableOpacity>
+          </Card>
+
+          {/* Support */}
+          <Card className="mb-4">
+            <Text className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+              Support
+            </Text>
+
+            <TouchableOpacity
+              onPress={handleOpenSupport}
+              className="flex-row items-center justify-between py-3"
+              activeOpacity={0.7}
+            >
+              <View className="flex-row items-center gap-3 flex-1">
+                <View className="bg-indigo-100 dark:bg-indigo-900/30 rounded-full p-2">
+                  <Ionicons name="mail" size={20} color="#6366F1" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-base font-medium text-gray-900 dark:text-gray-100">
+                    Contact Support
+                  </Text>
+                  <Text className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                    Send us an email with your device information
                   </Text>
                 </View>
               </View>
