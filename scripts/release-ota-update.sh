@@ -34,7 +34,7 @@ fi
 export EXPO_TOKEN
 
 # Update message (change this for each release)
-UPDATE_MESSAGE="Add and Edit Exchange Amount UI redesign"
+UPDATE_MESSAGE="Android Safe Area View Implement for Navigation Bottom Bar to resolve overlapping issue"
 
 npx eas-cli whoami
 
