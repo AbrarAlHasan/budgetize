@@ -34,9 +34,9 @@ fi
 export EXPO_TOKEN
 
 # Update message (change this for each release)
-UPDATE_MESSAGE="Quick Filter UI Change for better user experience"
+UPDATE_MESSAGE="Support Button Added in the Settings Screen"
 
-eas whoami
+npx eas-cli whoami
 
 echo "✓ EXPO_TOKEN loaded from .env.local"
 echo "✓ Starting EAS Update for Android and iOS (production profile)..."
@@ -47,13 +47,13 @@ cd "$PROJECT_ROOT"
 
 # Update Android
 echo "📱 Publishing update for Android..."
-eas update --channel production --platform android --message "$UPDATE_MESSAGE" --clear-cache
+npx eas-cli update --channel production --platform android --message "$UPDATE_MESSAGE" --clear-cache
 
 echo ""
 
 # Update iOS
 echo "🍎 Publishing update for iOS..."
-eas update --channel production --platform ios --message "$UPDATE_MESSAGE" --clear-cache
+npx eas-cli update --channel production --platform ios --message "$UPDATE_MESSAGE" --clear-cache
 
 echo ""
 echo "✓ OTA updates published successfully for Android and iOS!"
