@@ -16,6 +16,12 @@ import { useSettingsStore } from "@/store/settings-store";
 import { createBackupFile, restoreAppData } from "@/utils/backup";
 import { clearDatabase } from "@/utils/clear-database";
 import { uploadBackupToCloud } from "@/utils/cloud-backup";
+import {
+  enableAutomaticBackups,
+  disableAutomaticBackups,
+  isAutomaticBackupEnabled,
+  getLastBackupTimestamp,
+} from "@/services/background-backup";
 import { getCurrencyOptions, getCurrencySymbol } from "@/utils/currencies";
 import { resetAppWithDummyData } from "@/utils/dummy-data";
 import { log, logError } from "@/utils/logger";
@@ -64,6 +70,8 @@ export default function SettingsScreen() {
   const [isUploadingToCloud, setIsUploadingToCloud] = useState(false);
   const [isCheckingForUpdates, setIsCheckingForUpdates] = useState(false);
   const [backupListRefreshTrigger, setBackupListRefreshTrigger] = useState(0);
+  const [automaticBackupEnabled, setAutomaticBackupEnabled] = useState(false);
+  const [lastBackupTime, setLastBackupTime] = useState<string | null>(null);
   const [showDeveloperOptions, setShowDeveloperOptions] = useState(false);
   const [settingsTapCount, setSettingsTapCount] = useState(0);
   const tapTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -74,8 +82,44 @@ export default function SettingsScreen() {
     loadPreferences();
     loadSettings();
     checkPermissions();
+    loadAutomaticBackupStatus();
     // Auth initialization is handled in background in app/_layout.tsx
   }, []);
+
+  const loadAutomaticBackupStatus = async () => {
+    const enabled = await isAutomaticBackupEnabled();
+    const lastBackup = await getLastBackupTimestamp();
+    setAutomaticBackupEnabled(enabled);
+    setLastBackupTime(lastBackup);
+  };
+
+  const handleAutomaticBackupToggle = async (enabled: boolean) => {
+    try {
+      if (enabled) {
+        // Request notification permissions if not already granted
+        const hasPermission = await requestNotificationPermissions();
+        if (!hasPermission) {
+          alert('Permission Required', 'Notification permission is required for automatic backups. Please enable it in Settings.');
+          return;
+        }
+
+        const success = await enableAutomaticBackups();
+        if (success) {
+          setAutomaticBackupEnabled(true);
+          alert('Success', 'Automatic backups enabled. Your data will be backed up daily at 10 PM.');
+        } else {
+          alert('Error', 'Failed to enable automatic backups. Please try again.');
+        }
+      } else {
+        await disableAutomaticBackups();
+        setAutomaticBackupEnabled(false);
+        alert('Success', 'Automatic backups disabled.');
+      }
+    } catch (error) {
+      logError('Error toggling automatic backups:', error);
+      alert('Error', 'Failed to update automatic backup settings.');
+    }
+  };
 
   // Scroll to account section when focusAccount parameter is present
   const [accountSectionY, setAccountSectionY] = useState<number | null>(null);
@@ -984,6 +1028,33 @@ export default function SettingsScreen() {
                   </View>
                   <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
                 </TouchableOpacity>
+
+                {/* Automatic Backup Toggle */}
+                <View className="flex-row items-center justify-between py-4 border-t border-gray-100 dark:border-gray-800 mt-2">
+                  <View className="flex-1 mr-4">
+                    <View className="flex-row items-center gap-2 mb-1">
+                      <Ionicons name="time" size={16} color="#6B7280" />
+                      <Text className="text-base font-medium text-gray-900 dark:text-gray-100">
+                        Automatic Daily Backup
+                      </Text>
+                    </View>
+                    <Text className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                      Automatically backup your data every day at 10 PM
+                    </Text>
+                    {lastBackupTime && (
+                      <Text className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                        Last backup: {new Date(lastBackupTime).toLocaleString()}
+                      </Text>
+                    )}
+                  </View>
+                  <Switch
+                    value={automaticBackupEnabled}
+                    onValueChange={handleAutomaticBackupToggle}
+                    trackColor={{ false: '#D1D5DB', true: '#3B82F6' }}
+                    thumbColor="#FFFFFF"
+                    ios_backgroundColor="#D1D5DB"
+                  />
+                </View>
 
                 <View className="mt-2">
                   {user?.id && (

@@ -18,6 +18,8 @@ import { onboardingStorage } from "@/storage/onboarding";
 import { useAuthStore } from "@/store/auth-store";
 import { useSettingsStore } from "@/store/settings-store";
 import { logError } from "@/utils/logger";
+import { initializeBackupScheduler } from "@/services/background-backup";
+import * as Notifications from "expo-notifications";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { router } from "expo-router";
 import { colorScheme, useColorScheme } from "nativewind";
@@ -76,6 +78,11 @@ export default function RootLayout() {
         // Then check onboarding
         const completed = onboardingStorage.isCompleted();
         setShowOnboarding(!completed);
+
+        // Initialize backup scheduler (runs in background, non-blocking)
+        initializeBackupScheduler().catch((error) => {
+          logError("Backup scheduler initialization error (non-blocking):", error);
+        });
       } catch (error) {
         logError("Error initializing app:", error);
         setThemeSynced(true); // Still mark as synced even on error
@@ -103,6 +110,24 @@ export default function RootLayout() {
       colorScheme.set("system");
     }
   }, [settings.theme]);
+
+  // Handle notification received (for backup triggers)
+  useEffect(() => {
+    const subscription = Notifications.addNotificationReceivedListener((notification) => {
+      const data = notification.request.content.data;
+      
+      // If it's a backup trigger notification, run backup in background
+      if (data?.type === 'backup_trigger') {
+        // The background task will handle this, but we can also trigger it here
+        // if the app is in foreground
+        initializeBackupScheduler().catch((error) => {
+          logError("Error triggering backup from notification:", error);
+        });
+      }
+    });
+
+    return () => subscription.remove();
+  }, []);
 
   const handleOnboardingComplete = (navigateToCloudBackup?: boolean) => {
     onboardingStorage.setCompleted();
