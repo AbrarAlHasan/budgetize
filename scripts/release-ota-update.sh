@@ -34,7 +34,7 @@ fi
 export EXPO_TOKEN
 
 # Update message (change this for each release)
-UPDATE_MESSAGE="Support Button Added in the Settings Screen"
+UPDATE_MESSAGE="Add and Edit Exchange Amount UI redesign"
 
 npx eas-cli whoami
 
