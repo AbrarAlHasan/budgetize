@@ -14,6 +14,7 @@ import { endOfMonth, format, startOfMonth, subMonths } from "date-fns";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const FILTER_CONTEXTS: FilterContext[] = ["dashboard", "reports", "expenses"];
 
@@ -33,6 +34,7 @@ export default function FiltersScreen() {
   const isDark = colorScheme === "dark";
   const quickFiltersScrollRef = useRef<ScrollView>(null);
   const params = useLocalSearchParams<{ context?: string }>();
+  const insets = useSafeAreaInsets();
   const currentFilterContext = useUIStore(
     (state) => state.currentFilterContext
   );
@@ -477,7 +479,7 @@ export default function FiltersScreen() {
         {/* Footer */}
         <View
           className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900"
-          style={{ paddingBottom: 20 }}
+          style={{ paddingBottom: Math.max(insets.bottom, 20) }}
         >
           <View className="p-4">
             <View className="flex-row gap-3">

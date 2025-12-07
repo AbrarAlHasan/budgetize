@@ -30,12 +30,14 @@ import {
   TouchableWithoutFeedback,
   View
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function AddTransactionScreen() {
   const navigation = useNavigation();
   const params = useLocalSearchParams<{ id?: string; from?: string }>();
   const transactionId = params.id ? parseInt(params.id, 10) : null;
   const isEditMode = !!transactionId;
+  const insets = useSafeAreaInsets();
 
   const createTransaction = useCreateTransaction();
   const updateTransaction = useUpdateTransaction();
@@ -606,7 +608,10 @@ export default function AddTransactionScreen() {
       </KeyboardAvoidingView>
 
       {/* Floating Action Buttons */}
-      <View className="absolute bottom-0 left-0 right-0 p-4 bg-gray-50 dark:bg-black border-t border-gray-200 dark:border-gray-800">
+      <View 
+        className="absolute bottom-0 left-0 right-0 p-4 bg-gray-50 dark:bg-black border-t border-gray-200 dark:border-gray-800"
+        style={{ paddingBottom: Math.max(insets.bottom, 16) }}
+      >
         {isEditMode ? (
           <View className="flex-row gap-3">
             <TouchableOpacity
