@@ -1,6 +1,7 @@
 import * as XLSX from 'xlsx';
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
+import * as SecureStore from 'expo-secure-store';
 import { format } from 'date-fns';
 import { transactionRepository } from '@/repositories/transaction.repository';
 import { accountRepository } from '@/repositories/account.repository';
@@ -142,14 +143,11 @@ export async function exportTransactionsToExcel(
         ? categoryMap.get(transaction.category_id)
         : null;
       const tags = transactionTagsMap.get(transaction.id) || [];
-      const currencySymbol = account
-        ? getCurrencySymbol(account.currency)
-        : '₹'; // Default to INR symbol
 
       return {
         Date: format(new Date(transaction.date), 'MMM dd, yyyy'),
         Type: transaction.type === 'expense' ? 'Expense' : 'Income',
-        Amount: `${currencySymbol}${transaction.amount.toFixed(2)}`,
+        Amount: transaction.amount.toFixed(2), // No currency symbol, just the number
         Account: account?.name || 'Unknown',
         Category: category?.name || '-',
         Tags: tags.join(', ') || '-',

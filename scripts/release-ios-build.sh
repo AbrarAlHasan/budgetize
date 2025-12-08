@@ -33,13 +33,13 @@ fi
 # Export EXPO_TOKEN
 export EXPO_TOKEN
 
-eas whoami
+npx eas-cli whoami
 
 echo "✓ EXPO_TOKEN loaded from .env.local"
-echo "✓ Starting EAS build for Android (production profile)..."
+echo "✓ Starting EAS build for iOS (production profile)..."
 echo ""
 
 # Run EAS build
 cd "$PROJECT_ROOT"
-eas build --platform ios --profile production --local
+npx eas-cli build --platform ios --profile production --local
 
