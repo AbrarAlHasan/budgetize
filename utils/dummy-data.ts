@@ -7,9 +7,10 @@ import { transactionRepository } from '@/repositories/transaction.repository';
 import { format } from 'date-fns';
 import { log } from '@/utils/logger';
 
-const YEARS_TO_GENERATE = 2; // Generate data for 2 years
-const TRANSACTIONS_PER_DAY = 50; // 50 transactions per day
-const DAYS_IN_TWO_YEARS = 730; // 2 years = 730 days
+export interface DummyDataOptions {
+  months: number; // Number of months to generate data for
+  transactionsPerDay: number; // Number of transactions per day
+}
 
 const EXPENSE_CATEGORIES = [
   'Food & Dining',
@@ -188,22 +189,25 @@ async function seedTransactions(
   accounts: Account[],
   categoryMap: Map<string, number>,
   tagMap: Map<string, number>,
+  options: DummyDataOptions,
   onProgress?: (progress: number) => void
 ): Promise<number> {
   let transactionCount = 0;
   const now = new Date();
   const startDate = new Date(now);
-  startDate.setFullYear(now.getFullYear() - YEARS_TO_GENERATE);
+  startDate.setMonth(now.getMonth() - options.months);
   startDate.setHours(0, 0, 0, 0);
 
-  log(`[dummy-data] Generating ${TRANSACTIONS_PER_DAY} transactions per day for ${DAYS_IN_TWO_YEARS} days...`);
+  const daysToGenerate = Math.ceil((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+
+  log(`[dummy-data] Generating ${options.transactionsPerDay} transactions per day for ${options.months} months (${daysToGenerate} days)...`);
   log(`[dummy-data] Start date: ${startDate.toISOString()}, End date: ${now.toISOString()}`);
 
   // Get non-credit accounts for income transactions
   const nonCreditAccounts = accounts.filter(acc => acc.type !== 'credit');
   
   // Process each day
-  for (let dayOffset = 0; dayOffset < DAYS_IN_TWO_YEARS; dayOffset++) {
+  for (let dayOffset = 0; dayOffset < daysToGenerate; dayOffset++) {
     const targetDate = new Date(startDate);
     targetDate.setDate(targetDate.getDate() + dayOffset);
     
@@ -215,7 +219,7 @@ async function seedTransactions(
     const isToday = targetDate.toDateString() === now.toDateString();
     
     // Calculate and report progress
-    const totalDays = Math.min(DAYS_IN_TWO_YEARS, Math.ceil((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
+    const totalDays = Math.min(daysToGenerate, Math.ceil((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
     const progress = Math.min(100, Math.round(((dayOffset + 1) / totalDays) * 100));
     
     // Report progress every 10 days or on the last day
@@ -248,8 +252,8 @@ async function seedTransactions(
       transactionCount++;
     }
 
-    // Generate expense transactions to reach TRANSACTIONS_PER_DAY
-    const remainingTransactions = TRANSACTIONS_PER_DAY - incomeCount;
+    // Generate expense transactions to reach transactionsPerDay
+    const remainingTransactions = options.transactionsPerDay - incomeCount;
     for (let i = 0; i < remainingTransactions; i++) {
       const account = pickRandomItem(accounts);
       const expenseCategory = pickRandomItem(EXPENSE_CATEGORIES);
@@ -279,6 +283,7 @@ async function seedTransactions(
 }
 
 export async function resetAppWithDummyData(
+  options: DummyDataOptions,
   onProgress?: (progress: number) => void
 ): Promise<DummySeedSummary> {
   if (onProgress) onProgress(5);
@@ -295,7 +300,7 @@ export async function resetAppWithDummyData(
   const accounts = await seedAccounts();
 
   if (onProgress) onProgress(25);
-  const transactions = await seedTransactions(accounts, categoryMap, tagMap, (transactionProgress) => {
+  const transactions = await seedTransactions(accounts, categoryMap, tagMap, options, (transactionProgress) => {
     // Map transaction progress (0-100) to overall progress (25-100)
     if (onProgress) {
       const overallProgress = 25 + (transactionProgress * 0.75);

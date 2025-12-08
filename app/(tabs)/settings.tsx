@@ -2,6 +2,12 @@ import { BackupList } from "@/components/cloud-backup/backup-list";
 import { LoginButton } from "@/components/cloud-backup/login-button";
 import { BottomSheetSelect } from "@/components/ui/bottom-sheet-select";
 import { Card } from "@/components/ui/card";
+import { DateRangePickerModal } from "@/components/date-range-picker-modal";
+import {
+  DummyDataSizeBottomSheet,
+  DummyDataSizeBottomSheetRef,
+  DummyDataSize,
+} from "@/components/dummy-data-size-bottom-sheet";
 import { useCustomAlert } from "@/hooks/use-custom-alert";
 import { useInAppUpdates } from "@/hooks/use-in-app-updates";
 import { useNetworkStatus } from "@/hooks/use-network-status";
@@ -18,6 +24,7 @@ import { clearDatabase } from "@/utils/clear-database";
 import { uploadBackupToCloud } from "@/utils/cloud-backup";
 import { getCurrencyOptions, getCurrencySymbol } from "@/utils/currencies";
 import { resetAppWithDummyData } from "@/utils/dummy-data";
+import { exportAndShareTransactionsToExcel } from "@/utils/excel-export";
 import { log, logError } from "@/utils/logger";
 import { openSupportEmail } from "@/utils/support";
 import { Ionicons } from "@expo/vector-icons";
@@ -68,6 +75,9 @@ export default function SettingsScreen() {
   const [settingsTapCount, setSettingsTapCount] = useState(0);
   const tapTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [dummyDataProgress, setDummyDataProgress] = useState(0);
+  const [showExcelExportModal, setShowExcelExportModal] = useState(false);
+  const [isExportingExcel, setIsExportingExcel] = useState(false);
+  const dummyDataSizeBottomSheetRef = useRef<DummyDataSizeBottomSheetRef>(null);
 
   useEffect(() => {
     log(Paths.document.uri);
@@ -200,11 +210,26 @@ export default function SettingsScreen() {
     );
   };
 
-  const runDummyDataSeed = async () => {
+  const runDummyDataSeed = async (size: DummyDataSize) => {
     try {
       setIsSeedingDummyData(true);
       setDummyDataProgress(0);
-      const summary = await resetAppWithDummyData((progress) => {
+
+      // Define options based on size
+      let options;
+      switch (size) {
+        case 'small':
+          options = { months: 3, transactionsPerDay: 10 };
+          break;
+        case 'medium':
+          options = { months: 6, transactionsPerDay: 15 };
+          break;
+        case 'large':
+          options = { months: 24, transactionsPerDay: 50 };
+          break;
+      }
+
+      const summary = await resetAppWithDummyData(options, (progress) => {
         setDummyDataProgress(progress);
       });
       setDummyDataProgress(100);
@@ -229,18 +254,25 @@ export default function SettingsScreen() {
       return;
     }
 
+    // Show confirmation alert first
     alert(
       "Replace Data with Dummy Set?",
-      "This will erase all existing accounts, categories, tags, and transactions, then seed one year of dummy data.",
+      "This will erase all existing accounts, categories, tags, and transactions, then seed dummy data based on your selection.",
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: "Do it",
-          style: "destructive",
-          onPress: runDummyDataSeed,
+          text: "Continue",
+          style: "default",
+          onPress: () => {
+            dummyDataSizeBottomSheetRef.current?.present();
+          },
         },
       ]
     );
+  };
+
+  const handleDummyDataSizeSelect = (size: DummyDataSize) => {
+    runDummyDataSeed(size);
   };
 
   const handleBackupData = async () => {
@@ -349,6 +381,42 @@ export default function SettingsScreen() {
         },
       ]
     );
+  };
+
+  const handleExcelExport = async (startDate: string, endDate: string) => {
+    if (isExportingExcel) {
+      return;
+    }
+
+    try {
+      setIsExportingExcel(true);
+      setShowExcelExportModal(false);
+
+      const success = await exportAndShareTransactionsToExcel({
+        startDate,
+        endDate,
+      });
+
+      if (success) {
+        alert(
+          "Export Complete",
+          "Your transactions have been exported to Excel and the share dialog has been opened."
+        );
+      } else {
+        alert(
+          "Export Failed",
+          "Could not export transactions. Please make sure you have transactions in the selected date range and try again."
+        );
+      }
+    } catch (error) {
+      logError("Excel export failed:", error);
+      alert(
+        "Export Failed",
+        "An unexpected error occurred while exporting to Excel."
+      );
+    } finally {
+      setIsExportingExcel(false);
+    }
   };
 
   const runClearDatabase = async () => {
@@ -677,6 +745,35 @@ export default function SettingsScreen() {
                   {isRestoring && (
                     <Text className="text-xs text-orange-600 dark:text-orange-400 mt-1">
                       Restoring data...
+                    </Text>
+                  )}
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+            </TouchableOpacity>
+
+            {/* Export to Excel */}
+            <TouchableOpacity
+              onPress={() => setShowExcelExportModal(true)}
+              className="flex-row items-center justify-between py-3 mb-3"
+              activeOpacity={0.7}
+              disabled={isExportingExcel}
+              style={{ opacity: isExportingExcel ? 0.6 : 1 }}
+            >
+              <View className="flex-row items-center gap-3 flex-1">
+                <View className="bg-blue-100 dark:bg-blue-900/30 rounded-full p-2">
+                  <Ionicons name="document-text" size={20} color="#3B82F6" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-base font-medium text-gray-900 dark:text-gray-100">
+                    Export to Excel
+                  </Text>
+                  <Text className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                    Export transactions to Excel format (readable format)
+                  </Text>
+                  {isExportingExcel && (
+                    <Text className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                      Generating Excel file...
                     </Text>
                   )}
                 </View>
@@ -1139,6 +1236,20 @@ export default function SettingsScreen() {
           </View>
         </View>
       </ScrollView>
+
+      {/* Excel Export Date Range Picker Modal */}
+      <DateRangePickerModal
+        visible={showExcelExportModal}
+        onClose={() => setShowExcelExportModal(false)}
+        onConfirm={handleExcelExport}
+        isLoading={isExportingExcel}
+      />
+
+      {/* Dummy Data Size Selection Bottom Sheet */}
+      <DummyDataSizeBottomSheet
+        ref={dummyDataSizeBottomSheetRef}
+        onSelect={handleDummyDataSizeSelect}
+      />
     </SafeAreaView>
   );
 }
