@@ -1,13 +1,14 @@
+import { BankSelectionBottomSheet, BankSelectionBottomSheetRef, SupportedBank } from "@/components/bank-selection-bottom-sheet";
 import { BackupList } from "@/components/cloud-backup/backup-list";
 import { LoginButton } from "@/components/cloud-backup/login-button";
-import { BottomSheetSelect } from "@/components/ui/bottom-sheet-select";
-import { Card } from "@/components/ui/card";
 import { DateRangePickerModal } from "@/components/date-range-picker-modal";
 import {
+  DummyDataSize,
   DummyDataSizeBottomSheet,
   DummyDataSizeBottomSheetRef,
-  DummyDataSize,
 } from "@/components/dummy-data-size-bottom-sheet";
+import { BottomSheetSelect } from "@/components/ui/bottom-sheet-select";
+import { Card } from "@/components/ui/card";
 import { useCustomAlert } from "@/hooks/use-custom-alert";
 import { useInAppUpdates } from "@/hooks/use-in-app-updates";
 import { useNetworkStatus } from "@/hooks/use-network-status";
@@ -30,6 +31,7 @@ import { openSupportEmail } from "@/utils/support";
 import { Ionicons } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
 import Constants from "expo-constants";
+import * as DocumentPicker from "expo-document-picker";
 import { Paths } from "expo-file-system";
 import { router, useLocalSearchParams } from "expo-router";
 import * as Sharing from "expo-sharing";
@@ -77,7 +79,9 @@ export default function SettingsScreen() {
   const [dummyDataProgress, setDummyDataProgress] = useState(0);
   const [showExcelExportModal, setShowExcelExportModal] = useState(false);
   const [isExportingExcel, setIsExportingExcel] = useState(false);
+  const [isImportingBankStatement, setIsImportingBankStatement] = useState(false);
   const dummyDataSizeBottomSheetRef = useRef<DummyDataSizeBottomSheetRef>(null);
+  const bankSelectionBottomSheetRef = useRef<BankSelectionBottomSheetRef>(null);
 
   useEffect(() => {
     log(Paths.document.uri);
@@ -381,6 +385,49 @@ export default function SettingsScreen() {
         },
       ]
     );
+  };
+
+  const handleImportBankStatement = () => {
+    if (isImportingBankStatement) return;
+    // Show bank selection bottom sheet
+    bankSelectionBottomSheetRef.current?.present();
+  };
+
+  const handleBankSelected = async (bank: SupportedBank) => {
+    try {
+      setIsImportingBankStatement(true);
+
+      // Pick Excel/CSV file using DocumentPicker
+      const result = await DocumentPicker.getDocumentAsync({
+        type: [
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+          'application/vnd.ms-excel', // .xls
+          'text/csv', // .csv
+        ],
+        copyToCacheDirectory: true,
+      });
+
+      if (result.canceled || !result.assets || result.assets.length === 0) {
+        return; // User cancelled
+      }
+
+      const file = result.assets[0];
+      if (!file.uri) {
+        alert('Error', 'Failed to get file URI. Please try again.');
+        return;
+      }
+
+      // Navigate to review screen with bank and file URI
+      router.push({
+        pathname: '/settings/bank-import',
+        params: { fileUri: file.uri, bank },
+      });
+    } catch (error) {
+      logError('Failed to pick bank statement file:', error);
+      alert('Error', 'Failed to select file. Please try again.');
+    } finally {
+      setIsImportingBankStatement(false);
+    }
   };
 
   const handleExcelExport = async (startDate: string, endDate: string) => {
@@ -745,6 +792,35 @@ export default function SettingsScreen() {
                   {isRestoring && (
                     <Text className="text-xs text-orange-600 dark:text-orange-400 mt-1">
                       Restoring data...
+                    </Text>
+                  )}
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+            </TouchableOpacity>
+
+            {/* Import Bank Statement */}
+            <TouchableOpacity
+              onPress={handleImportBankStatement}
+              className="flex-row items-center justify-between py-3 mb-3"
+              activeOpacity={0.7}
+              disabled={isImportingBankStatement}
+              style={{ opacity: isImportingBankStatement ? 0.6 : 1 }}
+            >
+              <View className="flex-row items-center gap-3 flex-1">
+                <View className="bg-purple-100 dark:bg-purple-900/30 rounded-full p-2">
+                  <Ionicons name="document-attach" size={20} color="#9333EA" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-base font-medium text-gray-900 dark:text-gray-100">
+                    Import Bank Statement
+                  </Text>
+                  <Text className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                    Import transactions from Excel/CSV (HDFC supported)
+                  </Text>
+                  {isImportingBankStatement && (
+                    <Text className="text-xs text-purple-600 dark:text-purple-400 mt-1">
+                      Selecting file...
                     </Text>
                   )}
                 </View>
@@ -1249,6 +1325,11 @@ export default function SettingsScreen() {
       <DummyDataSizeBottomSheet
         ref={dummyDataSizeBottomSheetRef}
         onSelect={handleDummyDataSizeSelect}
+      />
+
+      <BankSelectionBottomSheet
+        ref={bankSelectionBottomSheetRef}
+        onBankSelected={handleBankSelected}
       />
     </SafeAreaView>
   );
