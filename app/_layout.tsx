@@ -12,18 +12,19 @@ import "../global.css";
 
 import { OnboardingScreen } from "@/components/onboarding/onboarding-screen";
 import { AlertProvider } from "@/components/ui/alert";
+import { UpdateScreen } from "@/components/update-screen";
 import { useInAppUpdates } from "@/hooks/use-in-app-updates";
 import { queryClient } from "@/hooks/use-query-client";
+import { trackInstallation } from "@/services/installation-tracker";
 import { onboardingStorage } from "@/storage/onboarding";
 import { useAuthStore } from "@/store/auth-store";
 import { useSettingsStore } from "@/store/settings-store";
 import { logError } from "@/utils/logger";
-import { trackInstallation } from "@/services/installation-tracker";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { router } from "expo-router";
 import { colorScheme, useColorScheme } from "nativewind";
 import { PostHogProvider } from "posthog-react-native";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 
 export const unstable_settings = {
@@ -36,13 +37,39 @@ export default function RootLayout() {
   const [isReady, setIsReady] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [themeSynced, setThemeSynced] = useState(false);
+  const [showUpdateScreen, setShowUpdateScreen] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  // Handle update available callback
+  const handleUpdateAvailable = useCallback(() => {
+    setShowUpdateScreen(true);
+  }, []);
 
   // Initialize in-app updates (only checks after app is ready and onboarding complete)
-  useInAppUpdates({
-    autoCheck: isReady && !showOnboarding, // Only check after initialization and onboarding
+  const { startUpdate } = useInAppUpdates({
+    autoCheck: isReady && !showOnboarding && !showUpdateScreen,
     daysBeforePrompt: 0, // Show updates immediately when available
     immediateUpdate: false,
+    onUpdateAvailable: handleUpdateAvailable,
   });
+
+  // Handle update button press
+  const handleUpdate = useCallback(async () => {
+    try {
+      setIsUpdating(true);
+      await startUpdate(false);
+      // Note: startUpdate will handle the update flow
+    } catch (error) {
+      logError("Failed to start update:", error);
+      setIsUpdating(false);
+    }
+  }, [startUpdate]);
+
+  // Handle cancel button press
+  const handleCancelUpdate = useCallback(() => {
+    setShowUpdateScreen(false);
+    setIsUpdating(false);
+  }, []);
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -139,6 +166,17 @@ export default function RootLayout() {
       >
         <ActivityIndicator size="large" color="#3B82F6" />
       </View>
+    );
+  }
+
+  // Show update screen if update is available
+  if (showUpdateScreen) {
+    return (
+      <UpdateScreen
+        onUpdate={handleUpdate}
+        onCancel={handleCancelUpdate}
+        isUpdating={isUpdating}
+      />
     );
   }
 

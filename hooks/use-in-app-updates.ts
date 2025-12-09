@@ -29,16 +29,19 @@ function getDiffInDays(date: Date): number {
  * @param options.autoCheck - Whether to automatically check for updates on mount (default: true)
  * @param options.daysBeforePrompt - Number of days to wait before prompting user (default: 2)
  * @param options.immediateUpdate - Use immediate update flow on Android (default: false)
+ * @param options.onUpdateAvailable - Callback when update is available (replaces Alert)
  */
 export function useInAppUpdates(options?: {
   autoCheck?: boolean;
   daysBeforePrompt?: number;
   immediateUpdate?: boolean;
+  onUpdateAvailable?: (result: UpdateCheckResult) => void;
 }) {
   const {
     autoCheck = true,
     daysBeforePrompt = 0, // Show updates immediately by default
     immediateUpdate = false,
+    onUpdateAvailable,
   } = options || {};
 
   /**
@@ -46,8 +49,13 @@ export function useInAppUpdates(options?: {
    */
   const checkForUpdate =
     useCallback(async (): Promise<UpdateCheckResult | null> => {
-      // Skip in development or on web
-      if (__DEV__ || Platform.OS === "web") {
+      // Skip in dev mode - only check for real updates in production
+      if (__DEV__) {
+        return null;
+      }
+
+      // Skip on web
+      if (Platform.OS === "web") {
         return null;
       }
 
@@ -79,8 +87,13 @@ export function useInAppUpdates(options?: {
    */
   const startUpdate = useCallback(
     async (useImmediate?: boolean): Promise<void> => {
-      // Skip in development or on web
-      if (__DEV__ || Platform.OS === "web") {
+      // Skip in dev mode - only start real updates in production
+      if (__DEV__) {
+        return;
+      }
+
+      // Skip on web
+      if (Platform.OS === "web") {
         return;
       }
 
@@ -145,7 +158,13 @@ export function useInAppUpdates(options?: {
           }
         }
 
-        // Show flexible update prompt (always show if update is available)
+        // If callback is provided, use it instead of Alert
+        if (onUpdateAvailable) {
+          onUpdateAvailable(result);
+          return;
+        }
+
+        // Fallback to Alert if no callback provided
         Alert.alert(
           "Update Available",
           "A new version of the app is available with improvements and bug fixes. Would you like to update now?",
@@ -178,7 +197,7 @@ export function useInAppUpdates(options?: {
         }
       }
     },
-    [checkForUpdate, startUpdate, daysBeforePrompt]
+    [checkForUpdate, startUpdate, daysBeforePrompt, onUpdateAvailable]
   );
 
   // Auto-check for updates on mount
