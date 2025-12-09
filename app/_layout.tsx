@@ -18,6 +18,7 @@ import { onboardingStorage } from "@/storage/onboarding";
 import { useAuthStore } from "@/store/auth-store";
 import { useSettingsStore } from "@/store/settings-store";
 import { logError } from "@/utils/logger";
+import { trackInstallation } from "@/services/installation-tracker";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { router } from "expo-router";
 import { colorScheme, useColorScheme } from "nativewind";
@@ -54,6 +55,11 @@ export default function RootLayout() {
         // Check session only if network is available (runs in background)
         checkSession(true).catch((error) => {
           logError("Session check error (non-blocking):", error);
+        });
+
+        // Track installation (non-blocking, runs in background)
+        trackInstallation().catch((error) => {
+          logError("Installation tracking error (non-blocking):", error);
         });
 
         // Load settings first
