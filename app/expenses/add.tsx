@@ -43,12 +43,12 @@ export default function AddTransactionScreen() {
   const updateTransaction = useUpdateTransaction();
   const deleteTransaction = useDeleteTransaction();
   const { data: transaction, isLoading: isLoadingTransaction } = useTransaction(transactionId || 0);
-  
+
   const { data: accounts } = useAccounts();
   const { data: tags } = useTags();
   const { data: tagsForTransaction } = useTagsForTransaction(transactionId || 0);
   const { data: categories } = useCategories();
-  
+
   // Use transaction-specific tags in edit mode, otherwise all tags
   const displayTags = isEditMode ? tagsForTransaction : tags;
 
@@ -121,9 +121,9 @@ export default function AddTransactionScreen() {
 
   const transactionTypeOptions = settings.incomeCalculationEnabled
     ? [
-        { label: "Expense", value: "expense" },
-        { label: "Income", value: "income" },
-      ]
+      { label: "Expense", value: "expense" },
+      { label: "Income", value: "income" },
+    ]
     : [{ label: "Expense", value: "expense" }];
 
   const accountOptions =
@@ -170,16 +170,16 @@ export default function AddTransactionScreen() {
         });
         Alert.alert("Success", "Transaction updated successfully");
       } else {
-      await createTransaction.mutateAsync({
-        account_id: accountId,
-        category_id: categoryId,
-        amount: amountValue,
-        type,
-        date: dateString,
-        note: note.trim() || null,
-        payment_mode: paymentMode.trim() || null,
-        tag_ids: selectedTagIds.length > 0 ? selectedTagIds : undefined,
-      });
+        await createTransaction.mutateAsync({
+          account_id: accountId,
+          category_id: categoryId,
+          amount: amountValue,
+          type,
+          date: dateString,
+          note: note.trim() || null,
+          payment_mode: paymentMode.trim() || null,
+          tag_ids: selectedTagIds.length > 0 ? selectedTagIds : undefined,
+        });
         Alert.alert("Success", "Transaction created successfully");
       }
       router.back();
@@ -190,7 +190,7 @@ export default function AddTransactionScreen() {
 
   const handleDelete = () => {
     if (!isEditMode || !transactionId) return;
-    
+
     Alert.alert(
       "Delete Transaction",
       "Are you sure you want to delete this transaction?",
@@ -298,20 +298,19 @@ export default function AddTransactionScreen() {
                     handleBlurAmount();
                     setType("expense");
                   }}
-                  className={`flex-1 rounded-2xl p-4 flex-row items-center justify-center gap-2 ${
-                    type === "expense"
-                      ? "bg-red-500 dark:bg-red-600"
-                      : "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
-                  }`}
+                  className={`flex-1 rounded-2xl p-4 flex-row items-center justify-center gap-2 ${type === "expense"
+                    ? "bg-red-500 dark:bg-red-600"
+                    : "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+                    }`}
                   style={
                     type === "expense"
                       ? {
-                          shadowColor: "#EF4444",
-                          shadowOffset: { width: 0, height: 4 },
-                          shadowOpacity: 0.3,
-                          shadowRadius: 8,
-                          elevation: 4,
-                        }
+                        shadowColor: "#EF4444",
+                        shadowOffset: { width: 0, height: 4 },
+                        shadowOpacity: 0.3,
+                        shadowRadius: 8,
+                        elevation: 4,
+                      }
                       : {}
                   }
                 >
@@ -321,11 +320,10 @@ export default function AddTransactionScreen() {
                     color={type === "expense" ? "#FFFFFF" : "#EF4444"}
                   />
                   <Text
-                    className={`font-bold text-base ${
-                      type === "expense"
-                        ? "text-white"
-                        : "text-red-500 dark:text-red-400"
-                    }`}
+                    className={`font-bold text-base ${type === "expense"
+                      ? "text-white"
+                      : "text-red-500 dark:text-red-400"
+                      }`}
                   >
                     Expense
                   </Text>
@@ -336,20 +334,19 @@ export default function AddTransactionScreen() {
                     handleBlurAmount();
                     setType("income");
                   }}
-                  className={`flex-1 rounded-2xl p-4 flex-row items-center justify-center gap-2 ${
-                    type === "income"
-                      ? "bg-green-500 dark:bg-green-600"
-                      : "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
-                  }`}
+                  className={`flex-1 rounded-2xl p-4 flex-row items-center justify-center gap-2 ${type === "income"
+                    ? "bg-green-500 dark:bg-green-600"
+                    : "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+                    }`}
                   style={
                     type === "income"
                       ? {
-                          shadowColor: "#10B981",
-                          shadowOffset: { width: 0, height: 4 },
-                          shadowOpacity: 0.3,
-                          shadowRadius: 8,
-                          elevation: 4,
-                        }
+                        shadowColor: "#10B981",
+                        shadowOffset: { width: 0, height: 4 },
+                        shadowOpacity: 0.3,
+                        shadowRadius: 8,
+                        elevation: 4,
+                      }
                       : {}
                   }
                 >
@@ -359,11 +356,10 @@ export default function AddTransactionScreen() {
                     color={type === "income" ? "#FFFFFF" : "#10B981"}
                   />
                   <Text
-                    className={`font-bold text-base ${
-                      type === "income"
-                        ? "text-white"
-                        : "text-green-500 dark:text-green-400"
-                    }`}
+                    className={`font-bold text-base ${type === "income"
+                      ? "text-white"
+                      : "text-green-500 dark:text-green-400"
+                      }`}
                   >
                     Income
                   </Text>
@@ -387,7 +383,7 @@ export default function AddTransactionScreen() {
                 style={{ width: "100%", maxWidth: "100%" }}
               >
                 {/* Currency Symbol */}
-                <Text 
+                <Text
                   className="text-gray-400 dark:text-gray-500 text-4xl font-medium mr-2"
                   style={{ flexShrink: 0 }}
                 >
@@ -397,13 +393,13 @@ export default function AddTransactionScreen() {
                 {/* Amount Input */}
                 <TextInput
                   ref={amountInputRef}
-            value={amount}
+                  value={amount}
                   onChangeText={handleAmountChange}
                   placeholder="0.00"
                   placeholderTextColor="#9CA3AF"
-            keyboardType="numeric"
+                  keyboardType="numeric"
                   className="text-gray-400 dark:text-gray-500"
-                  style={{ 
+                  style={{
                     fontSize: 48,
                     fontWeight: '700',
                     textAlign: 'center',
@@ -435,11 +431,10 @@ export default function AddTransactionScreen() {
                         Account
                       </Text>
                       <Text
-                        className={`text-base font-semibold ${
-                          selectedAccount
-                            ? "text-gray-900 dark:text-gray-100"
-                            : "text-gray-400 dark:text-gray-500"
-                        }`}
+                        className={`text-base font-semibold ${selectedAccount
+                          ? "text-gray-900 dark:text-gray-100"
+                          : "text-gray-400 dark:text-gray-500"
+                          }`}
                       >
                         {selectedAccount?.name || "Select account"}
                       </Text>
@@ -465,11 +460,10 @@ export default function AddTransactionScreen() {
                         Category
                       </Text>
                       <Text
-                        className={`text-base font-semibold ${
-                          selectedCategory
-                            ? "text-gray-900 dark:text-gray-100"
-                            : "text-gray-400 dark:text-gray-500"
-                        }`}
+                        className={`text-base font-semibold ${selectedCategory
+                          ? "text-gray-900 dark:text-gray-100"
+                          : "text-gray-400 dark:text-gray-500"
+                          }`}
                       >
                         {selectedCategory?.name || "No category"}
                       </Text>
@@ -520,12 +514,12 @@ export default function AddTransactionScreen() {
                   </Text>
                 </View>
                 <TextInput
-            value={paymentMode}
-            onChangeText={setPaymentMode}
+                  value={paymentMode}
+                  onChangeText={setPaymentMode}
                   placeholder="Cash, Card, UPI..."
                   placeholderTextColor="#9CA3AF"
                   className="bg-gray-50 dark:bg-gray-800 rounded-xl px-4 py-3 text-base text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-700"
-          />
+                />
               </View>
 
               <View>
@@ -536,12 +530,12 @@ export default function AddTransactionScreen() {
                   </Text>
                 </View>
                 <TextInput
-            value={note}
-            onChangeText={setNote}
+                  value={note}
+                  onChangeText={setNote}
                   placeholder="Add a note..."
                   placeholderTextColor="#9CA3AF"
-            multiline
-            numberOfLines={3}
+                  multiline
+                  numberOfLines={3}
                   className="bg-gray-50 dark:bg-gray-800 rounded-xl px-4 py-3 text-base text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-700"
                   style={{ minHeight: 80, textAlignVertical: "top" }}
                 />
@@ -556,59 +550,59 @@ export default function AddTransactionScreen() {
                 <View className="flex-row items-center">
                   <Ionicons name="pricetags" size={20} color="#6B7280" />
                   <Text className="text-xs text-gray-500 dark:text-gray-400 ml-2 uppercase tracking-wide font-semibold">
-                Tags
-              </Text>
+                    Tags
+                  </Text>
                 </View>
-              <TouchableOpacity
-                onPress={handleOpenAddTag}
+                <TouchableOpacity
+                  onPress={handleOpenAddTag}
                   className="flex-row items-center gap-1.5 bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 rounded-lg"
-                activeOpacity={0.7}
-              >
+                  activeOpacity={0.7}
+                >
                   <Ionicons name="add" size={18} color="#3B82F6" />
-                <Text className="text-sm font-semibold text-blue-600 dark:text-blue-400">
+                  <Text className="text-sm font-semibold text-blue-600 dark:text-blue-400">
                     Add
-                </Text>
-              </TouchableOpacity>
-            </View>
+                  </Text>
+                </TouchableOpacity>
+              </View>
 
-            {displayTags && displayTags.length > 0 ? (
-              <View className="flex-row flex-wrap gap-2">
-                {displayTags.map((tag) => (
-                  <View key={tag.id} className="flex-col items-start gap-1">
-                  <TagChip
-                    name={tag.name}
-                    selected={selectedTagIds.includes(tag.id)}
-                    onPress={() => toggleTag(tag.id)}
+              {displayTags && displayTags.length > 0 ? (
+                <View className="flex-row flex-wrap gap-2">
+                  {displayTags.map((tag) => (
+                    <View key={tag.id} className="flex-col items-start gap-1">
+                      <TagChip
+                        name={tag.name}
+                        selected={selectedTagIds.includes(tag.id)}
+                        onPress={() => toggleTag(tag.id)}
+                      />
+                      {isEditMode && 'isDeleted' in tag && tag.isDeleted && (
+                        <View className="bg-gray-200 dark:bg-gray-700 px-2 py-0.5 rounded ml-1">
+                          <Text className="text-xs text-gray-600 dark:text-gray-400">
+                            Deleted
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <View className="py-4 items-center">
+                  <Ionicons
+                    name="pricetags-outline"
+                    size={32}
+                    color="#9CA3AF"
                   />
-                    {isEditMode && 'isDeleted' in tag && tag.isDeleted && (
-                      <View className="bg-gray-200 dark:bg-gray-700 px-2 py-0.5 rounded ml-1">
-                        <Text className="text-xs text-gray-600 dark:text-gray-400">
-                          Deleted
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-                ))}
-              </View>
-            ) : (
-              <View className="py-4 items-center">
-                <Ionicons
-                  name="pricetags-outline"
-                  size={32}
-                  color="#9CA3AF"
-                />
-                <Text className="text-sm text-gray-400 dark:text-gray-500 mt-2">
-                  No tags yet
-              </Text>
-              </View>
-            )}
+                  <Text className="text-sm text-gray-400 dark:text-gray-500 mt-2">
+                    No tags yet
+                  </Text>
+                </View>
+              )}
             </Card>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
 
       {/* Floating Action Buttons */}
-      <View 
+      <View
         className="absolute bottom-0 left-0 right-0 p-4 bg-gray-50 dark:bg-black border-t border-gray-200 dark:border-gray-800"
         style={{ paddingBottom: Math.max(insets.bottom, 16) }}
       >
@@ -733,8 +727,8 @@ export default function AddTransactionScreen() {
       </View>
 
       {/* Add Tag Bottom Sheet */}
-      <AddTagBottomSheet 
-        ref={addTagBottomSheetRef} 
+      <AddTagBottomSheet
+        ref={addTagBottomSheetRef}
         onTagCreated={handleTagCreated}
       />
     </View>
