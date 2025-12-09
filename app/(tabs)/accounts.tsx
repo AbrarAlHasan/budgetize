@@ -4,8 +4,9 @@ import { CreditCardStackSkeleton } from "@/components/skeletons";
 import { useAccountBalances } from "@/hooks/queries/use-account-balances";
 import { useAccounts } from "@/hooks/queries/use-accounts";
 import { Ionicons } from "@expo/vector-icons";
-import { useQueryClient } from "@tanstack/react-query";
 import { useFocusEffect } from "@react-navigation/native";
+import { useQueryClient } from "@tanstack/react-query";
+import { router } from "expo-router";
 import React from "react";
 import {
   ActivityIndicator,
