@@ -31,11 +31,18 @@ export default function AccountsScreen() {
     }
   }, [accounts, currentAccountId]);
 
-  // Refetch latest transactions when screen comes into focus
+  // Track if this is the first time the screen is mounted
+  const hasMountedRef = React.useRef(false);
+  
+  // Refetch latest transactions only on first mount
   useFocusEffect(
     React.useCallback(() => {
-      // Refetch account-latest-transactions when screen is focused
-      queryClient.refetchQueries({ queryKey: ["account-latest-transactions"] });
+      if (!hasMountedRef.current) {
+        hasMountedRef.current = true;
+        // Refetch account-latest-transactions only on first mount
+        queryClient.refetchQueries({ queryKey: ["account-latest-transactions"] });
+      }
+      // After first mount, queries will be invalidated by mutations (add/edit transaction)
     }, [queryClient])
   );
 

@@ -85,8 +85,8 @@ export function AccountLatestTransactions({
     enabled: !!accountId,
     placeholderData: (previousData) => previousData ?? [],
     initialData: [],
-    staleTime: 0, // Always consider data stale to refetch on mount/focus
-    refetchOnMount: 'always', // Always refetch when component mounts
+    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
+    refetchOnMount: true, // Only refetch if data is stale (not on every mount)
   });
 
   const safeTransactions = transactions ?? [];
@@ -200,11 +200,11 @@ export function AccountLatestTransactions({
   return (
     <Animated.View 
       className="mt-5 mx-5"
-      style={animatedStyle}
       entering={FadeIn.duration(300)}
       exiting={FadeOut.duration(200)}
     >
-      <View className="mb-4 flex-row items-center justify-between">
+      <Animated.View style={animatedStyle}>
+        <View className="mb-4 flex-row items-center justify-between">
         <View className="flex-row items-center gap-2">
           <Ionicons name="time-outline" size={20} color="#6B7280" />
           <Text className="text-lg font-bold text-gray-900 dark:text-gray-100">
@@ -280,6 +280,7 @@ export function AccountLatestTransactions({
           </TouchableOpacity>
         </Animated.View>
       ) : null}
+      </Animated.View>
     </Animated.View>
   );
 }
