@@ -1,15 +1,13 @@
-import * as XLSX from 'xlsx';
-import { File, Paths } from 'expo-file-system';
-import * as Sharing from 'expo-sharing';
-import * as SecureStore from 'expo-secure-store';
-import { format } from 'date-fns';
-import { transactionRepository } from '@/repositories/transaction.repository';
 import { accountRepository } from '@/repositories/account.repository';
 import { categoryRepository } from '@/repositories/category.repository';
 import { tagRepository } from '@/repositories/tag.repository';
 import { transactionTagRepository } from '@/repositories/transaction-tag.repository';
-import { getCurrencySymbol } from '@/utils/currencies';
+import { transactionRepository } from '@/repositories/transaction.repository';
 import { log, logError } from '@/utils/logger';
+import { format } from 'date-fns';
+import { File, Paths } from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
+import * as XLSX from 'xlsx';
 
 interface ExcelExportOptions {
   startDate: string;
@@ -91,7 +89,7 @@ export async function exportTransactionsToExcel(
 
     // Decrypt accounts and categories
     const decryptedAccounts = await Promise.all(
-      validAccounts.map((a) => accountRepository.decryptAccount(a))
+      validAccounts.map((a) => a ? accountRepository.decryptAccount(a) : null)
     );
     const decryptedCategories =
       categoryIds.length > 0
@@ -115,7 +113,7 @@ export async function exportTransactionsToExcel(
 
     // 5. Create lookup maps for efficient access
     const accountMap = new Map(
-      decryptedAccounts.map((a) => [a.id, a])
+      decryptedAccounts.map((a) => [a?.id, a])
     );
     const categoryMap = new Map(
       decryptedCategories.map((c) => [c.id, c])

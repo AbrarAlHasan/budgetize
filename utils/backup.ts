@@ -1,10 +1,13 @@
 import { closeDatabase, getDatabase } from "@/db/sqlite/db";
+import { clearEncryptionKeyCache } from "@/services/encryption";
+import { mmkv } from "@/storage/mmkv";
+import { useNotificationStore } from "@/store/notification-store";
+import { useSettingsStore } from "@/store/settings-store";
+import { log, logError, logWarn } from "@/utils/logger";
 import { Directory, File, Paths } from "expo-file-system";
 import * as SecureStore from "expo-secure-store";
 import * as Sharing from "expo-sharing";
 import { unzip, zip } from "react-native-zip-archive";
-import { log, logWarn, logError } from "@/utils/logger";
-import { clearEncryptionKeyCache } from "@/services/encryption";
 
 interface BackupMetadata {
   createdAt: string;
@@ -121,36 +124,50 @@ export async function createBackupFile(): Promise<string | null> {
       logWarn("⚠ Failed to read encryption key:", error);
     }
 
-    // Save app settings (theme, currency, income calculation)
+    // Save app settings (theme, currency, income calculation) from MMKV
     try {
-      const appSettings = await SecureStore.getItemAsync(SETTINGS_STORE_KEY);
+      const appSettings = mmkv.getString(SETTINGS_STORE_KEY);
       if (appSettings) {
         const settingsFilePath = `${tempBackupDir.uri}/app_settings.txt`;
         const settingsFile = new File(settingsFilePath);
         settingsFile.write(appSettings);
         log("✓ App settings saved");
       } else {
-        logWarn("⚠ App settings not found in SecureStore");
+        logWarn("⚠ App settings not found in MMKV");
       }
     } catch (error) {
       logWarn("⚠ Failed to read app settings:", error);
     }
 
-    // Save notification preferences
+    // Save notification preferences from MMKV
     try {
-      const notificationPrefs = await SecureStore.getItemAsync(
-        NOTIFICATION_STORE_KEY
-      );
+      const notificationPrefs = mmkv.getString(NOTIFICATION_STORE_KEY);
       if (notificationPrefs) {
         const notifFilePath = `${tempBackupDir.uri}/notification_preferences.txt`;
         const notifFile = new File(notifFilePath);
         notifFile.write(notificationPrefs);
         log("✓ Notification preferences saved");
       } else {
-        logWarn("⚠ Notification preferences not found in SecureStore");
+        logWarn("⚠ Notification preferences not found in MMKV");
       }
     } catch (error) {
       logWarn("⚠ Failed to read notification preferences:", error);
+    }
+
+    // Save device ID from MMKV
+    const DEVICE_ID_STORAGE_KEY = "device_installation_id";
+    try {
+      const deviceId = mmkv.getString(DEVICE_ID_STORAGE_KEY);
+      if (deviceId) {
+        const deviceIdFilePath = `${tempBackupDir.uri}/device_id.txt`;
+        const deviceIdFile = new File(deviceIdFilePath);
+        deviceIdFile.write(deviceId);
+        log("✓ Device ID saved");
+      } else {
+        logWarn("⚠ Device ID not found in MMKV");
+      }
+    } catch (error) {
+      logWarn("⚠ Failed to read device ID:", error);
     }
 
     // 6. Create metadata.json
@@ -584,16 +601,46 @@ export async function restoreAppData(backupZipPath?: string): Promise<boolean> {
       logWarn("⚠ Encryption key not found in backup");
     }
 
-    // Restore app settings (theme, currency, income calculation)
+    // Restore app settings (theme, currency, income calculation) to MMKV and Zustand
     const restoredSettingsPath = `${tempRestoreDir.uri}/app_settings.txt`;
     const restoredSettingsFile = new File(restoredSettingsPath);
 
     if (restoredSettingsFile.exists) {
-      const appSettings = restoredSettingsFile.textSync();
+      const appSettingsJson = restoredSettingsFile.textSync();
 
       try {
-        await SecureStore.setItemAsync(SETTINGS_STORE_KEY, appSettings);
-        log("✓ App settings restored");
+        // The exported data is already in Zustand persist format: { state: {...}, version: 0 }
+        // Restore directly to MMKV
+        mmkv.set(SETTINGS_STORE_KEY, appSettingsJson);
+        
+        // Parse and extract the settings to update Zustand store directly
+        const zustandPersistedData = JSON.parse(appSettingsJson);
+        if (zustandPersistedData?.state?.settings) {
+          // Force update Zustand store directly so it's immediately reflected
+          useSettingsStore.setState({
+            settings: zustandPersistedData.state.settings,
+            isMigrated: zustandPersistedData.state.isMigrated ?? true,
+          });
+          log("✓ App settings restored to MMKV and Zustand");
+        } else {
+          // Legacy format: just the settings object
+          const restoredSettings = zustandPersistedData;
+          useSettingsStore.setState({
+            settings: restoredSettings,
+            isMigrated: true,
+          });
+          // Also update MMKV in correct format
+          const zustandState = {
+            state: {
+              settings: restoredSettings,
+              isLoading: false,
+              isMigrated: true,
+            },
+            version: 0,
+          };
+          mmkv.set(SETTINGS_STORE_KEY, JSON.stringify(zustandState));
+          log("✓ App settings restored (legacy format) to MMKV and Zustand");
+        }
       } catch (error) {
         logWarn("⚠ Failed to restore app settings:", error);
       }
@@ -601,24 +648,69 @@ export async function restoreAppData(backupZipPath?: string): Promise<boolean> {
       logWarn("⚠ App settings not found in backup");
     }
 
-    // Restore notification preferences
+    // Restore notification preferences to MMKV and Zustand
     const restoredNotifPath = `${tempRestoreDir.uri}/notification_preferences.txt`;
     const restoredNotifFile = new File(restoredNotifPath);
 
     if (restoredNotifFile.exists) {
-      const notificationPrefs = restoredNotifFile.textSync();
+      const notificationPrefsJson = restoredNotifFile.textSync();
 
       try {
-        await SecureStore.setItemAsync(
-          NOTIFICATION_STORE_KEY,
-          notificationPrefs
-        );
-        log("✓ Notification preferences restored");
+        // The exported data is already in Zustand persist format: { state: {...}, version: 0 }
+        // Restore directly to MMKV
+        mmkv.set(NOTIFICATION_STORE_KEY, notificationPrefsJson);
+        
+        // Parse and extract the preferences to update Zustand store directly
+        const zustandPersistedData = JSON.parse(notificationPrefsJson);
+        if (zustandPersistedData?.state?.preferences) {
+          // Force update Zustand store directly so it's immediately reflected
+          useNotificationStore.setState({
+            preferences: zustandPersistedData.state.preferences,
+            isMigrated: zustandPersistedData.state.isMigrated ?? true,
+          });
+          log("✓ Notification preferences restored to MMKV and Zustand");
+        } else {
+          // Legacy format: just the preferences object
+          const restoredPrefs = zustandPersistedData;
+          useNotificationStore.setState({
+            preferences: restoredPrefs,
+            isMigrated: true,
+          });
+          // Also update MMKV in correct format
+          const zustandState = {
+            state: {
+              preferences: restoredPrefs,
+              isLoading: false,
+              isMigrated: true,
+            },
+            version: 0,
+          };
+          mmkv.set(NOTIFICATION_STORE_KEY, JSON.stringify(zustandState));
+          log("✓ Notification preferences restored (legacy format) to MMKV and Zustand");
+        }
       } catch (error) {
         logWarn("⚠ Failed to restore notification preferences:", error);
       }
     } else {
       logWarn("⚠ Notification preferences not found in backup");
+    }
+
+    // Restore device ID to MMKV
+    const DEVICE_ID_STORAGE_KEY = "device_installation_id";
+    const restoredDeviceIdPath = `${tempRestoreDir.uri}/device_id.txt`;
+    const restoredDeviceIdFile = new File(restoredDeviceIdPath);
+
+    if (restoredDeviceIdFile.exists) {
+      const deviceId = restoredDeviceIdFile.textSync();
+
+      try {
+        mmkv.set(DEVICE_ID_STORAGE_KEY, deviceId);
+        log("✓ Device ID restored to MMKV");
+      } catch (error) {
+        logWarn("⚠ Failed to restore device ID:", error);
+      }
+    } else {
+      logWarn("⚠ Device ID not found in backup");
     }
 
     // 9. Reopen database connection (will trigger migrations if needed)

@@ -1,8 +1,10 @@
-import * as SecureStore from "expo-secure-store";
 import * as Crypto from "expo-crypto";
 import { logError, logWarn } from "@/utils/logger";
+import { mmkv } from "@/storage/mmkv";
+import * as SecureStore from "expo-secure-store";
 
 const DEVICE_ID_STORAGE_KEY = "device_installation_id";
+const OLD_SECURE_STORE_KEY = "device_installation_id"; // For migration
 
 /**
  * Gets or creates a persistent device identifier
@@ -10,10 +12,34 @@ const DEVICE_ID_STORAGE_KEY = "device_installation_id";
  * 
  * @returns The device ID (UUID string)
  */
+/**
+ * Migrate device ID from SecureStore to MMKV if needed
+ */
+async function migrateDeviceIdFromSecureStore(): Promise<void> {
+  try {
+    const oldId = await SecureStore.getItemAsync(OLD_SECURE_STORE_KEY);
+    if (oldId) {
+      mmkv.set(DEVICE_ID_STORAGE_KEY, oldId);
+      // Delete from SecureStore after successful migration
+      try {
+        await SecureStore.deleteItemAsync(OLD_SECURE_STORE_KEY);
+        logWarn("✓ Migrated device ID from SecureStore to MMKV");
+      } catch (deleteError) {
+        logWarn("Failed to delete old SecureStore device ID:", deleteError);
+      }
+    }
+  } catch (error) {
+    logError("Error migrating device ID from SecureStore:", error);
+  }
+}
+
 export async function getOrCreateDeviceId(): Promise<string> {
   try {
-    // Try to retrieve existing device ID
-    const existingId = await SecureStore.getItemAsync(DEVICE_ID_STORAGE_KEY);
+    // Migrate from SecureStore if needed (one-time operation)
+    await migrateDeviceIdFromSecureStore();
+    
+    // Try to retrieve existing device ID from MMKV
+    const existingId = mmkv.getString(DEVICE_ID_STORAGE_KEY);
     
     if (existingId) {
       return existingId;
@@ -41,7 +67,7 @@ export async function getOrCreateDeviceId(): Promise<string> {
     ].join("-");
     
     try {
-      await SecureStore.setItemAsync(DEVICE_ID_STORAGE_KEY, newDeviceId);
+      mmkv.set(DEVICE_ID_STORAGE_KEY, newDeviceId);
       return newDeviceId;
     } catch (storageError) {
       logError("Failed to store device ID:", storageError);

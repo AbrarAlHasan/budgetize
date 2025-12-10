@@ -1,8 +1,11 @@
-import { logError } from '@/utils/logger';
-import * as SecureStore from 'expo-secure-store';
+import { logError, logWarn } from '@/utils/logger';
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import { persistentStorage } from '@/storage/mmkv';
+import * as SecureStore from 'expo-secure-store';
 
 const SETTINGS_STORE_KEY = 'app_settings';
+const OLD_SECURE_STORE_KEY = 'app_settings'; // For migration
 
 interface AppSettings {
   incomeCalculationEnabled: boolean;
@@ -15,12 +18,14 @@ interface AppSettings {
 interface SettingsStore {
   settings: AppSettings;
   isLoading: boolean;
+  isMigrated: boolean;
   loadSettings: () => Promise<void>;
-  updateIncomeCalculationEnabled: (enabled: boolean) => Promise<void>;
-  updateCurrency: (currency: string) => Promise<void>;
-  updateTheme: (theme: 'light' | 'dark' | 'auto') => Promise<void>;
-  updateExchangeEnabled: (enabled: boolean) => Promise<void>;
-  updateDefaultTagIds: (tagIds: number[]) => Promise<void>;
+  migrateFromSecureStore: () => Promise<void>;
+  updateIncomeCalculationEnabled: (enabled: boolean) => void;
+  updateCurrency: (currency: string) => void;
+  updateTheme: (theme: 'light' | 'dark' | 'auto') => void;
+  updateExchangeEnabled: (enabled: boolean) => void;
+  updateDefaultTagIds: (tagIds: number[]) => void;
 }
 
 const defaultSettings: AppSettings = {
@@ -31,118 +36,140 @@ const defaultSettings: AppSettings = {
   defaultTagIds: [], // No default tags by default
 };
 
-export const useSettingsStore = create<SettingsStore>((set, get) => ({
-  settings: defaultSettings,
-  isLoading: false,
+export const useSettingsStore = create<SettingsStore>()(
+  persist(
+    (set, get) => ({
+      settings: defaultSettings,
+      isLoading: false,
+      isMigrated: false,
 
-  loadSettings: async () => {
-    set({ isLoading: true });
-    try {
-      const stored = await SecureStore.getItemAsync(SETTINGS_STORE_KEY);
-      if (stored) {
-        const loadedSettings = JSON.parse(stored) as Partial<AppSettings> & { defaultTagId?: number | null };
-        // Merge with defaults to ensure all fields exist
+      loadSettings: async () => {
+        set({ isLoading: true });
+        try {
+          // Check if migration is needed
+          if (!get().isMigrated) {
+            await get().migrateFromSecureStore();
+          }
+        } catch (error) {
+          logError('Error loading settings:', error);
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
+      migrateFromSecureStore: async () => {
+        try {
+          // Try to read from old SecureStore
+          const oldData = await SecureStore.getItemAsync(OLD_SECURE_STORE_KEY);
+          if (oldData) {
+            const loadedSettings = JSON.parse(oldData) as Partial<AppSettings> & { defaultTagId?: number | null };
+            
+            // Handle migration from old defaultTagId to new defaultTagIds
+            const defaultTagIds = loadedSettings.defaultTagIds ?? 
+              (loadedSettings.defaultTagId ? [loadedSettings.defaultTagId] : []);
+            
+            const settings: AppSettings = {
+              ...defaultSettings,
+              ...loadedSettings,
+              defaultTagIds,
+            };
+            
+            // Remove old defaultTagId if it exists
+            const { defaultTagId, ...settingsToSave } = settings as any;
+            
+            // Save to MMKV (via Zustand persist)
+            set({ settings: settingsToSave, isMigrated: true });
+            
+            // Delete from SecureStore after successful migration
+            try {
+              await SecureStore.deleteItemAsync(OLD_SECURE_STORE_KEY);
+              logWarn('✓ Migrated settings from SecureStore to MMKV');
+            } catch (deleteError) {
+              logWarn('Failed to delete old SecureStore data:', deleteError);
+            }
+          } else {
+            // No old data, mark as migrated
+            set({ isMigrated: true });
+          }
+        } catch (error) {
+          logError('Error migrating settings from SecureStore:', error);
+          // Mark as migrated anyway to prevent retry loops
+          set({ isMigrated: true });
+        }
+      },
+
+      updateIncomeCalculationEnabled: (enabled: boolean) => {
+        set((state) => ({
+          settings: {
+            ...state.settings,
+            incomeCalculationEnabled: enabled,
+          },
+        }));
+      },
+
+      updateCurrency: (currency: string) => {
+        set((state) => ({
+          settings: {
+            ...state.settings,
+            currency,
+          },
+        }));
+      },
+
+      updateTheme: (theme: 'light' | 'dark' | 'auto') => {
+        set((state) => ({
+          settings: {
+            ...state.settings,
+            theme,
+          },
+        }));
+      },
+
+      updateExchangeEnabled: (enabled: boolean) => {
+        set((state) => ({
+          settings: {
+            ...state.settings,
+            exchangeEnabled: enabled,
+          },
+        }));
+      },
+
+      updateDefaultTagIds: (tagIds: number[]) => {
+        set((state) => ({
+          settings: {
+            ...state.settings,
+            defaultTagIds: tagIds,
+          },
+        }));
+      },
+    }),
+    {
+      name: SETTINGS_STORE_KEY,
+      storage: createJSONStorage(() => persistentStorage),
+      // Merge function to handle migration from old defaultTagId
+      merge: (persistedState, currentState) => {
+        const persisted = persistedState as Partial<SettingsStore> | null;
+        if (!persisted || !persisted.settings) {
+          return currentState;
+        }
+        
+        const persistedSettings = persisted.settings as Partial<AppSettings> & { defaultTagId?: number | null };
+        
         // Handle migration from old defaultTagId to new defaultTagIds
-        const defaultTagIds = loadedSettings.defaultTagIds ?? 
-          (loadedSettings.defaultTagId ? [loadedSettings.defaultTagId] : []);
+        const defaultTagIds = persistedSettings.defaultTagIds ?? 
+          (persistedSettings.defaultTagId ? [persistedSettings.defaultTagId] : []);
         
-        const settings: AppSettings = {
-          ...defaultSettings,
-          ...loadedSettings,
-          defaultTagIds,
+        return {
+          ...currentState,
+          ...persisted,
+          settings: {
+            ...defaultSettings,
+            ...persistedSettings,
+            defaultTagIds,
+          },
         };
-        // Remove old defaultTagId if it exists
-        const { defaultTagId, ...settingsToSave } = settings as any;
-        set({ settings });
-        
-        // Save back to ensure all fields are present in storage (with migration)
-        await SecureStore.setItemAsync(SETTINGS_STORE_KEY, JSON.stringify(settingsToSave));
-      }
-    } catch (error) {
-      logError('Error loading settings:', error);
-    } finally {
-      set({ isLoading: false });
+      },
     }
-  },
-
-  updateIncomeCalculationEnabled: async (enabled: boolean) => {
-    const newSettings: AppSettings = {
-      ...get().settings,
-      incomeCalculationEnabled: enabled,
-    };
-
-    set({ settings: newSettings });
-
-    // Save to secure store
-    try {
-      await SecureStore.setItemAsync(SETTINGS_STORE_KEY, JSON.stringify(newSettings));
-    } catch (error) {
-      logError('Error saving settings:', error);
-    }
-  },
-
-  updateCurrency: async (currency: string) => {
-    const newSettings: AppSettings = {
-      ...get().settings,
-      currency,
-    };
-
-    set({ settings: newSettings });
-
-    // Save to secure store
-    try {
-      await SecureStore.setItemAsync(SETTINGS_STORE_KEY, JSON.stringify(newSettings));
-    } catch (error) {
-      logError('Error saving settings:', error);
-    }
-  },
-
-  updateTheme: async (theme: 'light' | 'dark' | 'auto') => {
-    const newSettings: AppSettings = {
-      ...get().settings,
-      theme,
-    };
-
-    set({ settings: newSettings });
-
-    // Save to secure store
-    try {
-      await SecureStore.setItemAsync(SETTINGS_STORE_KEY, JSON.stringify(newSettings));
-    } catch (error) {
-      logError('Error saving settings:', error);
-    }
-  },
-
-  updateExchangeEnabled: async (enabled: boolean) => {
-    const newSettings: AppSettings = {
-      ...get().settings,
-      exchangeEnabled: enabled,
-    };
-
-    set({ settings: newSettings });
-
-    // Save to secure store
-    try {
-      await SecureStore.setItemAsync(SETTINGS_STORE_KEY, JSON.stringify(newSettings));
-    } catch (error) {
-      logError('Error saving settings:', error);
-    }
-  },
-
-  updateDefaultTagIds: async (tagIds: number[]) => {
-    const newSettings: AppSettings = {
-      ...get().settings,
-      defaultTagIds: tagIds,
-    };
-
-    set({ settings: newSettings });
-
-    // Save to secure store
-    try {
-      await SecureStore.setItemAsync(SETTINGS_STORE_KEY, JSON.stringify(newSettings));
-    } catch (error) {
-      logError('Error saving settings:', error);
-    }
-  },
-}));
+  )
+);
 

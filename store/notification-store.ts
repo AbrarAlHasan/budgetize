@@ -1,9 +1,12 @@
 import { NotificationConfig, scheduleDailyNotifications } from '@/services/notifications';
-import { logError } from '@/utils/logger';
-import * as SecureStore from 'expo-secure-store';
+import { logError, logWarn } from '@/utils/logger';
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import { persistentStorage } from '@/storage/mmkv';
+import * as SecureStore from 'expo-secure-store';
 
 const NOTIFICATION_STORE_KEY = 'notification_preferences';
+const OLD_SECURE_STORE_KEY = 'notification_preferences'; // For migration
 
 interface NotificationPreferences {
   reminder: {
@@ -15,9 +18,10 @@ interface NotificationPreferences {
 interface NotificationStore {
   preferences: NotificationPreferences;
   isLoading: boolean;
+  isMigrated: boolean;
   loadPreferences: () => Promise<void>;
+  migrateFromSecureStore: () => Promise<void>;
   updateReminderSettings: (enabled: boolean, frequency: 1 | 2 | 3 | 4) => Promise<void>;
-  savePreferences: () => Promise<void>;
 }
 
 const defaultPreferences: NotificationPreferences = {
@@ -27,61 +31,82 @@ const defaultPreferences: NotificationPreferences = {
   },
 };
 
-export const useNotificationStore = create<NotificationStore>((set, get) => ({
-  preferences: defaultPreferences,
-  isLoading: false,
+export const useNotificationStore = create<NotificationStore>()(
+  persist(
+    (set, get) => ({
+      preferences: defaultPreferences,
+      isLoading: false,
+      isMigrated: false,
 
-  loadPreferences: async () => {
-    set({ isLoading: true });
-    try {
-      const stored = await SecureStore.getItemAsync(NOTIFICATION_STORE_KEY);
-      if (stored) {
-        const preferences = JSON.parse(stored) as NotificationPreferences;
-        set({ preferences });
-      }
-    } catch (error) {
-      logError('Error loading notification preferences:', error);
-    } finally {
-      set({ isLoading: false });
-    }
-  },
-
-  updateReminderSettings: async (enabled: boolean, frequency: 1 | 2 | 3 | 4) => {
-    const newPreferences: NotificationPreferences = {
-      ...get().preferences,
-      reminder: {
-        enabled,
-        frequency,
+      loadPreferences: async () => {
+        set({ isLoading: true });
+        try {
+          // Check if migration is needed
+          if (!get().isMigrated) {
+            await get().migrateFromSecureStore();
+          }
+        } catch (error) {
+          logError('Error loading notification preferences:', error);
+        } finally {
+          set({ isLoading: false });
+        }
       },
-    };
 
-    set({ preferences: newPreferences });
+      migrateFromSecureStore: async () => {
+        try {
+          // Try to read from old SecureStore
+          const oldData = await SecureStore.getItemAsync(OLD_SECURE_STORE_KEY);
+          if (oldData) {
+            const preferences = JSON.parse(oldData) as NotificationPreferences;
+            
+            // Save to MMKV (via Zustand persist)
+            set({ preferences, isMigrated: true });
+            
+            // Delete from SecureStore after successful migration
+            try {
+              await SecureStore.deleteItemAsync(OLD_SECURE_STORE_KEY);
+              logWarn('✓ Migrated notification preferences from SecureStore to MMKV');
+            } catch (deleteError) {
+              logWarn('Failed to delete old SecureStore data:', deleteError);
+            }
+          } else {
+            // No old data, mark as migrated
+            set({ isMigrated: true });
+          }
+        } catch (error) {
+          logError('Error migrating notification preferences from SecureStore:', error);
+          // Mark as migrated anyway to prevent retry loops
+          set({ isMigrated: true });
+        }
+      },
 
-    // Save to secure store
-    try {
-      await SecureStore.setItemAsync(NOTIFICATION_STORE_KEY, JSON.stringify(newPreferences));
-    } catch (error) {
-      logError('Error saving notification preferences:', error);
+      updateReminderSettings: async (enabled: boolean, frequency: 1 | 2 | 3 | 4) => {
+        set((state) => ({
+          preferences: {
+            ...state.preferences,
+            reminder: {
+              enabled,
+              frequency,
+            },
+          },
+        }));
+
+        // Schedule notifications
+        const config: NotificationConfig = {
+          enabled,
+          frequency,
+          identifier: 'daily_reminder',
+          title: 'Expense Reminder',
+          body: 'Don\'t forget to log your expenses today!',
+        };
+
+        await scheduleDailyNotifications(config);
+      },
+    }),
+    {
+      name: NOTIFICATION_STORE_KEY,
+      storage: createJSONStorage(() => persistentStorage),
     }
-
-    // Schedule notifications
-    const config: NotificationConfig = {
-      enabled,
-      frequency,
-      identifier: 'daily_reminder',
-      title: 'Expense Reminder',
-      body: 'Don\'t forget to log your expenses today!',
-    };
-
-    await scheduleDailyNotifications(config);
-  },
-
-  savePreferences: async () => {
-    try {
-      await SecureStore.setItemAsync(NOTIFICATION_STORE_KEY, JSON.stringify(get().preferences));
-    } catch (error) {
-      logError('Error saving notification preferences:', error);
-    }
-  },
-}));
+  )
+);
 
