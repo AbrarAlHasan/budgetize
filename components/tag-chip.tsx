@@ -9,13 +9,22 @@ interface TagChipProps {
   selected?: boolean;
   className?: string;
   showIcon?: boolean;
+  size?: 'default' | 'small';
 }
 
-export function TagChip({ name, onPress, selected = false, className, showIcon = true }: TagChipProps) {
+export function TagChip({ name, onPress, selected = false, className, showIcon = true, size = 'default' }: TagChipProps) {
+  const isSmall = size === 'small';
+  const paddingClass = isSmall ? 'px-2.5 py-1.5' : 'px-4 py-2.5';
+  const textSizeClass = isSmall ? 'text-xs' : 'text-sm';
+  const iconSize = isSmall ? 14 : 16;
+  const gapClass = isSmall ? 'gap-1.5' : 'gap-2';
+  
   const content = (
     <View
       className={cn(
-        'px-4 py-2.5 rounded-xl flex-row items-center gap-2',
+        paddingClass,
+        gapClass,
+        'rounded-xl flex-row items-center',
         selected
           ? 'bg-blue-500 dark:bg-blue-600'
           : 'bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700',
@@ -32,13 +41,14 @@ export function TagChip({ name, onPress, selected = false, className, showIcon =
       {showIcon && (
         <Ionicons 
           name={selected ? "checkmark-circle" : "pricetag-outline"} 
-          size={16} 
+          size={iconSize} 
           color={selected ? "#FFFFFF" : "#6B7280"} 
         />
       )}
       <Text
         className={cn(
-          'text-sm font-semibold',
+          textSizeClass,
+          'font-semibold',
           selected
             ? 'text-white'
             : 'text-gray-700 dark:text-gray-300'

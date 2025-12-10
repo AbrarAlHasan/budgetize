@@ -1,4 +1,8 @@
-import { BankSelectionBottomSheet, BankSelectionBottomSheetRef, SupportedBank } from "@/components/bank-selection-bottom-sheet";
+import {
+  BankSelectionBottomSheet,
+  BankSelectionBottomSheetRef,
+  SupportedBank,
+} from "@/components/bank-selection-bottom-sheet";
 import { BackupList } from "@/components/cloud-backup/backup-list";
 import { LoginButton } from "@/components/cloud-backup/login-button";
 import { DateRangePickerModal } from "@/components/date-range-picker-modal";
@@ -7,8 +11,14 @@ import {
   DummyDataSizeBottomSheet,
   DummyDataSizeBottomSheetRef,
 } from "@/components/dummy-data-size-bottom-sheet";
+import { TagChip } from "@/components/tag-chip";
+import {
+  BottomSheetMultiSelect,
+  BottomSheetMultiSelectRef,
+} from "@/components/ui/bottom-sheet-multi-select";
 import { BottomSheetSelect } from "@/components/ui/bottom-sheet-select";
 import { Card } from "@/components/ui/card";
+import { useTags } from "@/hooks/queries/use-tags";
 import { useCustomAlert } from "@/hooks/use-custom-alert";
 import { useInAppUpdates } from "@/hooks/use-in-app-updates";
 import { useNetworkStatus } from "@/hooks/use-network-status";
@@ -61,10 +71,18 @@ export default function SettingsScreen() {
     updateCurrency,
     updateTheme,
     updateExchangeEnabled,
+    updateDefaultTagIds,
   } = useSettingsStore();
-  const { user, isAuthenticated, isLoading: authLoading, logout } = useAuthStore();
+  const {
+    user,
+    isAuthenticated,
+    isLoading: authLoading,
+    logout,
+  } = useAuthStore();
   const { checkAndPromptUpdate } = useInAppUpdates({ autoCheck: false });
   const { isNetworkAvailable } = useNetworkStatus();
+  const { data: tags } = useTags();
+  const defaultTagSelectorRef = useRef<BottomSheetMultiSelectRef>(null);
   const [permissionGranted, setPermissionGranted] = useState(false);
   const [isSeedingDummyData, setIsSeedingDummyData] = useState(false);
   const [isBackingUp, setIsBackingUp] = useState(false);
@@ -79,7 +97,8 @@ export default function SettingsScreen() {
   const [dummyDataProgress, setDummyDataProgress] = useState(0);
   const [showExcelExportModal, setShowExcelExportModal] = useState(false);
   const [isExportingExcel, setIsExportingExcel] = useState(false);
-  const [isImportingBankStatement, setIsImportingBankStatement] = useState(false);
+  const [isImportingBankStatement, setIsImportingBankStatement] =
+    useState(false);
   const dummyDataSizeBottomSheetRef = useRef<DummyDataSizeBottomSheetRef>(null);
   const bankSelectionBottomSheetRef = useRef<BankSelectionBottomSheetRef>(null);
 
@@ -95,7 +114,11 @@ export default function SettingsScreen() {
   const [accountSectionY, setAccountSectionY] = useState<number | null>(null);
 
   useEffect(() => {
-    if (params.focusAccount === "true" && accountSectionY !== null && scrollViewRef.current) {
+    if (
+      params.focusAccount === "true" &&
+      accountSectionY !== null &&
+      scrollViewRef.current
+    ) {
       // Wait for layout to complete before scrolling
       setTimeout(() => {
         scrollViewRef.current?.scrollTo({
@@ -222,13 +245,13 @@ export default function SettingsScreen() {
       // Define options based on size
       let options;
       switch (size) {
-        case 'small':
+        case "small":
           options = { months: 3, transactionsPerDay: 10 };
           break;
-        case 'medium':
+        case "medium":
           options = { months: 6, transactionsPerDay: 15 };
           break;
-        case 'large':
+        case "large":
           options = { months: 24, transactionsPerDay: 50 };
           break;
       }
@@ -400,9 +423,9 @@ export default function SettingsScreen() {
       // Pick Excel/CSV file using DocumentPicker
       const result = await DocumentPicker.getDocumentAsync({
         type: [
-          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
-          'application/vnd.ms-excel', // .xls
-          'text/csv', // .csv
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // .xlsx
+          "application/vnd.ms-excel", // .xls
+          "text/csv", // .csv
         ],
         copyToCacheDirectory: true,
       });
@@ -413,18 +436,18 @@ export default function SettingsScreen() {
 
       const file = result.assets[0];
       if (!file.uri) {
-        alert('Error', 'Failed to get file URI. Please try again.');
+        alert("Error", "Failed to get file URI. Please try again.");
         return;
       }
 
       // Navigate to review screen with bank and file URI
       router.push({
-        pathname: '/settings/bank-import',
+        pathname: "/settings/bank-import",
         params: { fileUri: file.uri, bank },
       });
     } catch (error) {
-      logError('Failed to pick bank statement file:', error);
-      alert('Error', 'Failed to select file. Please try again.');
+      logError("Failed to pick bank statement file:", error);
+      alert("Error", "Failed to select file. Please try again.");
     } finally {
       setIsImportingBankStatement(false);
     }
@@ -470,10 +493,10 @@ export default function SettingsScreen() {
     try {
       setIsClearingDatabase(true);
       await clearDatabase();
-      
+
       // Invalidate all queries to refresh the UI
       await queryClient.invalidateQueries();
-      
+
       alert(
         "Database Cleared",
         "All data has been successfully cleared from the database.",
@@ -539,9 +562,9 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50 dark:bg-black" edges={["top"]}>
-      <ScrollView 
+      <ScrollView
         ref={scrollViewRef}
-        className="flex-1" 
+        className="flex-1"
         showsVerticalScrollIndicator={false}
       >
         <View className="px-5 pt-6 pb-6">
@@ -701,13 +724,101 @@ export default function SettingsScreen() {
                 </View>
               )}
             </View>
+          </Card>
 
-            {/* Exchange Feature Toggle */}
+          {/* Transaction Defaults */}
+          <Card className="mb-4">
+            <Text className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+              Transaction Defaults
+            </Text>
+
+            {/* Default Tags Selector */}
             <View className="mb-4">
-              <View className="flex-row items-center justify-between mb-2">
+              {/* Button to Open Bottom Sheet - Similar to Data Management */}
+              <TouchableOpacity
+                onPress={() => defaultTagSelectorRef.current?.present()}
+                className="flex-row items-center justify-between py-3"
+                activeOpacity={0.7}
+              >
+                <View className="flex-row items-center gap-3 flex-1">
+                  <View className="bg-blue-100 dark:bg-blue-900/30 rounded-full p-2">
+                    <Ionicons name="pricetags" size={20} color="#3B82F6" />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-base font-medium text-gray-900 dark:text-gray-100">
+                      Default Tags
+                    </Text>
+                    <Text className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                      {settings.defaultTagIds &&
+                      settings.defaultTagIds.length > 0
+                        ? `${settings.defaultTagIds.length} tag${
+                            settings.defaultTagIds.length > 1 ? "s" : ""
+                          } selected`
+                        : "Select tags to auto-apply when creating transactions"}
+                    </Text>
+                  </View>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+              </TouchableOpacity>
+
+              {/* Selected Tags Chips - Display below button if tags are selected */}
+              {settings.defaultTagIds && settings.defaultTagIds.length > 0 && (
+                <View className="flex-row flex-wrap gap-2 mt-3">
+                  {settings.defaultTagIds.map((tagId) => {
+                    const tag = tags?.find((t) => t.id === tagId);
+                    if (!tag) return null;
+                    return (
+                      <View key={tagId} className="flex-col items-start gap-1">
+                        <TagChip
+                          name={tag.name}
+                          selected={true}
+                          showIcon={false}
+                          size="small"
+                          onPress={() => {
+                            const updatedIds = settings.defaultTagIds.filter((id) => id !== tagId);
+                            updateDefaultTagIds(updatedIds);
+                          }}
+                        />
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
+
+              {/* Multi-Select Bottom Sheet - Hidden input, only bottom sheet */}
+              {tags && tags.length > 0 && (
+                <View style={{ height: 0, overflow: "hidden" }}>
+                  <BottomSheetMultiSelect
+                    ref={defaultTagSelectorRef}
+                    label=""
+                    options={tags.map((tag) => ({
+                      label: tag.name,
+                      value: tag.id,
+                    }))}
+                    value={settings.defaultTagIds || []}
+                    onValueChange={(selectedIds) => {
+                      updateDefaultTagIds(selectedIds as number[]);
+                    }}
+                    placeholder="Select default tags"
+                    showSelectAll={true}
+                  />
+                </View>
+              )}
+            </View>
+          </Card>
+
+          {/* Exchange Feature Toggle */}
+          <Card className="mb-4">
+            <View className="mb-4">
+              <View className="flex-row items-center justify-between">
                 <View className="flex-1">
                   <View className="flex-row items-center">
-                    <Ionicons name="swap-horizontal" size={18} color="#3B82F6" style={{ marginRight: 8 }} />
+                    <Ionicons
+                      name="swap-horizontal"
+                      size={18}
+                      color="#3B82F6"
+                      style={{ marginRight: 8 }}
+                    />
                     <Text className="text-base font-medium text-gray-900 dark:text-gray-100">
                       Exchange Feature
                     </Text>
@@ -725,9 +836,15 @@ export default function SettingsScreen() {
               </View>
               {settings.exchangeEnabled && (
                 <View className="mt-2 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg flex-row items-start">
-                  <Ionicons name="checkmark-circle" size={18} color="#10B981" style={{ marginRight: 8, marginTop: 2 }} />
+                  <Ionicons
+                    name="checkmark-circle"
+                    size={18}
+                    color="#10B981"
+                    style={{ marginRight: 8, marginTop: 2 }}
+                  />
                   <Text className="text-sm text-green-800 dark:text-green-200 flex-1">
-                    Exchange feature is enabled. You can now track money you've lent to others or borrowed from others.
+                    Exchange feature is enabled. You can now track money you've
+                    lent to others or borrowed from others.
                   </Text>
                 </View>
               )}
@@ -918,7 +1035,8 @@ export default function SettingsScreen() {
                     Clear All Data
                   </Text>
                   <Text className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                    Permanently delete all accounts, transactions, categories, and tags
+                    Permanently delete all accounts, transactions, categories,
+                    and tags
                   </Text>
                   {isClearingDatabase && (
                     <Text className="text-xs text-red-600 dark:text-red-400 mt-1">
@@ -932,8 +1050,8 @@ export default function SettingsScreen() {
           </Card>
 
           {/* Account Section */}
-          <Card 
-            className="mb-4" 
+          <Card
+            className="mb-4"
             onLayout={(event) => {
               const { y } = event.nativeEvent.layout;
               setAccountSectionY(y);
@@ -949,14 +1067,15 @@ export default function SettingsScreen() {
                   <View className="flex-row items-start gap-3">
                     <Ionicons name="cloud-offline" size={20} color="#F59E0B" />
                     <Text className="text-sm text-yellow-800 dark:text-yellow-200 flex-1">
-                      Network is not available. Session check will be performed when network becomes available.
+                      Network is not available. Session check will be performed
+                      when network becomes available.
                     </Text>
                   </View>
                 </View>
                 {isAuthenticated && (
                   <View className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg mb-4">
                     <Text className="text-xs text-gray-500 dark:text-gray-400 text-center">
-                      Logged in as {user?.email || 'User'} (session cached)
+                      Logged in as {user?.email || "User"} (session cached)
                     </Text>
                   </View>
                 )}
@@ -987,10 +1106,14 @@ export default function SettingsScreen() {
               <View>
                 <View className="flex-row items-center justify-between mb-4 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
                   <View className="flex-row items-center gap-3 flex-1">
-                    <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={20}
+                      color="#10B981"
+                    />
                     <View className="flex-1">
                       <Text className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                        Logged in as {user?.email || 'User'}
+                        Logged in as {user?.email || "User"}
                       </Text>
                       <Text className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                         Cloud backup is enabled
@@ -1002,13 +1125,20 @@ export default function SettingsScreen() {
                   onPress={async () => {
                     const { error } = await logout();
                     if (error) {
-                      alert('Error', 'Failed to logout. Please try again.');
+                      alert("Error", "Failed to logout. Please try again.");
                     }
                   }}
                   className="flex-row items-center justify-center bg-red-600 dark:bg-red-500 px-6 py-3 rounded-xl"
                 >
-                  <Ionicons name="log-out" size={18} color="#fff" style={{ marginRight: 8 }} />
-                  <Text className="text-white font-semibold text-base">Logout</Text>
+                  <Ionicons
+                    name="log-out"
+                    size={18}
+                    color="#fff"
+                    style={{ marginRight: 8 }}
+                  />
+                  <Text className="text-white font-semibold text-base">
+                    Logout
+                  </Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -1027,7 +1157,8 @@ export default function SettingsScreen() {
                   <View className="flex-row items-start gap-3">
                     <Ionicons name="cloud-offline" size={20} color="#EF4444" />
                     <Text className="text-sm text-red-800 dark:text-red-200 flex-1">
-                      Network is not available. Cloud backup requires an active internet connection. Please check your network connection.
+                      Network is not available. Cloud backup requires an active
+                      internet connection. Please check your network connection.
                     </Text>
                   </View>
                 </View>
@@ -1074,7 +1205,10 @@ export default function SettingsScreen() {
                   <View className="flex-row items-start gap-3">
                     <Ionicons name="warning" size={20} color="#F59E0B" />
                     <Text className="text-sm text-yellow-800 dark:text-yellow-200 flex-1">
-                      To use cloud backup, please login with your Google account. This allows you to automatically backup your data to the cloud and restore from any of your latest 3 backups.
+                      To use cloud backup, please login with your Google
+                      account. This allows you to automatically backup your data
+                      to the cloud and restore from any of your latest 3
+                      backups.
                     </Text>
                   </View>
                 </View>
@@ -1107,23 +1241,31 @@ export default function SettingsScreen() {
                 <TouchableOpacity
                   onPress={async () => {
                     if (!user?.id) {
-                      alert('Error', 'User ID not found. Please login again.');
+                      alert("Error", "User ID not found. Please login again.");
                       return;
                     }
 
                     setIsUploadingToCloud(true);
                     try {
-                      const { error, success } = await uploadBackupToCloud(user.id);
+                      const { error, success } = await uploadBackupToCloud(
+                        user.id
+                      );
                       if (error || !success) {
-                        alert('Error', 'Failed to upload backup to cloud. Please try again.');
+                        alert(
+                          "Error",
+                          "Failed to upload backup to cloud. Please try again."
+                        );
                         return;
                       }
-                      alert('Success', 'Backup uploaded to cloud successfully!');
+                      alert(
+                        "Success",
+                        "Backup uploaded to cloud successfully!"
+                      );
                       // Trigger backup list refresh
-                      setBackupListRefreshTrigger(prev => prev + 1);
+                      setBackupListRefreshTrigger((prev) => prev + 1);
                     } catch (error) {
-                      logError('Error uploading to cloud:', error);
-                      alert('Error', 'An unexpected error occurred.');
+                      logError("Error uploading to cloud:", error);
+                      alert("Error", "An unexpected error occurred.");
                     } finally {
                       setIsUploadingToCloud(false);
                     }
@@ -1138,7 +1280,11 @@ export default function SettingsScreen() {
                       {isUploadingToCloud ? (
                         <ActivityIndicator size="small" color="#3B82F6" />
                       ) : (
-                        <Ionicons name="cloud-upload" size={20} color="#3B82F6" />
+                        <Ionicons
+                          name="cloud-upload"
+                          size={20}
+                          color="#3B82F6"
+                        />
                       )}
                     </View>
                     <View className="flex-1">
@@ -1160,7 +1306,10 @@ export default function SettingsScreen() {
 
                 <View className="mt-2">
                   {user?.id && (
-                    <BackupList userId={user.id} refreshTrigger={backupListRefreshTrigger} />
+                    <BackupList
+                      userId={user.id}
+                      refreshTrigger={backupListRefreshTrigger}
+                    />
                   )}
                 </View>
               </View>

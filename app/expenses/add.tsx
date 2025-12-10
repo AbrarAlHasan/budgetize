@@ -147,6 +147,33 @@ export default function AddTransactionScreen() {
     }
   }, [accounts, accountId, isEditMode, isDuplicateMode]);
 
+  // Apply default tags when creating new transaction (not editing or duplicating)
+  useEffect(() => {
+    // Only apply default tags if:
+    // 1. Not in edit mode
+    // 2. Not in duplicate mode
+    // 3. Default tags are set
+    // 4. No tags are currently selected
+    // 5. Tags data is loaded
+    if (
+      !isEditMode &&
+      !isDuplicateMode &&
+      settings.defaultTagIds &&
+      settings.defaultTagIds.length > 0 &&
+      selectedTagIds.length === 0 &&
+      tags &&
+      tags.length > 0
+    ) {
+      // Filter to only include tags that still exist
+      const validDefaultTagIds = settings.defaultTagIds.filter(tagId =>
+        tags.some(tag => tag.id === tagId)
+      );
+      if (validDefaultTagIds.length > 0) {
+        setSelectedTagIds(validDefaultTagIds);
+      }
+    }
+  }, [isEditMode, isDuplicateMode, settings.defaultTagIds, tags, selectedTagIds.length]);
+
   // Update header color based on transaction type
   useEffect(() => {
     const headerColor = type === "expense" ? "#EF4444" : "#10B981";
