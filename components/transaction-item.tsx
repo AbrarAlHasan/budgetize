@@ -1,7 +1,13 @@
+import { TransactionActionsBottomSheet, TransactionActionsBottomSheetRef } from '@/components/transaction-actions-bottom-sheet';
+import { useDeleteTransaction } from '@/hooks/queries/use-transactions';
+import { useCustomAlert } from '@/hooks/use-custom-alert';
+import { transactionTagRepository } from '@/repositories/transaction-tag.repository';
+import { transactionRepository } from '@/repositories/transaction.repository';
 import { cn } from '@/utils/cn';
 import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
 import { router } from 'expo-router';
+import { useRef } from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 
 interface TransactionItemProps {
@@ -54,13 +60,93 @@ export function TransactionItem({
   const amountPrefix = isExpense ? '-' : '+';
   const iconName = getCategoryIcon(categoryName, payment_mode);
   const iconColor = isExpense ? '#EF4444' : '#10B981';
+  
+  const actionsBottomSheetRef = useRef<TransactionActionsBottomSheetRef>(null);
+  const deleteTransaction = useDeleteTransaction();
+  const { alert } = useCustomAlert();
+
+  const handleLongPress = () => {
+    actionsBottomSheetRef.current?.present();
+  };
+
+  const handleEdit = () => {
+    actionsBottomSheetRef.current?.dismiss();
+    router.push(`/expenses/${id}`);
+  };
+
+  const handleDelete = () => {
+    actionsBottomSheetRef.current?.dismiss();
+    
+    alert(
+      'Delete Transaction',
+      'Are you sure you want to delete this transaction?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteTransaction.mutateAsync(id);
+            } catch (error) {
+              alert('Error', 'Failed to delete transaction');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDuplicate = async () => {
+    actionsBottomSheetRef.current?.dismiss();
+    
+    try {
+      // Fetch transaction data
+      const transaction = await transactionRepository.findById(id);
+      if (!transaction) {
+        alert('Error', 'Transaction not found');
+        return;
+      }
+
+      // Decrypt transaction
+      const decryptedTransaction = await transactionRepository.decryptTransaction(transaction);
+
+      // Fetch tags
+      const transactionTags = await transactionTagRepository.findByTransactionId(id);
+      const tagIds = transactionTags.map(tt => tt.tag_id);
+
+      // Navigate to add screen with prefilled data
+      router.push({
+        pathname: '/expenses/add',
+        params: {
+          from: 'Back',
+          duplicate: 'true',
+          amount: decryptedTransaction.amount.toString(),
+          type: decryptedTransaction.type,
+          accountId: decryptedTransaction.account_id.toString(),
+          categoryId: decryptedTransaction.category_id?.toString() || '',
+          date: decryptedTransaction.date,
+          note: decryptedTransaction.note || '',
+          paymentMode: decryptedTransaction.payment_mode || '',
+          tagIds: tagIds.join(','),
+        },
+      });
+    } catch (error) {
+      alert('Error', 'Failed to duplicate transaction');
+    }
+  };
 
   return (
-    <TouchableOpacity
-      onPress={() => router.push(`/expenses/${id}`)}
-      activeOpacity={0.6}
-      className="mb-3"
-    >
+    <>
+      <TouchableOpacity
+        onPress={() => router.push(`/expenses/${id}`)}
+        onLongPress={handleLongPress}
+        activeOpacity={0.6}
+        className="mb-3"
+      >
       <View className="bg-white dark:bg-gray-900 rounded-2xl p-4 flex-row items-center"
         style={{
           shadowColor: '#000',
@@ -138,6 +224,13 @@ export function TransactionItem({
         </View>
       </View>
     </TouchableOpacity>
+    <TransactionActionsBottomSheet
+      ref={actionsBottomSheetRef}
+      onEdit={handleEdit}
+      onDelete={handleDelete}
+      onDuplicate={handleDuplicate}
+    />
+    </>
   );
 }
 

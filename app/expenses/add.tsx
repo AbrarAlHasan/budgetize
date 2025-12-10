@@ -34,9 +34,22 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function AddTransactionScreen() {
   const navigation = useNavigation();
-  const params = useLocalSearchParams<{ id?: string; from?: string }>();
+  const params = useLocalSearchParams<{ 
+    id?: string; 
+    from?: string;
+    duplicate?: string;
+    amount?: string;
+    type?: string;
+    accountId?: string;
+    categoryId?: string;
+    date?: string;
+    note?: string;
+    paymentMode?: string;
+    tagIds?: string;
+  }>();
   const transactionId = params.id ? parseInt(params.id, 10) : null;
   const isEditMode = !!transactionId;
+  const isDuplicateMode = params.duplicate === 'true';
   const insets = useSafeAreaInsets();
 
   const createTransaction = useCreateTransaction();
@@ -68,6 +81,7 @@ export default function AddTransactionScreen() {
   const [note, setNote] = useState("");
   const [paymentMode, setPaymentMode] = useState("");
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
+  const duplicateDataLoadedRef = useRef(false);
 
   const originLabel = params.from ?? "Back";
   const { settings, loadSettings } = useSettingsStore();
@@ -89,6 +103,31 @@ export default function AddTransactionScreen() {
     }
   }, [transaction, isEditMode]);
 
+  // Load prefilled data in duplicate mode (only once)
+  useEffect(() => {
+    if (isDuplicateMode && !duplicateDataLoadedRef.current) {
+      duplicateDataLoadedRef.current = true;
+      if (params.amount) setAmount(params.amount);
+      if (params.type) setType(params.type as TransactionType);
+      if (params.accountId) setAccountId(parseInt(params.accountId, 10));
+      if (params.categoryId) {
+        const catId = parseInt(params.categoryId, 10);
+        setCategoryId(catId > 0 ? catId : null);
+      }
+      if (params.date) setDate(parseISO(params.date));
+      if (params.note !== undefined) setNote(params.note);
+      if (params.paymentMode !== undefined) setPaymentMode(params.paymentMode);
+      if (params.tagIds) {
+        const tagIds = params.tagIds.split(',').map(id => parseInt(id, 10)).filter(id => !isNaN(id));
+        setSelectedTagIds(tagIds);
+      }
+    }
+    // Reset ref when leaving duplicate mode
+    if (!isDuplicateMode) {
+      duplicateDataLoadedRef.current = false;
+    }
+  }, [isDuplicateMode]);
+
   // Load tags for transaction in edit mode
   useEffect(() => {
     if (transaction && isEditMode) {
@@ -103,10 +142,10 @@ export default function AddTransactionScreen() {
 
   // Auto-select account if only one is available
   useEffect(() => {
-    if (accounts && accounts.length === 1 && accountId === null && !isEditMode) {
+    if (accounts && accounts.length === 1 && accountId === null && !isEditMode && !isDuplicateMode) {
       setAccountId(accounts[0].id);
     }
-  }, [accounts, accountId, isEditMode]);
+  }, [accounts, accountId, isEditMode, isDuplicateMode]);
 
   // Update header color based on transaction type
   useEffect(() => {
