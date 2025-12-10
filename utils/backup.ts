@@ -154,21 +154,7 @@ export async function createBackupFile(): Promise<string | null> {
       logWarn("⚠ Failed to read notification preferences:", error);
     }
 
-    // Save device ID from MMKV
-    const DEVICE_ID_STORAGE_KEY = "device_installation_id";
-    try {
-      const deviceId = mmkv.getString(DEVICE_ID_STORAGE_KEY);
-      if (deviceId) {
-        const deviceIdFilePath = `${tempBackupDir.uri}/device_id.txt`;
-        const deviceIdFile = new File(deviceIdFilePath);
-        deviceIdFile.write(deviceId);
-        log("✓ Device ID saved");
-      } else {
-        logWarn("⚠ Device ID not found in MMKV");
-      }
-    } catch (error) {
-      logWarn("⚠ Failed to read device ID:", error);
-    }
+    // Note: Device ID is NOT backed up as it's device-specific and should not be migrated
 
     // 6. Create metadata.json
     const metadata: BackupMetadata = {
@@ -695,23 +681,7 @@ export async function restoreAppData(backupZipPath?: string): Promise<boolean> {
       logWarn("⚠ Notification preferences not found in backup");
     }
 
-    // Restore device ID to MMKV
-    const DEVICE_ID_STORAGE_KEY = "device_installation_id";
-    const restoredDeviceIdPath = `${tempRestoreDir.uri}/device_id.txt`;
-    const restoredDeviceIdFile = new File(restoredDeviceIdPath);
-
-    if (restoredDeviceIdFile.exists) {
-      const deviceId = restoredDeviceIdFile.textSync();
-
-      try {
-        mmkv.set(DEVICE_ID_STORAGE_KEY, deviceId);
-        log("✓ Device ID restored to MMKV");
-      } catch (error) {
-        logWarn("⚠ Failed to restore device ID:", error);
-      }
-    } else {
-      logWarn("⚠ Device ID not found in backup");
-    }
+    // Note: Device ID is NOT restored as it's device-specific and should remain unique per device
 
     // 9. Reopen database connection (will trigger migrations if needed)
     try {
