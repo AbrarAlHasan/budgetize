@@ -39,15 +39,20 @@ export default function RootLayout() {
   const [themeSynced, setThemeSynced] = useState(false);
   const [showUpdateScreen, setShowUpdateScreen] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [hasDismissedUpdate, setHasDismissedUpdate] = useState(false);
 
   // Handle update available callback
   const handleUpdateAvailable = useCallback(() => {
-    setShowUpdateScreen(true);
-  }, []);
+    // Only show update screen if user hasn't dismissed it in this session
+    if (!hasDismissedUpdate) {
+      setShowUpdateScreen(true);
+    }
+  }, [hasDismissedUpdate]);
 
   // Initialize in-app updates (only checks after app is ready and onboarding complete)
+  // Don't auto-check if update screen is shown or if user has dismissed it
   const { startUpdate } = useInAppUpdates({
-    autoCheck: isReady && !showOnboarding && !showUpdateScreen,
+    autoCheck: isReady && !showOnboarding && !showUpdateScreen && !hasDismissedUpdate,
     daysBeforePrompt: 0, // Show updates immediately when available
     immediateUpdate: false,
     onUpdateAvailable: handleUpdateAvailable,
@@ -69,6 +74,7 @@ export default function RootLayout() {
   const handleCancelUpdate = useCallback(() => {
     setShowUpdateScreen(false);
     setIsUpdating(false);
+    setHasDismissedUpdate(true); // Mark as dismissed to prevent re-showing
   }, []);
 
   useEffect(() => {

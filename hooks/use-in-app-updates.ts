@@ -1,12 +1,12 @@
 import { Alert } from "@/components/ui/alert";
 import { logError, logInfo } from "@/utils/logger";
 import * as ExpoInAppUpdates from "expo-in-app-updates";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { Platform } from "react-native";
 
 interface UpdateCheckResult {
   updateAvailable: boolean;
-  daysSinceRelease?: string |number | null;
+  daysSinceRelease?: string | number | null;
   releaseDate?: Date;
 }
 
@@ -43,6 +43,9 @@ export function useInAppUpdates(options?: {
     immediateUpdate = false,
     onUpdateAvailable,
   } = options || {};
+
+  // Track if we've already checked for updates in this session
+  const hasCheckedRef = useRef(false);
 
   /**
    * Check for available updates
@@ -202,7 +205,8 @@ export function useInAppUpdates(options?: {
 
   // Auto-check for updates on mount
   useEffect(() => {
-    if (autoCheck) {
+    if (autoCheck && !hasCheckedRef.current) {
+      hasCheckedRef.current = true;
       checkAndPromptUpdate();
     }
   }, [autoCheck, checkAndPromptUpdate]);
