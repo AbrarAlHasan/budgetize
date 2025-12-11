@@ -1,6 +1,7 @@
 import { syncWidgetData } from '@/services/widget-sync';
 import { useSettingsStore } from '@/store/settings-store';
 import { logError } from '@/utils/logger';
+import { ExtensionStorage } from '@bacons/apple-targets';
 import { useEffect, useRef } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 
@@ -39,12 +40,16 @@ export function useWidgetSync() {
   }, [currency]);
 
   useEffect(() => {
-    // Sync when app comes to foreground
+    // Sync when app comes to foreground and reload widget when going to background
     const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
       if (nextAppState === 'active' && hasSyncedOnMount.current) {
+        // Sync data when app becomes active
         syncWidgetData().catch((error) => {
           logError('Failed to sync widget data on app foreground:', error);
         });
+      } else if (nextAppState === 'background') {
+        // Reload widget when app goes to background (ensures widget shows latest data)
+        ExtensionStorage.reloadWidget();
       }
     });
 

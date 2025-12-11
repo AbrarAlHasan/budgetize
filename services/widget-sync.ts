@@ -117,12 +117,14 @@ export async function syncWidgetData(): Promise<void> {
 
     // Store in shared UserDefaults using ExtensionStorage
     const storage = new ExtensionStorage(APP_GROUP_ID);
-    // ExtensionStorage.set() handles JSON serialization automatically for objects
-    storage.set(WIDGET_DATA_KEY, widgetData as any);
+    // Store as JSON string - this will be read as Data in Swift using JSONDecoder
+    storage.set(WIDGET_DATA_KEY, JSON.stringify(widgetData));
     storage.set(WIDGET_LAST_UPDATED_KEY, now.toISOString());
 
     // Reload widget timeline
-    ExtensionStorage.reloadWidget('widget');
+    ExtensionStorage.reloadWidget();
+    
+    console.log('Widget data synced:', widgetData);
 
     const endTime = Date.now();
     logPerformance('syncWidgetData completed', endTime - startTime);

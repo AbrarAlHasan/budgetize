@@ -47,8 +47,8 @@ struct SimpleEntry: TimelineEntry {
     let selectedPeriod: String
 }
 
-struct SpendData {
-  let todaySpent:String
+struct SpendData: Codable {
+  let todaySpent: String
   let thisWeekSpent: String
   let thisMonthSpent: String
   let dailyAverage: String
@@ -70,59 +70,28 @@ var defaultData: SpendData = SpendData(
     dailyAverage: "0",
     projectSpendForMonth: "0",
     totalDays: 30,
-    totalDaysCompleted: 1,
+    totalDaysCompleted: 0,
     currencySymbol: "$"
 )
 
 // Load widget data from UserDefaults
 func loadWidgetData() -> SpendData {
-    guard let defaults = UserDefaults(suiteName: APP_GROUP_ID) else {
-        return defaultData
+    let defaults = UserDefaults(suiteName: APP_GROUP_ID)
+    
+    // Try to get as Data first (if stored as Data)
+    if let data = defaults?.data(forKey: WIDGET_DATA_KEY),
+       let spendData = try? JSONDecoder().decode(SpendData.self, from: data) {
+        return spendData
     }
     
-    // ExtensionStorage may store as dictionary or JSON string
-    var json: [String: Any]?
-    
-    // Try to get as dictionary first (if stored directly)
-    if let dict = defaults.dictionary(forKey: WIDGET_DATA_KEY) {
-        json = dict
-    }
-    // Try to get as JSON string and parse it
-    else if let dataString = defaults.string(forKey: WIDGET_DATA_KEY),
-            let data = dataString.data(using: .utf8) {
-        do {
-            if let parsed = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                json = parsed
-            }
-        } catch {
-            // If parsing fails, return default data
-            return defaultData
-        }
+    // Fallback: Try to get as string and convert to Data
+    if let dataString = defaults?.string(forKey: WIDGET_DATA_KEY),
+       let data = dataString.data(using: .utf8),
+       let spendData = try? JSONDecoder().decode(SpendData.self, from: data) {
+        return spendData
     }
     
-    guard let json = json else {
-        return defaultData
-    }
-    
-    let todaySpent = json["todaySpent"] as? String ?? "0"
-    let thisWeekSpent = json["thisWeekSpent"] as? String ?? "0"
-    let thisMonthSpent = json["thisMonthSpent"] as? String ?? "0"
-    let dailyAverage = json["dailyAverage"] as? String ?? "0"
-    let projectSpendForMonth = json["projectSpendForMonth"] as? String ?? "0"
-    let totalDays = json["totalDays"] as? Int ?? 30
-    let totalDaysCompleted = json["totalDaysCompleted"] as? Int ?? 1
-    let currencySymbol = json["currencySymbol"] as? String ?? "$"
-    
-    return SpendData(
-        todaySpent: todaySpent,
-        thisWeekSpent: thisWeekSpent,
-        thisMonthSpent: thisMonthSpent,
-        dailyAverage: dailyAverage,
-        projectSpendForMonth: projectSpendForMonth,
-        totalDays: totalDays,
-        totalDaysCompleted: totalDaysCompleted,
-        currencySymbol: currencySymbol
-    )
+    return defaultData
 }
 
 func formatWithCurrency(_ amount: String, symbol: String) -> String {
