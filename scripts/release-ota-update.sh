@@ -34,7 +34,7 @@ fi
 export EXPO_TOKEN
 
 # Update message (change this for each release)
-UPDATE_MESSAGE="Android Safe Area View Implement for Navigation Bottom Bar to resolve overlapping issue"
+UPDATE_MESSAGE="Update Alert UI Change for Android and iOS"
 
 npx eas-cli whoami
 
