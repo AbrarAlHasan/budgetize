@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useColorScheme } from 'nativewind';
 import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -10,13 +11,16 @@ interface UpdateScreenProps {
 }
 
 export function UpdateScreen({ onUpdate, onCancel, isUpdating = false }: UpdateScreenProps) {
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === 'dark';
+  
   const handleCancel = () => {
     console.log('UpdateScreen: Cancel button pressed');
     onCancel();
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
+    <View style={{ flex: 1, backgroundColor: isDark ? '#000000' : '#F8FAFC' }}>
       <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom', 'left', 'right']}>
         <View className="flex-1 items-center justify-center px-6">
           {/* Icon/Logo with colorful gradient background */}
