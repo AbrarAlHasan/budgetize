@@ -30,7 +30,7 @@ struct Provider: AppIntentTimelineProvider {
     
     private func getSelectedPeriod(from configuration: ConfigurationAppIntent) -> String {
         // Check UserDefaults first (for button interactions), then fall back to configuration
-        if let storedPeriod = UserDefaults(suiteName: "group.com.moneyManager.widget")?.string(forKey: "selectedPeriod") {
+        if let storedPeriod = UserDefaults(suiteName: "group.widget.com.suzukibusinesscloud.SalesQA-3.0")?.string(forKey: "selectedPeriod") {
             return storedPeriod
         }
         return configuration.selectedPeriod.isEmpty ? "today" : configuration.selectedPeriod
@@ -58,7 +58,72 @@ struct SpendData {
   let currencySymbol: String
 }
 
-var mockData: SpendData = SpendData(todaySpent: "223", thisWeekSpent: "1350", thisMonthSpent: "1.5K", dailyAverage: "400", projectSpendForMonth: "12450", totalDays: 31, totalDaysCompleted: 11, currencySymbol: "$")
+// App Group identifier - must match the one in app.json and React Native code
+let APP_GROUP_ID = "group.widget.com.suzukibusinesscloud.SalesQA-3.0"
+let WIDGET_DATA_KEY = "widgetSpendData"
+
+// Default fallback data
+var defaultData: SpendData = SpendData(
+    todaySpent: "0",
+    thisWeekSpent: "0",
+    thisMonthSpent: "0",
+    dailyAverage: "0",
+    projectSpendForMonth: "0",
+    totalDays: 30,
+    totalDaysCompleted: 1,
+    currencySymbol: "$"
+)
+
+// Load widget data from UserDefaults
+func loadWidgetData() -> SpendData {
+    guard let defaults = UserDefaults(suiteName: APP_GROUP_ID) else {
+        return defaultData
+    }
+    
+    // ExtensionStorage may store as dictionary or JSON string
+    var json: [String: Any]?
+    
+    // Try to get as dictionary first (if stored directly)
+    if let dict = defaults.dictionary(forKey: WIDGET_DATA_KEY) {
+        json = dict
+    }
+    // Try to get as JSON string and parse it
+    else if let dataString = defaults.string(forKey: WIDGET_DATA_KEY),
+            let data = dataString.data(using: .utf8) {
+        do {
+            if let parsed = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                json = parsed
+            }
+        } catch {
+            // If parsing fails, return default data
+            return defaultData
+        }
+    }
+    
+    guard let json = json else {
+        return defaultData
+    }
+    
+    let todaySpent = json["todaySpent"] as? String ?? "0"
+    let thisWeekSpent = json["thisWeekSpent"] as? String ?? "0"
+    let thisMonthSpent = json["thisMonthSpent"] as? String ?? "0"
+    let dailyAverage = json["dailyAverage"] as? String ?? "0"
+    let projectSpendForMonth = json["projectSpendForMonth"] as? String ?? "0"
+    let totalDays = json["totalDays"] as? Int ?? 30
+    let totalDaysCompleted = json["totalDaysCompleted"] as? Int ?? 1
+    let currencySymbol = json["currencySymbol"] as? String ?? "$"
+    
+    return SpendData(
+        todaySpent: todaySpent,
+        thisWeekSpent: thisWeekSpent,
+        thisMonthSpent: thisMonthSpent,
+        dailyAverage: dailyAverage,
+        projectSpendForMonth: projectSpendForMonth,
+        totalDays: totalDays,
+        totalDaysCompleted: totalDaysCompleted,
+        currencySymbol: currencySymbol
+    )
+}
 
 func formatWithCurrency(_ amount: String, symbol: String) -> String {
     return "\(symbol)\(amount)"
@@ -79,7 +144,7 @@ struct widgetEntryView : View {
 
 struct MediumWidgetView: View {
   var entry: Provider.Entry
-  let data = mockData
+  let data = loadWidgetData()
   
   var body: some View {
     VStack(spacing: 0) {
@@ -264,7 +329,7 @@ struct InsightCard: View {
 
 struct SmallWidgetView: View {
   var entry: Provider.Entry
-  let data = mockData
+  let data = loadWidgetData()
   
   var selectedPeriod: String {
     entry.selectedPeriod.isEmpty ? "today" : entry.selectedPeriod

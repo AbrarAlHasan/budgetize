@@ -22,7 +22,7 @@ struct SelectPeriodIntent: AppIntent {
     
     func perform() async throws -> some IntentResult {
         // Store selected period in UserDefaults
-        UserDefaults(suiteName: "group.com.moneyManager.widget")?.set(period, forKey: "selectedPeriod")
+        UserDefaults(suiteName: "group.widget.com.suzukibusinesscloud.SalesQA-3.0")?.set(period, forKey: "selectedPeriod")
         
         // Reload widget timeline
         WidgetCenter.shared.reloadTimelines(ofKind: "widget")

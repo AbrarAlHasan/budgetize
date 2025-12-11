@@ -23,7 +23,7 @@
       },
       "entitlements": {
         "com.apple.security.application-groups": [
-          "group.com.suzukibusinesscloud.SalesQA-3.0"
+          "group.widget.com.suzukibusinesscloud.SalesQA-3.0"
         ]
       }
     },

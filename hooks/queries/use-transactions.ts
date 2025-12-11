@@ -1,8 +1,9 @@
 import { CreateTransactionInput, Transaction, UpdateTransactionInput } from '@/db/schema/types';
 import { transactionRepository } from '@/repositories/transaction.repository';
+import { syncWidgetData } from '@/services/widget-sync';
 import { useSettingsStore } from '@/store/settings-store';
 import { filterTransactionsByIncomePreference, incomePreferenceKey } from '@/utils/income-preference';
-import { logPerformance } from '@/utils/logger';
+import { logError, logPerformance } from '@/utils/logger';
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 const QUERY_KEYS = {
@@ -196,6 +197,11 @@ export function useCreateTransaction() {
         queryClient.invalidateQueries({ queryKey: ['accountMonthlyData'] }),
         queryClient.invalidateQueries({ queryKey: ['account-latest-transactions'] }),
       ]);
+
+      // Sync widget data (non-blocking, errors are logged but don't fail the mutation)
+      syncWidgetData().catch((error) => {
+        logError('Failed to sync widget data after creating transaction:', error);
+      });
     },
   });
 }
@@ -223,6 +229,11 @@ export function useUpdateTransaction() {
         queryClient.invalidateQueries({ queryKey: ['accountMonthlyData'] }),
         queryClient.invalidateQueries({ queryKey: ['account-latest-transactions'] }),
       ]);
+
+      // Sync widget data (non-blocking, errors are logged but don't fail the mutation)
+      syncWidgetData().catch((error) => {
+        logError('Failed to sync widget data after updating transaction:', error);
+      });
     },
   });
 }
@@ -249,6 +260,11 @@ export function useDeleteTransaction() {
         queryClient.invalidateQueries({ queryKey: ['accountMonthlyData'] }),
         queryClient.invalidateQueries({ queryKey: ['account-latest-transactions'] }),
       ]);
+
+      // Sync widget data (non-blocking, errors are logged but don't fail the mutation)
+      syncWidgetData().catch((error) => {
+        logError('Failed to sync widget data after deleting transaction:', error);
+      });
     },
   });
 }

@@ -15,6 +15,7 @@ import { AlertProvider } from "@/components/ui/alert";
 import { UpdateScreen } from "@/components/update-screen";
 import { useInAppUpdates } from "@/hooks/use-in-app-updates";
 import { queryClient } from "@/hooks/use-query-client";
+import { useWidgetSync } from "@/hooks/use-widget-sync";
 import { trackInstallation } from "@/services/installation-tracker";
 import { onboardingStorage } from "@/storage/onboarding";
 import { useAuthStore } from "@/store/auth-store";
@@ -40,6 +41,9 @@ export default function RootLayout() {
   const [showUpdateScreen, setShowUpdateScreen] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [hasDismissedUpdate, setHasDismissedUpdate] = useState(false);
+
+  // Sync widget data (only when app is ready and not showing onboarding)
+  useWidgetSync();
 
   // Handle update available callback
   const handleUpdateAvailable = useCallback(() => {
