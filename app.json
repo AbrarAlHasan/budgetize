@@ -2,7 +2,7 @@
   "expo": {
     "name": "Budgetize",
     "slug": "budgetize",
-    "version": "1.0.8",
+    "version": "1.0.9",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "com.budgetize.app",
@@ -38,7 +38,7 @@
       "softwareKeyboardLayoutMode": "pan",
       "package": "com.budgetize.app",
       "googleServicesFile": "./google-services.json",
-      "versionCode": 36
+      "versionCode": 37
     },
     "web": {
       "output": "static",
