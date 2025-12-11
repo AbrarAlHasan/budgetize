@@ -41,5 +41,5 @@ echo ""
 
 # Run EAS build
 cd "$PROJECT_ROOT"
-npx eas-cli build --platform ios --profile production --local
+npx eas-cli build --platform ios --profile production --local --non-interactive
 

@@ -12,6 +12,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.suzukibusinesscloud.SalesQA-3.0",
       "googleServicesFile": "./GoogleService-Info.plist",
+      "appleTeamId": "53TFLVBQKB",
       "icon": {
         "dark": "./assets/app-icons/ios-dark.png",
         "light": "./assets/app-icons/ios-light.png",
@@ -19,6 +20,11 @@
       },
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
+      },
+      "entitlements": {
+        "com.apple.security.application-groups": [
+          "group.widget.com.suzukibusinesscloud.SalesQA-3.0"
+        ]
       }
     },
     "android": {
@@ -72,6 +78,9 @@
             "forceStaticLinking": [
               "RNFBApp",
               "RNFBAuth",
+              "RNFBFirestore",
+              "RNFBApp",
+              "RNFBAuth",
               "RNFBFirestore"
             ]
           }
@@ -80,7 +89,8 @@
       "expo-localization",
       "@react-native-firebase/crashlytics",
       "@react-native-firebase/app",
-      "@react-native-firebase/perf"
+      "@react-native-firebase/perf",
+      "@bacons/apple-targets"
     ],
     "experiments": {
       "typedRoutes": true,
