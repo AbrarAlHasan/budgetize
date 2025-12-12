@@ -27,7 +27,6 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  TouchableWithoutFeedback,
   View
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -334,6 +333,21 @@ export default function AddTransactionScreen() {
     amountInputRef.current?.blur();
   };
 
+  const handleFocusAmount = () => {
+    amountInputRef.current?.focus();
+  };
+
+  // Auto-focus amount input when creating new transaction (not editing)
+  useEffect(() => {
+    if (!isEditMode && !isDuplicateMode) {
+      // Small delay to ensure the component is fully mounted
+      const timer = setTimeout(() => {
+        amountInputRef.current?.focus();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isEditMode, isDuplicateMode]);
+
   const selectedAccount = accounts?.find((acc) => acc.id === accountId);
   const selectedCategory = categories?.find((cat) => cat.id === categoryId);
 
@@ -462,7 +476,10 @@ export default function AddTransactionScreen() {
           )}
 
           {/* Hero Amount Section */}
-          <TouchableWithoutFeedback onPress={handleBlurAmount}>
+          <TouchableOpacity
+            onPress={handleFocusAmount}
+            activeOpacity={0.7}
+          >
             <View
               className="px-4 py-6"
               style={{
@@ -483,25 +500,49 @@ export default function AddTransactionScreen() {
                   {getCurrencySymbol(settings.currency || "INR")}
                 </Text>
 
-                {/* Amount Input */}
-                <TextInput
-                  ref={amountInputRef}
-                  value={amount}
-                  onChangeText={handleAmountChange}
-                  placeholder="0.00"
-                  placeholderTextColor="#9CA3AF"
-                  keyboardType="numeric"
-                  className="text-gray-400 dark:text-gray-500"
+                {/* Amount Container - Relative positioning for overlay */}
+                <View
                   style={{
-                    fontSize: 48,
-                    fontWeight: '700',
-                    textAlign: 'center',
+                    position: 'relative',
                     minWidth: 120,
+                    alignItems: 'center',
+                    justifyContent: 'center',
                   }}
-                />
+                >
+                  {/* Hidden Amount Input */}
+                  <TextInput
+                    ref={amountInputRef}
+                    value={amount}
+                    onChangeText={handleAmountChange}
+                    placeholder="0.00"
+                    placeholderTextColor="#9CA3AF"
+                    keyboardType="numeric"
+                    style={{
+                      position: 'absolute',
+                      opacity: 0,
+                      fontSize: 48,
+                      fontWeight: '700',
+                      textAlign: 'center',
+                      width: '100%',
+                      height: 60,
+                    }}
+                  />
+
+                  {/* Visible Amount Label */}
+                  <Text
+                    className="text-gray-400 dark:text-gray-500"
+                    style={{
+                      fontSize: 48,
+                      fontWeight: '700',
+                      textAlign: 'center',
+                    }}
+                  >
+                    {amount || "0.00"}
+                  </Text>
+                </View>
               </View>
             </View>
-          </TouchableWithoutFeedback>
+          </TouchableOpacity>
 
           {/* Quick Details Section */}
           <View className="px-4 mb-6">
