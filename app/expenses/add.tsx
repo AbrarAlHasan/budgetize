@@ -82,6 +82,9 @@ export default function AddTransactionScreen() {
   const [paymentMode, setPaymentMode] = useState("");
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
   const duplicateDataLoadedRef = useRef(false);
+  const defaultTagsAppliedRef = useRef(false);
+  const previousIsEditModeRef = useRef(isEditMode);
+  const previousIsDuplicateModeRef = useRef(isDuplicateMode);
 
   const originLabel = params.from ?? "Back";
   const { settings, loadSettings } = useSettingsStore();
@@ -121,6 +124,8 @@ export default function AddTransactionScreen() {
         const tagIds = params.tagIds.split(',').map(id => parseInt(id, 10)).filter(id => !isNaN(id));
         setSelectedTagIds(tagIds);
       }
+      // Mark default tags as applied in duplicate mode (don't apply defaults)
+      defaultTagsAppliedRef.current = true;
     }
     // Reset ref when leaving duplicate mode
     if (!isDuplicateMode) {
@@ -137,6 +142,8 @@ export default function AddTransactionScreen() {
         setSelectedTagIds(tagIds);
       };
       loadTags();
+      // Mark default tags as applied in edit mode (don't apply defaults)
+      defaultTagsAppliedRef.current = true;
     }
   }, [transaction, isEditMode]);
 
@@ -147,7 +154,24 @@ export default function AddTransactionScreen() {
     }
   }, [accounts, accountId, isEditMode, isDuplicateMode]);
 
+  // Reset default tags applied flag when entering create mode (not edit or duplicate)
+  // Only reset when transitioning INTO create mode from edit/duplicate mode
+  useEffect(() => {
+    const wasInEditOrDuplicate = previousIsEditModeRef.current || previousIsDuplicateModeRef.current;
+    const isNowInCreateMode = !isEditMode && !isDuplicateMode;
+    
+    // Reset flag when transitioning from edit/duplicate mode to create mode
+    if (isNowInCreateMode && wasInEditOrDuplicate) {
+      defaultTagsAppliedRef.current = false;
+    }
+    
+    // Update previous mode refs
+    previousIsEditModeRef.current = isEditMode;
+    previousIsDuplicateModeRef.current = isDuplicateMode;
+  }, [isEditMode, isDuplicateMode]);
+
   // Apply default tags when creating new transaction (not editing or duplicating)
+  // Only apply once on initial mount, not when user manually removes tags
   useEffect(() => {
     // Only apply default tags if:
     // 1. Not in edit mode
@@ -155,9 +179,11 @@ export default function AddTransactionScreen() {
     // 3. Default tags are set
     // 4. No tags are currently selected
     // 5. Tags data is loaded
+    // 6. Default tags haven't been applied yet
     if (
       !isEditMode &&
       !isDuplicateMode &&
+      !defaultTagsAppliedRef.current &&
       settings.defaultTagIds &&
       settings.defaultTagIds.length > 0 &&
       selectedTagIds.length === 0 &&
@@ -170,6 +196,7 @@ export default function AddTransactionScreen() {
       );
       if (validDefaultTagIds.length > 0) {
         setSelectedTagIds(validDefaultTagIds);
+        defaultTagsAppliedRef.current = true;
       }
     }
   }, [isEditMode, isDuplicateMode, settings.defaultTagIds, tags, selectedTagIds.length]);
