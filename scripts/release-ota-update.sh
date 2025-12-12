@@ -34,7 +34,7 @@ fi
 export EXPO_TOKEN
 
 # Update message (change this for each release)
-UPDATE_MESSAGE="Default Tags Applied Reset Bug Fixing"
+UPDATE_MESSAGE="auto-focus functionality for the amount input"
 
 npx eas-cli whoami
 
