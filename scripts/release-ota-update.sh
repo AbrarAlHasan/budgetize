@@ -34,7 +34,7 @@ fi
 export EXPO_TOKEN
 
 # Update message (change this for each release)
-UPDATE_MESSAGE="Update Alert UI Change for Android and iOS"
+UPDATE_MESSAGE="Default Tags Applied Reset Bug Fixing"
 
 npx eas-cli whoami
 
