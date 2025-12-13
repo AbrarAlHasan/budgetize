@@ -1,7 +1,7 @@
 import {
-  DarkTheme,
-  DefaultTheme,
-  ThemeProvider,
+    DarkTheme,
+    DefaultTheme,
+    ThemeProvider,
 } from "@react-navigation/native";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
@@ -11,6 +11,8 @@ import "react-native-reanimated";
 import "../global.css";
 
 import { OnboardingScreen } from "@/components/onboarding/onboarding-screen";
+import { LockScreen } from "@/components/security/lock-screen";
+import { SplashOverlay } from "@/components/security/splash-overlay";
 import { AlertProvider } from "@/components/ui/alert";
 import { UpdateScreen } from "@/components/update-screen";
 import { useInAppUpdates } from "@/hooks/use-in-app-updates";
@@ -19,6 +21,7 @@ import { useWidgetSync } from "@/hooks/use-widget-sync";
 import { trackInstallation } from "@/services/installation-tracker";
 import { onboardingStorage } from "@/storage/onboarding";
 import { useAuthStore } from "@/store/auth-store";
+import { useSecurityStore } from "@/store/security-store";
 import { useSettingsStore } from "@/store/settings-store";
 import { logError } from "@/utils/logger";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
@@ -26,7 +29,7 @@ import { router } from "expo-router";
 import { colorScheme, useColorScheme } from "nativewind";
 import { PostHogProvider } from "posthog-react-native";
 import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, View } from "react-native";
+import { ActivityIndicator, AppState, AppStateStatus, View } from "react-native";
 
 export const unstable_settings = {
   anchor: "(tabs)",
@@ -35,12 +38,20 @@ export const unstable_settings = {
 export default function RootLayout() {
   const nativeWindColorScheme = useColorScheme();
   const { loadSettings, settings } = useSettingsStore();
+  const { isLockEnabled, isAuthenticated, setAuthenticated } = useSecurityStore();
   const [isReady, setIsReady] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [themeSynced, setThemeSynced] = useState(false);
   const [showUpdateScreen, setShowUpdateScreen] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [hasDismissedUpdate, setHasDismissedUpdate] = useState(false);
+  const [appState, setAppState] = useState<AppStateStatus>(() => {
+    try {
+      return AppState.currentState || 'active';
+    } catch {
+      return 'active';
+    }
+  });
 
   // Sync widget data (only when app is ready and not showing onboarding)
   useWidgetSync();
@@ -147,6 +158,46 @@ export default function RootLayout() {
     }
   }, [settings.theme]);
 
+  // Handle app state changes - reset authentication when app goes to background
+  useEffect(() => {
+    // Initialize app state safely
+    try {
+      const currentState = AppState.currentState;
+      if (currentState) {
+        setAppState(currentState);
+      }
+    } catch (error) {
+      logError('Error getting initial app state:', error);
+    }
+
+    const subscription = AppState.addEventListener(
+      "change",
+      (nextAppState: AppStateStatus) => {
+        try {
+          setAppState(nextAppState);
+          
+          if (isLockEnabled) {
+            // Only reset authentication when app goes to background (not inactive)
+            // Inactive state shows splash overlay, background state requires re-authentication
+            if (nextAppState === "background") {
+              setAuthenticated(false);
+            }
+          }
+        } catch (error) {
+          logError('Error handling app state change:', error);
+        }
+      }
+    );
+
+    return () => {
+      try {
+        subscription.remove();
+      } catch (error) {
+        logError('Error removing app state listener:', error);
+      }
+    };
+  }, [isLockEnabled, setAuthenticated]);
+
   const handleOnboardingComplete = (navigateToCloudBackup?: boolean) => {
     onboardingStorage.setCompleted();
     setShowOnboarding(false);
@@ -179,7 +230,28 @@ export default function RootLayout() {
     );
   }
 
-  // Show update screen if update is available
+  // Show lock screen if security is enabled and user is not authenticated
+  // This should be shown BEFORE update screen and onboarding
+  // Only show lock screen when app is active (not when inactive/background - splash overlay handles that)
+  // Also ensure app is ready to prevent crashes during initialization
+  if (
+    isReady &&
+    themeSynced &&
+    isLockEnabled &&
+    !isAuthenticated &&
+    appState === "active"
+  ) {
+    return (
+      <LockScreen
+        onUnlock={() => {
+          // Authentication successful, continue with app flow
+          setAuthenticated(true);
+        }}
+      />
+    );
+  }
+
+  // Show update screen if update is available (only after authentication)
   if (showUpdateScreen) {
     return (
       <UpdateScreen
@@ -190,7 +262,7 @@ export default function RootLayout() {
     );
   }
 
-  // Show onboarding if not completed
+  // Show onboarding if not completed (only after authentication)
   if (showOnboarding) {
     return <OnboardingScreen onComplete={handleOnboardingComplete} />;
   }
@@ -246,6 +318,7 @@ export default function RootLayout() {
           </QueryClientProvider>
         </GestureHandlerRootView>
       </PostHogProvider>
+      <SplashOverlay />
     </View>
   );
 }
