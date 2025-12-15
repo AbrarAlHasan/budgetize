@@ -112,6 +112,7 @@ export default function SettingsScreen() {
     isLockEnabled,
     isBiometricEnabled,
     setIsLockEnabled,
+    setAuthenticated,
     reset: resetSecurity,
   } = useSecurityStore();
 
@@ -589,6 +590,10 @@ export default function SettingsScreen() {
       // First time setup - enable lock and biometric
       await setIsLockEnabled(true);
       
+      // Set authenticated to true so user can continue using the app immediately
+      // Authentication will be reset when app goes to background, requiring PIN on next open
+      setAuthenticated(true);
+      
       // Automatically enable biometric if available
       try {
         const hasHardware = await LocalAuthentication.hasHardwareAsync();
@@ -605,7 +610,7 @@ export default function SettingsScreen() {
       
       alert(
         "Security Enabled",
-        "App lock has been enabled successfully. Your app will now require authentication to open.",
+        "App lock has been enabled successfully. Your app will now require authentication when you reopen it.",
         [{ text: "OK" }]
       );
     }

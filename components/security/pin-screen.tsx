@@ -382,21 +382,6 @@ export function PinScreen({
               <Animated.View style={[styles.errorContainer, errorStyle]}>
                 {error ? <Text style={styles.errorText}>{error}</Text> : null}
               </Animated.View>
-
-              {/* Change PIN Button - Only show in confirm step (setup mode) */}
-              {isSetupMode && step === "confirm" && (
-                <TouchableOpacity
-                  onPress={handleChangePin}
-                  activeOpacity={0.7}
-                  style={styles.changePinButton}
-                >
-                  <Text
-                    style={[styles.changePinText, { color: subtitleColor }]}
-                  >
-                    Change PIN
-                  </Text>
-                </TouchableOpacity>
-              )}
             </View>
 
             {/* Bottom Section: Numpad */}
@@ -506,11 +491,6 @@ const styles = StyleSheet.create({
     color: "#ef4444",
     fontWeight: "500",
     textAlign: "center",
-  },
-  changePinButton: {
-    marginTop: 16,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
   },
   changePinText: {
     fontSize: 16,

@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from 'nativewind';
-import { Text, TouchableOpacity, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import Animated, {
     useAnimatedStyle,
     useSharedValue,
@@ -85,64 +85,75 @@ function NumpadButton({
   isDark,
 }: NumpadButtonProps) {
   const scale = useSharedValue(1);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
+  const pressed = useSharedValue(0);
 
   const handlePressIn = () => {
-    scale.value = withSpring(0.9);
+    scale.value = withSpring(0.95);
+    pressed.value = withSpring(1);
   };
 
   const handlePressOut = () => {
     scale.value = withSpring(1);
+    pressed.value = withSpring(0);
   };
 
-  const buttonBg = isDark
-    ? 'bg-gray-800/50 border-gray-700/50'
-    : 'bg-white/80 border-gray-200/50';
-  const buttonActive = isDark
-    ? 'active:bg-gray-700/50'
-    : 'active:bg-gray-100/80';
-  const textColor = isDark ? 'text-white' : 'text-gray-900';
+  // Match the lock screen's design system - solid colors like icon container
+  const backgroundColor = isDark ? '#1a1a1a' : '#f3f4f6';
+  const activeBackgroundColor = isDark ? '#2a2a2a' : '#e5e7eb';
+  const borderColor = isDark ? '#374151' : '#e5e7eb';
+  const textColor = isDark ? '#ECEDEE' : '#11181C';
+  const iconColor = isDark ? '#ECEDEE' : '#11181C';
+
+  const containerStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+    backgroundColor: pressed.value === 1 ? activeBackgroundColor : backgroundColor,
+  }));
 
   return (
-    <Animated.View style={animatedStyle}>
-      <TouchableOpacity
-        onPress={onPress}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-        disabled={disabled}
-        className={`
-          w-20 h-20 rounded-2xl items-center justify-center
-          ${buttonBg} ${buttonActive}
-          border
-          ${disabled ? 'opacity-50' : ''}
-        `}
-        style={{
-          shadowColor: isDark ? '#000' : '#000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: isDark ? 0.3 : 0.1,
-          shadowRadius: 4,
-          elevation: 2,
-        }}
-        activeOpacity={0.7}
+    <Pressable
+      onPress={onPress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      disabled={disabled}
+    >
+      <Animated.View
+        style={[
+          {
+            width: 80,
+            height: 80,
+            borderRadius: 40,
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderWidth: 1,
+            borderColor: borderColor,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: isDark ? 0.3 : 0.1,
+            shadowRadius: 8,
+            elevation: 4,
+            opacity: disabled ? 0.5 : 1,
+          },
+          containerStyle,
+        ]}
       >
         {isBackspace ? (
           <Ionicons
             name="backspace-outline"
             size={28}
-            color={isDark ? '#ffffff' : '#111827'}
+            color={iconColor}
           />
         ) : (
           <Text
-            className={`text-3xl font-semibold ${textColor}`}
-            style={{ fontFamily: 'system-ui' }}
+            className="text-3xl font-semibold"
+            style={{ 
+              color: textColor,
+              fontFamily: 'system-ui',
+            }}
           >
             {value}
           </Text>
         )}
-      </TouchableOpacity>
-    </Animated.View>
+      </Animated.View>
+    </Pressable>
   );
 }
