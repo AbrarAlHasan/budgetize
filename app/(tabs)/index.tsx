@@ -49,7 +49,7 @@ export default function DashboardScreen() {
 
   React.useEffect(() => {
     loadSettings();
-    posthog.capture("Dashboard Screen Loaded");
+    posthog.captureException("Dashboard Screen Loaded");
   }, []);
 
   // Ensure dates are never null - set to current month if null

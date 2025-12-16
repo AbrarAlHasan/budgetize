@@ -184,3 +184,71 @@ export interface UpdateExchangeInput {
   note?: string | null; // Will be encrypted
 }
 
+// Exchange Installments
+export interface ExchangeInstallment {
+  id: number;
+  exchange_id: number;
+  amount: string; // Encrypted string
+  payment_date: string; // ISO date string
+  note: string | null; // Encrypted string
+  created_at: string; // ISO date string
+  updated_at: string; // ISO date string
+  deleted_at: string | null; // ISO date string
+  remote_id: string | null;
+  is_synced: number; // SQLite boolean (0 or 1)
+}
+
+export type DecryptedExchangeInstallment = Omit<
+  ExchangeInstallment,
+  'amount' | 'note'
+> & {
+  amount: number;
+  note: string | null;
+};
+
+export interface CreateExchangeInstallmentInput {
+  exchange_id: number;
+  amount: number; // Will be encrypted
+  payment_date: string; // ISO date string
+  note?: string | null; // Will be encrypted
+}
+
+export interface UpdateExchangeInstallmentInput {
+  id: number;
+  amount?: number; // Will be encrypted
+  payment_date?: string;
+  note?: string | null; // Will be encrypted
+}
+
+// Exchange Reminders
+export type ExchangeReminderType = 'due_date' | 'overdue' | 'periodic';
+
+export interface ExchangeReminder {
+  id: number;
+  exchange_id: number;
+  reminder_type: ExchangeReminderType;
+  reminder_date: string; // ISO date string
+  is_sent: number; // SQLite boolean (0 or 1)
+  notification_id: string | null;
+  created_at: string; // ISO date string
+  updated_at: string; // ISO date string
+  deleted_at: string | null; // ISO date string
+  remote_id: string | null;
+  is_synced: number; // SQLite boolean (0 or 1)
+}
+
+export interface CreateExchangeReminderInput {
+  exchange_id: number;
+  reminder_type: ExchangeReminderType;
+  reminder_date: string; // ISO date string
+  notification_id?: string | null;
+}
+
+export interface UpdateExchangeReminderInput {
+  id: number;
+  reminder_type?: ExchangeReminderType;
+  reminder_date?: string;
+  is_sent?: boolean;
+  notification_id?: string | null;
+}
+
