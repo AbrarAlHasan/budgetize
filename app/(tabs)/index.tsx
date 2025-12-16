@@ -25,6 +25,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { endOfMonth, format, startOfMonth } from "date-fns";
 import { router } from "expo-router";
+import { usePostHog } from "posthog-react-native";
 import React from "react";
 import {
   RefreshControl,
@@ -42,10 +43,13 @@ export default function DashboardScreen() {
   const setCurrentFilterContext = useUIStore(
     (state) => state.setCurrentFilterContext
   );
+  const posthog = usePostHog();
+
   const { settings, loadSettings } = useSettingsStore();
 
   React.useEffect(() => {
     loadSettings();
+    posthog.capture("Dashboard Screen Loaded");
   }, []);
 
   // Ensure dates are never null - set to current month if null
