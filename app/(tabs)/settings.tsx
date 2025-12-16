@@ -11,6 +11,7 @@ import {
   DummyDataSizeBottomSheet,
   DummyDataSizeBottomSheetRef,
 } from "@/components/dummy-data-size-bottom-sheet";
+import { PinScreen } from "@/components/security/pin-screen";
 import { TagChip } from "@/components/tag-chip";
 import {
   BottomSheetMultiSelect,
@@ -29,6 +30,7 @@ import {
 import { onboardingStorage } from "@/storage/onboarding";
 import { useAuthStore } from "@/store/auth-store";
 import { useNotificationStore } from "@/store/notification-store";
+import { useSecurityStore } from "@/store/security-store";
 import { useSettingsStore } from "@/store/settings-store";
 import { createBackupFile, restoreAppData } from "@/utils/backup";
 import { clearDatabase } from "@/utils/clear-database";
@@ -43,6 +45,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import Constants from "expo-constants";
 import * as DocumentPicker from "expo-document-picker";
 import { Paths } from "expo-file-system";
+import * as LocalAuthentication from "expo-local-authentication";
 import { router, useLocalSearchParams } from "expo-router";
 import * as Sharing from "expo-sharing";
 import { colorScheme } from "nativewind";
@@ -99,8 +102,19 @@ export default function SettingsScreen() {
   const [isExportingExcel, setIsExportingExcel] = useState(false);
   const [isImportingBankStatement, setIsImportingBankStatement] =
     useState(false);
+  const [showPinSetup, setShowPinSetup] = useState(false);
+  const [showPinVerify, setShowPinVerify] = useState(false);
+  const [showChangePinVerify, setShowChangePinVerify] = useState(false);
+  const [isChangingPin, setIsChangingPin] = useState(false);
   const dummyDataSizeBottomSheetRef = useRef<DummyDataSizeBottomSheetRef>(null);
   const bankSelectionBottomSheetRef = useRef<BankSelectionBottomSheetRef>(null);
+  const {
+    isLockEnabled,
+    isBiometricEnabled,
+    setIsLockEnabled,
+    setAuthenticated,
+    reset: resetSecurity,
+  } = useSecurityStore();
 
   useEffect(() => {
     log(Paths.document.uri);
@@ -560,7 +574,117 @@ export default function SettingsScreen() {
     }
   };
 
+  // Handle PIN setup completion
+  const handlePinSetupComplete = async () => {
+    setShowPinSetup(false);
+    
+    if (isChangingPin) {
+      // Changing PIN - just show success message
+      setIsChangingPin(false);
+      alert(
+        "PIN Changed",
+        "Your PIN has been changed successfully.",
+        [{ text: "OK" }]
+      );
+    } else {
+      // First time setup - enable lock and biometric
+      await setIsLockEnabled(true);
+      
+      // Set authenticated to true so user can continue using the app immediately
+      // Authentication will be reset when app goes to background, requiring PIN on next open
+      setAuthenticated(true);
+      
+      // Automatically enable biometric if available
+      try {
+        const hasHardware = await LocalAuthentication.hasHardwareAsync();
+        const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+        
+        if (hasHardware && isEnrolled) {
+          const { setIsBiometricEnabled } = useSecurityStore.getState();
+          setIsBiometricEnabled(true);
+        }
+      } catch (error) {
+        // Biometric not available or error - continue without it
+        logError('Biometric setup error:', error);
+      }
+      
+      alert(
+        "Security Enabled",
+        "App lock has been enabled successfully. Your app will now require authentication when you reopen it.",
+        [{ text: "OK" }]
+      );
+    }
+  };
+
+  const handlePinSetupCancel = () => {
+    setShowPinSetup(false);
+    setIsChangingPin(false);
+  };
+
+  const handlePinVerifySuccess = async () => {
+    setShowPinVerify(false);
+    await setIsLockEnabled(false);
+    alert(
+      "App Lock Disabled",
+      "App lock has been disabled successfully.",
+      [{ text: "OK" }]
+    );
+  };
+
+  const handlePinVerifyCancel = () => {
+    setShowPinVerify(false);
+  };
+
+  const handleChangePinVerifySuccess = () => {
+    setShowChangePinVerify(false);
+    setIsChangingPin(true);
+    // Delay to ensure verification modal closes before setup modal opens
+    setTimeout(() => {
+      setShowPinSetup(true);
+    }, 300);
+  };
+
+  const handleChangePinVerifyCancel = () => {
+    setShowChangePinVerify(false);
+    setIsChangingPin(false);
+  };
+
   return (
+    <>
+      {/* PIN verification modal (for disabling) */}
+      {showPinVerify && !showChangePinVerify && !showPinSetup && (
+        <PinScreen
+          mode="verify"
+          onComplete={handlePinVerifySuccess}
+          onCancel={handlePinVerifyCancel}
+          title="Disable App Lock"
+          subtitle="Enter your PIN to disable app lock"
+        />
+      )}
+
+      {/* PIN verification modal (for changing PIN) - Must show first */}
+      {showChangePinVerify && (
+        <PinScreen
+          key="change-pin-verify"
+          mode="verify"
+          onComplete={handleChangePinVerifySuccess}
+          onCancel={handleChangePinVerifyCancel}
+          title="Change PIN"
+          subtitle="Enter your current PIN to change it"
+        />
+      )}
+
+      {/* PIN setup modal (for enabling or changing) - Only show if verification is not showing */}
+      {showPinSetup && !showChangePinVerify && (
+        <PinScreen
+          key={isChangingPin ? "change-pin-setup" : "setup-pin"}
+          mode="setup"
+          onComplete={handlePinSetupComplete}
+          onCancel={handlePinSetupCancel}
+        />
+      )}
+
+      {/* Main Settings Screen */}
     <SafeAreaView className="flex-1 bg-gray-50 dark:bg-black" edges={["top"]}>
       <ScrollView
         ref={scrollViewRef}
@@ -626,6 +750,121 @@ export default function SettingsScreen() {
               </View>
             </View>
           </Card>
+
+          {/* Security Settings */}
+          <Card className="mb-4">
+            <Text className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+              Security
+            </Text>
+
+            {/* Security Lock Toggle */}
+            <View className="mb-4">
+              <View className="flex-row items-center justify-between mb-2">
+                <View className="flex-1">
+                  <View className="flex-row items-center mb-1">
+                    <Ionicons
+                      name="lock-closed"
+                      size={18}
+                      color="#3B82F6"
+                      style={{ marginRight: 8 }}
+                    />
+                    <Text className="text-base font-medium text-gray-900 dark:text-gray-100">
+                      App Lock
+                    </Text>
+                  </View>
+                  <Text className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    {isLockEnabled
+                      ? "Protect your app with PIN and biometric authentication"
+                      : "Enable PIN and biometric authentication to secure your app"}
+                  </Text>
+                </View>
+                <Switch
+                  value={isLockEnabled}
+                  onValueChange={async (enabled) => {
+                    if (enabled) {
+                      // Show warning about data loss
+                      alert(
+                        "Enable App Lock",
+                        "You will need to set up a PIN. If you forget your PIN and don't have a backup, your data might be lost.\n\nMake sure to remember your PIN or keep a backup of your data.",
+                        [
+                          { text: "Cancel", style: "cancel" },
+                          {
+                            text: "Continue",
+                            style: "default",
+                            onPress: () => {
+                              setShowPinSetup(true);
+                            },
+                          },
+                        ]
+                      );
+                    } else {
+                      // Disable security - require PIN verification first
+                      setShowPinVerify(true);
+                    }
+                  }}
+                  trackColor={{ false: "#D1D5DB", true: "#3B82F6" }}
+                  thumbColor="#FFFFFF"
+                />
+              </View>
+
+              {/* Status Info */}
+              {isLockEnabled && (
+                <View className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                  <View className="flex-row items-start gap-2">
+                    <Ionicons
+                      name="information-circle"
+                      size={16}
+                      color="#3B82F6"
+                      style={{ marginTop: 2 }}
+                    />
+                    <View className="flex-1">
+                      <Text className="text-sm text-blue-800 dark:text-blue-200 font-medium mb-1">
+                        Security Active
+                      </Text>
+                      <Text className="text-xs text-blue-700 dark:text-blue-300">
+                        {isBiometricEnabled
+                          ? "PIN and biometric authentication are enabled"
+                          : "PIN authentication is enabled"}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              )}
+            </View>
+
+            {/* Change PIN Button (only show if enabled) */}
+            {isLockEnabled && (
+              <TouchableOpacity
+                onPress={() => {
+                  // Reset all related states first
+                  setShowPinSetup(false);
+                  setShowPinVerify(false);
+                  setIsChangingPin(false);
+                  // Then open verification modal
+                  setShowChangePinVerify(true);
+                }}
+                className="flex-row items-center justify-between py-3 mb-2"
+                activeOpacity={0.7}
+              >
+                <View className="flex-row items-center gap-3">
+                  <Ionicons
+                    name="key-outline"
+                    size={18}
+                    color="#3B82F6"
+                  />
+                  <Text className="text-base font-medium text-gray-900 dark:text-gray-100">
+                    Change PIN
+                  </Text>
+                </View>
+                <Ionicons
+                  name="chevron-forward"
+                  size={20}
+                  color="#9CA3AF"
+                />
+              </TouchableOpacity>
+            )}
+          </Card>
+
           {/* Notification Settings */}
           <Card className="mb-4">
             <Text className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
@@ -1481,5 +1720,6 @@ export default function SettingsScreen() {
         onBankSelected={handleBankSelected}
       />
     </SafeAreaView>
+    </>
   );
 }

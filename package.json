@@ -14,7 +14,7 @@
     "release-android-ota-update": "chmod +x scripts/release-android-ota-update.sh && ./scripts/release-android-ota-update.sh",
     "release-ios-ota-update": "chmod +x scripts/release-ios-ota-update.sh && ./scripts/release-ios-ota-update.sh",
     "release-ota-update": "chmod +x scripts/release-ota-update.sh && ./scripts/release-ota-update.sh",
-    "prebuild-widget":"EXPO_NO_GIT_STATUS=1 npx expo prebuild --template ./node_modules/@bacons/apple-targets/prebuild-blank.tgz --clean"
+    "prebuild-widget": "EXPO_NO_GIT_STATUS=1 npx expo prebuild --template ./node_modules/@bacons/apple-targets/prebuild-blank.tgz --clean"
   },
   "dependencies": {
     "@bacons/apple-targets": "^3.0.6",
@@ -50,6 +50,7 @@
     "expo-insights": "~0.10.7",
     "expo-linear-gradient": "~15.0.7",
     "expo-linking": "~8.0.8",
+    "expo-local-authentication": "~17.0.8",
     "expo-localization": "~17.0.7",
     "expo-network": "~8.0.8",
     "expo-notifications": "~0.32.13",
