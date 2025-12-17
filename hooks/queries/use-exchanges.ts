@@ -29,22 +29,13 @@ export function useExchanges(filters?: {
     queryKey: QUERY_KEYS.list(filters),
     queryFn: async () => {
       const startTime = Date.now();
-      logPerformance("useExchanges query started", 0);
 
       // Use the optimized method that handles all filtering in SQL
       const exchanges = await exchangeRepository.findAllWithFilters(filters);
-
-      const decryptStartTime = Date.now();
       const result = await exchangeRepository.decryptExchanges(exchanges);
-      const decryptEndTime = Date.now();
-      logPerformance(
-        "useExchanges decrypt",
-        decryptEndTime - decryptStartTime,
-        `${result.length} exchanges`
-      );
 
       const endTime = Date.now();
-      logPerformance("useExchanges query completed", endTime - startTime);
+      logPerformance("useExchanges_query", endTime - startTime, `${result.length} exchanges`);
 
       return result;
     },

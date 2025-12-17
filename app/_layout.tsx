@@ -19,6 +19,7 @@ import { useInAppUpdates } from "@/hooks/use-in-app-updates";
 import { queryClient } from "@/hooks/use-query-client";
 import { useWidgetSync } from "@/hooks/use-widget-sync";
 import { trackInstallation } from "@/services/installation-tracker";
+import { initializePerformanceMonitoring } from "@/services/performance-monitor";
 import { onboardingStorage } from "@/storage/onboarding";
 import { useAuthStore } from "@/store/auth-store";
 import { useSecurityStore } from "@/store/security-store";
@@ -95,6 +96,9 @@ export default function RootLayout() {
   useEffect(() => {
     const initializeApp = async () => {
       try {
+        // Initialize Firebase Performance Monitoring (must be done early)
+        initializePerformanceMonitoring();
+
         // Initialize auth (just sets up listener, doesn't check session)
         const { initialize: initializeAuth, checkSession } =
           useAuthStore.getState();

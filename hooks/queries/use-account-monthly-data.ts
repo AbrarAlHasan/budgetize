@@ -16,7 +16,6 @@ export function useAccountMonthlyData(accountId: number) {
     queryKey: [...QUERY_KEY, accountId],
     queryFn: async (): Promise<AccountMonthlyData> => {
       const startTime = Date.now();
-      logPerformance(`useAccountMonthlyData(${accountId}) query started`, 0);
       
       const now = new Date();
       
@@ -55,7 +54,7 @@ export function useAccountMonthlyData(accountId: number) {
       };
       
       const endTime = Date.now();
-      logPerformance(`useAccountMonthlyData(${accountId}) query completed`, endTime - startTime);
+      logPerformance('useAccountMonthlyData_query', endTime - startTime);
 
       return result;
     },

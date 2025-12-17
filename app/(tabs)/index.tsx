@@ -131,7 +131,6 @@ export default function DashboardScreen() {
     ],
     queryFn: async () => {
       const startTime = Date.now();
-      logPerformance("Dashboard latest transactions query started", 0);
 
       const filterOptions = useFilters
         ? {
@@ -166,42 +165,25 @@ export default function DashboardScreen() {
         : { startDate, endDate };
 
       // Fetch only latest 10 transactions directly from database
-      const queryStartTime = Date.now();
       const rawTransactions =
         await transactionRepository.findLatestTransactionsWithFilters(
           10,
           filterOptions
         );
-      const queryEndTime = Date.now();
-      logPerformance(
-        "Dashboard query fetch",
-        queryEndTime - queryStartTime,
-        `${rawTransactions.length} transactions`
-      );
 
       // Decrypt only the transactions we need
-      const decryptStartTime = Date.now();
       const decrypted = await transactionRepository.decryptTransactions(
         rawTransactions
       );
-      const decryptEndTime = Date.now();
-      logPerformance(
-        "Dashboard decrypt",
-        decryptEndTime - decryptStartTime,
-        `${decrypted.length} transactions`
-      );
 
-      const filterStartTime = Date.now();
       const filtered = filterTransactionsByIncomePreference(
         decrypted,
         settings.incomeCalculationEnabled
       );
-      const filterEndTime = Date.now();
-      logPerformance("Dashboard filter", filterEndTime - filterStartTime);
 
       const endTime = Date.now();
       logPerformance(
-        "Dashboard latest transactions query completed",
+        "Dashboard_latest_transactions_query",
         endTime - startTime,
         `${filtered.length} transactions`
       );

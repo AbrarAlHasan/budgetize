@@ -15,20 +15,12 @@ export function useCategories() {
     queryKey: QUERY_KEYS.lists(),
     queryFn: async () => {
       const startTime = Date.now();
-      logPerformance('useCategories query started', 0);
       
-      const queryStartTime = Date.now();
       const categories = await categoryRepository.findAll();
-      const queryEndTime = Date.now();
-      logPerformance('useCategories query fetch', queryEndTime - queryStartTime, `${categories.length} categories`);
-
-      const decryptStartTime = Date.now();
       const result = await categoryRepository.decryptCategories(categories);
-      const decryptEndTime = Date.now();
-      logPerformance('useCategories decrypt', decryptEndTime - decryptStartTime, `${result.length} categories`);
       
       const endTime = Date.now();
-      logPerformance('useCategories query completed', endTime - startTime, `${result.length} categories`);
+      logPerformance('useCategories_query', endTime - startTime, `${result.length} categories`);
       
       return result;
     },
@@ -40,18 +32,17 @@ export function useCategory(id: number) {
     queryKey: QUERY_KEYS.detail(id),
     queryFn: async () => {
       const startTime = Date.now();
-      logPerformance(`useCategory(${id}) query started`, 0);
       
       const category = await categoryRepository.findById(id);
       if (!category) {
         const endTime = Date.now();
-        logPerformance(`useCategory(${id}) query completed`, endTime - startTime, 'not found');
+        logPerformance('useCategory_query', endTime - startTime, 'not found');
         return null;
       }
       const result = await categoryRepository.decryptCategory(category);
       
       const endTime = Date.now();
-      logPerformance(`useCategory(${id}) query completed`, endTime - startTime);
+      logPerformance('useCategory_query', endTime - startTime);
       
       return result;
     },

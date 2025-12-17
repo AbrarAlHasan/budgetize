@@ -7,7 +7,7 @@ import { getDatabase } from "@/db/sqlite/db";
 import { categoryRepository } from "@/repositories/category.repository";
 import { tagRepository } from "@/repositories/tag.repository";
 import { decrypt, decryptAmount } from "@/services/encryption";
-import { log, logError, logWarn } from "@/utils/logger";
+import { log, logError } from "@/utils/logger";
 
 interface QueryResult {
   success: boolean;

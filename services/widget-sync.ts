@@ -1,8 +1,8 @@
-import { transactionRepository } from '@/repositories/transaction.repository';
-import { useSettingsStore } from '@/store/settings-store';
-import { getCurrencySymbol } from '@/utils/currencies';
-import { logError, logPerformance } from '@/utils/logger';
-import { ExtensionStorage } from '@bacons/apple-targets';
+import { transactionRepository } from "@/repositories/transaction.repository";
+import { useSettingsStore } from "@/store/settings-store";
+import { getCurrencySymbol } from "@/utils/currencies";
+import { logError, logPerformance } from "@/utils/logger";
+import { ExtensionStorage } from "@bacons/apple-targets";
 import {
   differenceInDays,
   endOfDay,
@@ -12,15 +12,15 @@ import {
   getDaysInMonth,
   startOfDay,
   startOfMonth,
-  startOfWeek
-} from 'date-fns';
+  startOfWeek,
+} from "date-fns";
 
 // App Group identifier - must match the one in app.json and widget entitlements
-const APP_GROUP_ID = 'group.widget.com.suzukibusinesscloud.SalesQA-3.0';
+const APP_GROUP_ID = "group.widget.com.suzukibusinesscloud.SalesQA-3.0";
 
 // Storage keys for widget data
-const WIDGET_DATA_KEY = 'widgetSpendData';
-const WIDGET_LAST_UPDATED_KEY = 'widgetLastUpdated';
+const WIDGET_DATA_KEY = "widgetSpendData";
+const WIDGET_LAST_UPDATED_KEY = "widgetLastUpdated";
 
 export interface WidgetSpendData {
   todaySpent: string;
@@ -39,10 +39,10 @@ export interface WidgetSpendData {
  */
 function formatAmountForWidget(amount: number): string {
   if (amount >= 1000000) {
-    return (amount / 1000000).toFixed(1) + 'M';
+    return (amount / 1000000).toFixed(1) + "M";
   }
   if (amount >= 1000) {
-    return (amount / 1000).toFixed(1) + 'K';
+    return (amount / 1000).toFixed(1) + "K";
   }
   return amount.toFixed(0);
 }
@@ -52,11 +52,10 @@ function formatAmountForWidget(amount: number): string {
  */
 export async function syncWidgetData(): Promise<void> {
   const startTime = Date.now();
-  logPerformance('syncWidgetData started', 0);
 
   try {
     const now = new Date();
-    
+
     // Get currency from settings
     const currency = useSettingsStore.getState().settings.currency;
     const currencySymbol = getCurrencySymbol(currency);
@@ -69,12 +68,12 @@ export async function syncWidgetData(): Promise<void> {
     const monthStart = startOfMonth(now);
     const monthEnd = endOfMonth(now);
 
-    const dayStartDate = format(dayStart, 'yyyy-MM-dd');
-    const dayEndDate = format(dayEnd, 'yyyy-MM-dd');
-    const weekStartDate = format(weekStart, 'yyyy-MM-dd');
-    const weekEndDate = format(weekEnd, 'yyyy-MM-dd');
-    const monthStartDate = format(monthStart, 'yyyy-MM-dd');
-    const monthEndDate = format(monthEnd, 'yyyy-MM-dd');
+    const dayStartDate = format(dayStart, "yyyy-MM-dd");
+    const dayEndDate = format(dayEnd, "yyyy-MM-dd");
+    const weekStartDate = format(weekStart, "yyyy-MM-dd");
+    const weekEndDate = format(weekEnd, "yyyy-MM-dd");
+    const monthStartDate = format(monthStart, "yyyy-MM-dd");
+    const monthEndDate = format(monthEnd, "yyyy-MM-dd");
 
     // Calculate days for month
     const totalDaysInMonth = getDaysInMonth(now);
@@ -85,17 +84,17 @@ export async function syncWidgetData(): Promise<void> {
       transactionRepository.calculateAccountExpensesForDateRange({
         startDate: dayStartDate,
         endDate: dayEndDate,
-        types: ['expense'],
+        types: ["expense"],
       }),
       transactionRepository.calculateAccountExpensesForDateRange({
         startDate: weekStartDate,
         endDate: weekEndDate,
-        types: ['expense'],
+        types: ["expense"],
       }),
       transactionRepository.calculateAccountExpensesForDateRange({
         startDate: monthStartDate,
         endDate: monthEndDate,
-        types: ['expense'],
+        types: ["expense"],
       }),
     ]);
 
@@ -123,13 +122,11 @@ export async function syncWidgetData(): Promise<void> {
 
     // Reload widget timeline
     ExtensionStorage.reloadWidget();
-    
-    console.log('Widget data synced:', widgetData);
 
     const endTime = Date.now();
-    logPerformance('syncWidgetData completed', endTime - startTime);
+    logPerformance("syncWidgetData_query", endTime - startTime);
   } catch (error) {
-    logError('Error syncing widget data:', error);
+    logError("Error syncing widget data:", error);
     throw error;
   }
 }
@@ -142,7 +139,7 @@ export function getWidgetLastUpdated(): string | null {
     const storage = new ExtensionStorage(APP_GROUP_ID);
     return storage.get(WIDGET_LAST_UPDATED_KEY);
   } catch (error) {
-    logError('Error getting widget last updated:', error);
+    logError("Error getting widget last updated:", error);
     return null;
   }
 }
@@ -158,7 +155,7 @@ export function getCachedWidgetData(): WidgetSpendData | null {
     // ExtensionStorage.get() returns a string, parse it
     return JSON.parse(data) as WidgetSpendData;
   } catch (error) {
-    logError('Error getting cached widget data:', error);
+    logError("Error getting cached widget data:", error);
     return null;
   }
 }

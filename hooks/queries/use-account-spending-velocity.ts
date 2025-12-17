@@ -22,7 +22,6 @@ export function useAccountSpendingVelocity(accountId: number) {
     queryKey: [...QUERY_KEY, accountId],
     queryFn: async (): Promise<AccountSpendingVelocity> => {
       const startTime = Date.now();
-      logPerformance(`useAccountSpendingVelocity(${accountId}) query started`, 0);
       
       const now = new Date();
       
@@ -66,7 +65,7 @@ export function useAccountSpendingVelocity(accountId: number) {
       };
       
       const endTime = Date.now();
-      logPerformance(`useAccountSpendingVelocity(${accountId}) query completed`, endTime - startTime);
+      logPerformance('useAccountSpendingVelocity_query', endTime - startTime);
 
       return result;
     },

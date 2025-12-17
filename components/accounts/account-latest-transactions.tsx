@@ -52,10 +52,6 @@ export function AccountLatestTransactions({
     queryKey: ["account-latest-transactions", accountId],
     queryFn: async () => {
       const startTime = Date.now();
-      logPerformance(
-        `AccountLatestTransactions query started for account ${accountId}`,
-        0
-      );
       
       // Fetch only latest 5 transactions directly from database
       const rawTransactions =
@@ -75,7 +71,7 @@ export function AccountLatestTransactions({
       
       const endTime = Date.now();
       logPerformance(
-        `AccountLatestTransactions query completed`,
+        'AccountLatestTransactions_query',
         endTime - startTime,
         `${filtered.length} transactions`
       );
