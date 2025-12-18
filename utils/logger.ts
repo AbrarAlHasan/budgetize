@@ -4,10 +4,21 @@
  * Features:
  * - Console logging (development only)
  * - Firebase Crashlytics integration (production errors/warnings)
+ * - Sentry integration with proper log levels
  */
 
 import { Platform } from "react-native";
 import { consoleTransport, logger } from "react-native-logs";
+
+// Sentry (lazy import to avoid issues if not available)
+let Sentry: any = null;
+try {
+  if (Platform.OS !== "web") {
+    Sentry = require("@sentry/react-native");
+  }
+} catch (error) {
+  // Sentry not available, continue without it
+}
 
 // Firebase Crashlytics (lazy import to avoid issues if not available)
 let crashlytics: any = null;
@@ -17,19 +28,6 @@ try {
   }
 } catch (error) {
   // Crashlytics not available, continue without it
-}
-
-// Firebase Performance Monitoring (lazy import)
-let perf: any = null;
-let perfInitialized = false;
-try {
-  if (Platform.OS !== "web") {
-    perf = require("@react-native-firebase/perf").default;
-    perfInitialized = true;
-  }
-} catch (error) {
-  // Performance monitoring not available, continue without it
-  perfInitialized = true;
 }
 
 // Create logger with console transport
@@ -58,24 +56,103 @@ export const customLog = logger.createLogger({
   enabled: true, // Always enabled
 });
 
-// Override log methods to add Firebase Crashlytics in production
+/**
+ * Helper function to format log arguments into a message string
+ */
+function formatLogMessage(args: any[]): string {
+  return args
+    .map((arg) => {
+      if (typeof arg === "string") return arg;
+      if (arg instanceof Error) return arg.message;
+      try {
+        return JSON.stringify(arg);
+      } catch {
+        return String(arg);
+      }
+    })
+    .join(" ");
+}
+
+/**
+ * Send log to Sentry with proper severity level
+ * Sentry severity levels: debug, info, warning, error, fatal
+ */
+function sendToSentry(
+  message: string,
+  level: "debug" | "info" | "warning" | "error" | "fatal" = "info"
+): void {
+  if (!Sentry || __DEV__) return;
+
+  try {
+    // Use captureMessage with severity level in options
+    // This ensures the log level is properly set in Sentry
+    Sentry.captureMessage(message, {
+      level: level as any, // Sentry.SeverityLevel type
+    });
+  } catch (error) {
+    // Silently fail if Sentry not available or fails
+  }
+}
+
+/**
+ * Send error to Sentry with proper context
+ */
+function sendErrorToSentry(error: Error | string, context?: string): void {
+  if (!Sentry || __DEV__) return;
+
+  try {
+    if (error instanceof Error) {
+      // Use captureException for Error objects with context
+      Sentry.captureException(error, {
+        level: "error",
+        tags: context ? { context } : undefined,
+      });
+    } else {
+      // Use captureMessage for string errors with error level
+      Sentry.captureMessage(error, {
+        level: "error" as any,
+        tags: context ? { context } : undefined,
+      });
+    }
+  } catch (err) {
+    // Silently fail if Sentry not available or fails
+  }
+}
+
+// Override log methods to add Sentry and Firebase Crashlytics integration
+const originalDebug = customLog.debug;
 const originalInfo = customLog.info;
 const originalWarn = customLog.warn;
 const originalError = customLog.error;
 
+customLog.debug = (...args: any[]) => {
+  originalDebug(...args);
+  // Sentry: debug level (only in production if needed)
+  if (Sentry && !__DEV__) {
+    const message = formatLogMessage(args);
+    sendToSentry(message, "debug");
+  }
+};
+
 customLog.info = (...args: any[]) => {
   originalInfo(...args);
-  // Crashlytics doesn't log info by default
+  // Sentry: info level
+  const message = formatLogMessage(args);
+  sendToSentry(message, "info");
+  
+  // Firebase Crashlytics doesn't log info by default
 };
 
 customLog.warn = (...args: any[]) => {
   originalWarn(...args);
+  const message = formatLogMessage(args);
+  
+  // Sentry: warning level
+  sendToSentry(message, "warning");
+  
   // Firebase Crashlytics (production)
   if (crashlytics && !__DEV__) {
     try {
-      const message = args.map((arg) => 
-        typeof arg === "string" ? arg : JSON.stringify(arg)
-      ).join(" ");
       crashlytics.log(`[WARN] ${message}`);
     } catch (error) {
       // Silently fail if Crashlytics not available
@@ -85,14 +162,36 @@ customLog.warn = (...args: any[]) => {
 
 customLog.error = (...args: any[]) => {
   originalError(...args);
+  const message = formatLogMessage(args);
+  
+  // Sentry: error level
+  sendToSentry(message, "error");
+  
+  // Also send as exception to Sentry for better error tracking
+  if (Sentry && !__DEV__) {
+    try {
+      // Check if any arg is an Error object
+      const errorArg = args.find((arg) => arg instanceof Error);
+      if (errorArg instanceof Error) {
+        sendErrorToSentry(errorArg);
+      } else {
+        sendErrorToSentry(new Error(message));
+      }
+    } catch (err) {
+      // Silently fail
+    }
+  }
+  
   // Firebase Crashlytics (production)
   if (crashlytics && !__DEV__) {
     try {
-      const message = args.map((arg) => 
-        typeof arg === "string" ? arg : JSON.stringify(arg)
-      ).join(" ");
       crashlytics.log(`[ERROR] ${message}`);
-      crashlytics.recordError(new Error(message));
+      const errorArg = args.find((arg) => arg instanceof Error);
+      if (errorArg instanceof Error) {
+        crashlytics.recordError(errorArg);
+      } else {
+        crashlytics.recordError(new Error(message));
+      }
     } catch (error) {
       // Silently fail if Crashlytics not available
     }
@@ -124,77 +223,7 @@ export function logSQL(
 }
 
 /**
- * Normalize performance label to a valid Firebase trace name
- * Firebase trace names must be lowercase, alphanumeric, and underscores only
- * 
- * Handles patterns like:
- * - "useAccounts_query" -> "use_accounts_query"
- * - "useAccount_query" -> "use_account_query"
- * - "Dashboard_latest_transactions_query" -> "dashboard_latest_transactions_query"
- */
-function normalizeTraceName(label: string): string {
-  let normalized = label.toLowerCase();
-  
-  // Remove any "completed", "started", "fetch", "decrypt", "filter" suffixes
-  normalized = normalized
-    .replace(/\s+completed.*$/i, "")
-    .replace(/\s+started.*$/i, "")
-    .replace(/\s+fetch.*$/i, "")
-    .replace(/\s+decrypt.*$/i, "")
-    .replace(/\s+filter.*$/i, "");
-  
-  // Remove function parameters like "(123)" or "(id)"
-  normalized = normalized.replace(/\([^)]*\)/g, "");
-  
-  // Remove "query" word if it appears separately (we'll add _query suffix)
-  normalized = normalized.replace(/\s+query\s+/gi, " ").replace(/\s+query$/i, "");
-  
-  // Convert to lowercase and replace spaces/special chars with underscores
-  normalized = normalized
-    .replace(/[^a-z0-9_]/g, "_")
-    .replace(/_+/g, "_") // Replace multiple underscores with single
-    .replace(/^_|_$/g, ""); // Remove leading/trailing underscores
-  
-  // Add "_query" suffix if it doesn't already have it
-  if (normalized && !normalized.endsWith("_query")) {
-    normalized = `${normalized}_query`;
-  }
-  
-  // Limit length (Firebase has a max length for trace names)
-  if (normalized.length > 100) {
-    normalized = normalized.substring(0, 100);
-  }
-  
-  // Ensure it starts with a letter
-  if (normalized && /^[0-9]/.test(normalized)) {
-    normalized = `trace_${normalized}`;
-  }
-  
-  return normalized || "performance_trace";
-}
-
-/**
- * Extract metadata from additionalInfo string
- */
-function parseAdditionalInfo(additionalInfo?: string): { [key: string]: string | number } {
-  const metadata: { [key: string]: string | number } = {};
-  
-  if (!additionalInfo) return metadata;
-  
-  // Try to extract counts like "(12 categories)" or "(10 transactions)"
-  const countMatch = additionalInfo.match(/\((\d+)\s+(\w+)\)/);
-  if (countMatch) {
-    const count = parseInt(countMatch[1], 10);
-    const unit = countMatch[2];
-    metadata[`${unit}_count`] = count;
-    metadata.result_count = count;
-  }
-  
-  return metadata;
-}
-
-/**
- * Logs performance metrics and sends to Firebase Performance Monitoring
+ * Logs performance metrics (development only)
  */
 export function logPerformance(
   label: string,
@@ -205,40 +234,6 @@ export function logPerformance(
     additionalInfo ? ` (${additionalInfo})` : ""
   }`;
   customLog.debug(message);
-
-  // Send to Firebase Performance Monitoring if available (fire-and-forget)
-  if (perf && perfInitialized && duration >= 0) {
-    // Use setImmediate to avoid blocking the current execution
-    setImmediate(async () => {
-      try {
-        const traceName = normalizeTraceName(label);
-        const trace = perf().newTrace(traceName);
-        await trace.start();
-
-        // Add duration as metric
-        trace.putMetric("duration_ms", duration);
-
-        // Add label as attribute
-        trace.putAttribute("label", label);
-
-        // Parse and add metadata from additionalInfo
-        const metadata = parseAdditionalInfo(additionalInfo);
-        Object.entries(metadata).forEach(([key, value]) => {
-          if (typeof value === "number") {
-            trace.putMetric(key, value);
-          } else {
-            trace.putAttribute(key, String(value));
-          }
-        });
-
-        // Stop trace
-        await trace.stop();
-      } catch (error) {
-        // Silently fail if Performance Monitoring fails
-        // Don't log to avoid infinite loops
-      }
-    });
-  }
 }
 
 /**
@@ -248,6 +243,9 @@ export function logErrorDetails(error: unknown): void {
   if (error instanceof Error) {
     const errorMsg = `Error: ${error.message}\nStack: ${error.stack || "No stack trace"}`;
     customLog.error(errorMsg);
+
+    // Send to Sentry in production
+    sendErrorToSentry(error, "logErrorDetails");
 
     // Send to Crashlytics in production
     if (crashlytics && !__DEV__) {
@@ -259,9 +257,14 @@ export function logErrorDetails(error: unknown): void {
     }
   } else if (typeof error === "string") {
     customLog.error(`Error: ${error}`);
+    sendErrorToSentry(error, "logErrorDetails");
   } else if (error && typeof error === "object" && "message" in error) {
-    customLog.error(`Error: ${String(error.message)}`);
+    const message = String(error.message);
+    customLog.error(`Error: ${message}`);
+    sendErrorToSentry(message, "logErrorDetails");
   } else {
-    customLog.error(`Error: ${JSON.stringify(error)}`);
+    const message = JSON.stringify(error);
+    customLog.error(`Error: ${message}`);
+    sendErrorToSentry(message, "logErrorDetails");
   }
 }

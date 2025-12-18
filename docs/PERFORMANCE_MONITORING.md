@@ -32,9 +32,11 @@ All `logPerformance()` calls automatically send traces to Firebase Performance M
 For each query, Firebase Performance Monitoring records:
 
 1. **Trace Name**: Format `sql_{table_name}_{query_type}`
+
    - Example: `sql_transactions_select`, `sql_accounts_insert`
 
 2. **Attributes**:
+
    - `table`: Table name (e.g., "transactions", "accounts")
    - `query_type`: Type of query (SELECT, INSERT, UPDATE, DELETE)
    - `has_params`: Whether the query has parameters ("true" or "false")
@@ -59,6 +61,7 @@ For each query, Firebase Performance Monitoring records:
 ### Trace Details
 
 Each trace shows:
+
 - **Duration**: Average, P50, P75, P95, P99 percentiles
 - **Count**: Number of times the query was executed
 - **Attributes**: Table name, query type, etc.
@@ -76,12 +79,14 @@ To find slow queries:
 ## Example Trace Names
 
 ### SQL Query Traces
+
 - `sql_transactions_select` - SELECT queries on transactions table
 - `sql_accounts_insert` - INSERT queries on accounts table
 - `sql_categories_update` - UPDATE queries on categories table
 - `sql_tags_delete` - DELETE queries on tags table
 
 ### Application Performance Traces
+
 - `dashboard_query_fetch` - Dashboard query fetching operations
 - `dashboard_decrypt` - Dashboard data decryption
 - `dashboard_filter` - Dashboard filtering operations
@@ -123,6 +128,7 @@ If you see slow queries in Firebase:
 ### Missing Traces
 
 Some queries may not be tracked if they:
+
 - Are executed directly on the database instance (bypassing repository methods)
 - Fail before the trace can be started
 - Are executed on web platform (Performance Monitoring doesn't work on web)
@@ -148,7 +154,7 @@ Some queries may not be tracked if they:
 The service uses Firebase Performance Monitoring's custom trace API:
 
 ```typescript
-const trace = perf().newTrace(traceName);
+const trace = perf().trace(traceName);
 await trace.start();
 // ... execute query ...
 trace.putMetric("duration_ms", duration);
@@ -164,4 +170,3 @@ await trace.stop();
 ## Summary
 
 SQL query performance monitoring is now automatically enabled for all production builds. Check Firebase Console regularly to identify and optimize slow queries, ensuring your app maintains excellent performance as your user base grows.
-

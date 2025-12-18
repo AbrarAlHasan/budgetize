@@ -1,5 +1,4 @@
 import { getDatabase } from '@/db/sqlite/db';
-import { trackQueryPerformance, trackUpdatePerformance } from '@/services/performance-monitor';
 import { logSQL } from '@/utils/logger';
 import * as SQLite from 'expo-sqlite';
 
@@ -18,35 +17,19 @@ export abstract class BaseRepository<T> {
     // Generate a unique ID for this query execution
     const queryId = Math.random().toString(36).substring(2, 9);
     
-    // Track query performance using Firebase Performance Monitoring
-    const result = await trackQueryPerformance<TResult[]>(
-      query,
-      params,
-      async () => {
-        // Log the final SQL query and parameters for debugging (only in development)
-        const db = await this.getDb();
-        const queryResult = await db.getAllAsync<TResult>(query, params);
-        logSQL(queryId, query, params, queryResult.length);
-        return queryResult;
-      }
-    );
-    
-    return result;
+    // Log the final SQL query and parameters for debugging (only in development)
+    const db = await this.getDb();
+    const queryResult = await db.getAllAsync<TResult>(query, params);
+    logSQL(queryId, query, params, queryResult.length);
+    return queryResult;
   }
 
   protected async executeUpdate(
     query: string,
     params: any[] = []
   ): Promise<SQLite.SQLiteRunResult> {
-    // Track update performance using Firebase Performance Monitoring
-    return trackUpdatePerformance<SQLite.SQLiteRunResult>(
-      query,
-      params,
-      async () => {
-        const db = await this.getDb();
-        return db.runAsync(query, params);
-      }
-    );
+    const db = await this.getDb();
+    return db.runAsync(query, params);
   }
 
   async findById(id: number): Promise<T | null> {

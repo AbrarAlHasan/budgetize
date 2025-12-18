@@ -20,7 +20,7 @@ import {
   filterTransactionsByIncomePreference,
   incomePreferenceKey,
 } from "@/utils/income-preference";
-import { logPerformance } from "@/utils/logger";
+import { logError, logPerformance } from "@/utils/logger";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { endOfMonth, format, startOfMonth } from "date-fns";
@@ -56,9 +56,9 @@ export default function DashboardScreen() {
   React.useEffect(() => {
     if (!filters.startDate || !filters.endDate) {
       const now = new Date();
-      const start = format(startOfMonth(now), 'yyyy-MM-dd');
-      const end = format(endOfMonth(now), 'yyyy-MM-dd');
-      setDateRangeFilter('dashboard', start, end);
+      const start = format(startOfMonth(now), "yyyy-MM-dd");
+      const end = format(endOfMonth(now), "yyyy-MM-dd");
+      setDateRangeFilter("dashboard", start, end);
     }
   }, [filters.startDate, filters.endDate, setDateRangeFilter]);
 
@@ -109,6 +109,8 @@ export default function DashboardScreen() {
     currentMonth,
     useFilters
   );
+
+  logError("THIS IS AN ERROR");
 
   // Spending Velocity dates
   const startDate =
