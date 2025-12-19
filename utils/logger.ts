@@ -3,13 +3,11 @@
  *
  * Features:
  * - Console logging
- * - Firebase Crashlytics integration (errors/warnings)
  * - Sentry integration with proper log levels
  *
  * Note: Logging behavior is controlled globally, not within this utility
  */
 
-import crashlytics from "@react-native-firebase/crashlytics";
 import * as Sentry from "@sentry/react-native";
 import { consoleTransport, logger } from "react-native-logs";
 
@@ -81,7 +79,7 @@ function sendErrorToSentry(error: Error | string, context?: string): void {
   }
 }
 
-// Override log methods to add Sentry and Firebase Crashlytics integration
+// Override log methods to add Sentry integration
 const originalDebug = customLog.debug;
 const originalInfo = customLog.info;
 const originalWarn = customLog.warn;
@@ -99,8 +97,6 @@ customLog.info = (...args: any[]) => {
   originalInfo(...args);
   // Sentry: info level
   const message = formatLogMessage(args);
-
-  // Firebase Crashlytics doesn't log info by default
 };
 
 customLog.warn = (...args: any[]) => {
@@ -282,15 +278,6 @@ export function logErrorDetails(error: unknown): void {
 
     // Send to Sentry
     sendErrorToSentry(error, "logErrorDetails");
-
-    // Send to Crashlytics
-    if (crashlytics) {
-      try {
-        crashlytics().recordError(error);
-      } catch (err) {
-        // Silently fail
-      }
-    }
   } else if (typeof error === "string") {
     customLog.error(`Error: ${error}`);
     sendErrorToSentry(error, "logErrorDetails");

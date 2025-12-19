@@ -87,8 +87,6 @@
         }
       ],
       "expo-localization",
-      "@react-native-firebase/crashlytics",
-      "@react-native-firebase/app",
       "@bacons/apple-targets",
       [
         "@sentry/react-native/expo",
