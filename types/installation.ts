@@ -35,5 +35,5 @@ export interface DeviceInstallationInsert {
 export interface DeviceInstallationUpdate {
   last_opened_at: string;
   updated_at?: string;
+  app_version: string;
 }
-

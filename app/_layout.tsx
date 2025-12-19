@@ -4,7 +4,7 @@ import {
   ThemeProvider,
 } from "@react-navigation/native";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { Stack } from "expo-router";
+import { Stack, useNavigationContainerRef } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-reanimated";
@@ -26,9 +26,10 @@ import { useSettingsStore } from "@/store/settings-store";
 import { logError } from "@/utils/logger";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import * as Sentry from "@sentry/react-native";
+import { isRunningInExpoGo } from "expo";
 import { router } from "expo-router";
 import { colorScheme, useColorScheme } from "nativewind";
-import { PostHogProvider } from "posthog-react-native";
+
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -37,6 +38,10 @@ import {
   View,
 } from "react-native";
 
+const navigationIntegration = Sentry.reactNavigationIntegration({
+  enableTimeToInitialDisplay: !isRunningInExpoGo(),
+});
+
 Sentry.init({
   dsn: "https://60311b20b7888ddc2048ae7881323d91@o4505251515465728.ingest.us.sentry.io/4510549092401152",
 
@@ -44,18 +49,14 @@ Sentry.init({
   // For more information, visit: https://docs.sentry.io/platforms/react-native/data-management/data-collected/
   sendDefaultPii: true,
 
-
   // Configure Session Replay
   replaysSessionSampleRate: 0.1,
   replaysOnErrorSampleRate: 1,
   integrations: [Sentry.mobileReplayIntegration()],
-  beforeSendLog: (log) => {
-    console.log("SAENTRY LOG", log);
-    return log;
-  },
+  enableNativeFramesTracking: !isRunningInExpoGo(),
+  tracesSampleRate: 1.0,
 
-  // uncomment the line below to enable Spotlight (https://spotlightjs.com)
-  // spotlight: __DEV__,
+  debug: __DEV__,
 });
 
 export const unstable_settings = {
@@ -80,6 +81,8 @@ export default Sentry.wrap(function RootLayout() {
       return "active";
     }
   });
+
+  const ref = useNavigationContainerRef();
 
   // Sync widget data (only when app is ready and not showing onboarding)
   useWidgetSync();
@@ -227,6 +230,12 @@ export default Sentry.wrap(function RootLayout() {
     };
   }, [isLockEnabled, setAuthenticated]);
 
+  useEffect(() => {
+    if (ref) {
+      navigationIntegration.registerNavigationContainer(ref);
+    }
+  }, [ref]);
+
   const handleOnboardingComplete = (navigateToCloudBackup?: boolean) => {
     onboardingStorage.setCompleted();
     setShowOnboarding(false);
@@ -313,40 +322,33 @@ export default Sentry.wrap(function RootLayout() {
       style={{ flex: 1 }}
       className={normalizedColorScheme === "dark" ? "dark" : ""}
     >
-      <PostHogProvider
-        apiKey={process.env.EXPO_PUBLIC_POST_HOG_API_KEY!}
-        options={{
-          host: process.env.EXPO_PUBLIC_POST_HOG_HOST!,
-        }}
-      >
-        <GestureHandlerRootView style={{ flex: 1 }}>
-          <QueryClientProvider client={queryClient}>
-            <AlertProvider>
-              <BottomSheetModalProvider>
-                <ThemeProvider
-                  value={
-                    normalizedColorScheme === "dark" ? DarkTheme : DefaultTheme
-                  }
-                >
-                  <Stack>
-                    <Stack.Screen
-                      name="(tabs)"
-                      options={{ headerShown: false }}
-                    />
-                    <Stack.Screen
-                      name="modal"
-                      options={{ presentation: "modal", title: "Modal" }}
-                    />
-                  </Stack>
-                  <StatusBar
-                    style={normalizedColorScheme === "dark" ? "light" : "dark"}
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <QueryClientProvider client={queryClient}>
+          <AlertProvider>
+            <BottomSheetModalProvider>
+              <ThemeProvider
+                value={
+                  normalizedColorScheme === "dark" ? DarkTheme : DefaultTheme
+                }
+              >
+                <Stack>
+                  <Stack.Screen
+                    name="(tabs)"
+                    options={{ headerShown: false }}
                   />
-                </ThemeProvider>
-              </BottomSheetModalProvider>
-            </AlertProvider>
-          </QueryClientProvider>
-        </GestureHandlerRootView>
-      </PostHogProvider>
+                  <Stack.Screen
+                    name="modal"
+                    options={{ presentation: "modal", title: "Modal" }}
+                  />
+                </Stack>
+                <StatusBar
+                  style={normalizedColorScheme === "dark" ? "light" : "dark"}
+                />
+              </ThemeProvider>
+            </BottomSheetModalProvider>
+          </AlertProvider>
+        </QueryClientProvider>
+      </GestureHandlerRootView>
       <SplashOverlay />
     </View>
   );
