@@ -22,6 +22,8 @@ fi
 # Read EXPO_TOKEN from .env.local
 # This handles both EXPO_TOKEN=value and EXPO_TOKEN="value" formats
 EXPO_TOKEN=$(grep "^EXPO_TOKEN=" "$ENV_FILE" | cut -d '=' -f2- | sed 's/^"//;s/"$//' | tr -d ' ')
+SENTRY_AUTH_TOKEN=$(grep "^SENTRY_AUTH_TOKEN=" "$ENV_FILE" | cut -d '=' -f2- | sed 's/^"//;s/"$//' | tr -d ' ')
+export SENTRY_AUTH_TOKEN=$SENTRY_AUTH_TOKEN
 
 # Check if EXPO_TOKEN was found
 if [ -z "$EXPO_TOKEN" ]; then
