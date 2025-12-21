@@ -1,0 +1,7 @@
+appId: com.budgetize.app
+---
+- launchApp:
+    clearState: true
+- runFlow: onboarding.yaml
+- runFlow: create-account.yaml
+- runFlow: add-expense.yaml

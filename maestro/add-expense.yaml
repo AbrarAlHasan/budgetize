@@ -1,0 +1,32 @@
+appId: com.budgetize.app
+---
+# - launchApp:
+#     clearState: false
+- tapOn: , Dashboard
+- tapOn: , Add Expense
+- tapOn: "0.00"
+- inputText: "3200"
+- tapOn: , ACCOUNT, Select account, 
+- tapOn:
+    text: HDFC BANK
+    index: -1
+- tapOn: , CATEGORY, No category, 
+- scrollUntilVisible:
+    element:
+      text: Education
+- tapOn: Education
+- tapOn: , DATE, Dec 20, 2025, 
+- tapOn: "18"
+- tapOn: Confirm
+- tapOn: Cash, Card, UPI...
+- inputText: UPI
+- tapOn: Add a note...
+- inputText: 3rd Semester Fees
+- scrollUntilVisible:
+    element:
+      text: , Urgent
+- tapOn: , Urgent
+- tapOn: , Create Transaction
+- tapOn: OK
+- runFlow: verify-created-transaction.yaml
+

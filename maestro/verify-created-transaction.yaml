@@ -1,0 +1,29 @@
+appId: com.budgetize.app
+---
+# - launchApp:
+#     clearState: false
+- tapOn: , Dashboard
+- scrollUntilVisible:
+    element:
+      text: , 3rd Semester Fees, Thu, 18 Dec 2025, -₹3,200.00, HDFC BANK, Education, Urgent
+- assertVisible: 3rd Semester Fees
+- scrollUntilVisible:
+    element:
+      text: Education
+- assertVisible: Education
+- scrollUntilVisible:
+    element:
+      text: Urgent
+- assertVisible: Urgent
+- scrollUntilVisible:
+    element:
+      text: -₹3,200.00
+- assertVisible: -₹3,200.00
+- scrollUntilVisible:
+    element:
+      text: HDFC BANK
+- assertVisible: HDFC BANK
+- scrollUntilVisible:
+    element:
+      text: Thu, 18 Dec 2025
+- assertVisible: Thu, 18 Dec 2025
