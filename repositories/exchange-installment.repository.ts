@@ -313,7 +313,7 @@ export class ExchangeInstallmentRepository extends BaseRepository<ExchangeInstal
 
   /**
    * Check if exchange should be reset to pending after installment deletion
-   * If exchange is settled but has no installments, reset to pending
+   * If exchange is settled but total paid is less than exchange amount, reset to pending
    */
   async checkAndResetStatus(exchangeId: number): Promise<void> {
     try {
@@ -328,12 +328,14 @@ export class ExchangeInstallmentRepository extends BaseRepository<ExchangeInstal
         return; // Already pending, no need to reset
       }
 
-      // Check if there are any installments left (after deletion)
-      const installments = await this.findByExchangeId(exchangeId);
+      // Calculate total paid amount after deletion
+      const totalPaid = await this.getTotalPaidAmount(exchangeId);
+      const exchangeAmount = await decryptAmount(exchange.amount);
       
-      // If no installments remain and exchange is settled, reset to pending
-      if (installments.length === 0) {
-        log(`Resetting exchange ${exchangeId} to pending - no installments remaining`);
+      // If total paid is less than exchange amount, reset to pending
+      // Use small tolerance for floating point comparison
+      if (totalPaid < exchangeAmount - 0.01) {
+        log(`Resetting exchange ${exchangeId} to pending - total paid (${totalPaid}) is less than exchange amount (${exchangeAmount})`);
         await exchangeRepository.update({
           id: exchangeId,
           status: "pending",
