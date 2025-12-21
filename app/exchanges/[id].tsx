@@ -1,4 +1,7 @@
+import { AddEditInstallmentBottomSheet } from "@/components/exchanges/add-edit-installment-bottom-sheet";
+import { InstallmentItem } from "@/components/exchanges/installment-item";
 import { Card } from "@/components/ui/card";
+import { useCreateInstallment, useDeleteInstallment, useInstallmentProgress, useInstallments } from "@/hooks/queries/use-exchange-installments";
 import {
   useExchange,
   useMarkExchangeAsSettled,
@@ -8,6 +11,7 @@ import { getCurrencySymbol } from "@/utils/currencies";
 import { Ionicons } from "@expo/vector-icons";
 import { format, parseISO } from "date-fns";
 import { Stack, router, useLocalSearchParams } from "expo-router";
+import { useEffect, useRef } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -19,41 +23,120 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function ExchangeDetailScreen() {
-  const params = useLocalSearchParams<{ id: string }>();
+  const params = useLocalSearchParams<{ id: string; addInstallment?: string }>();
   const exchangeId = parseInt(params.id, 10);
+  const shouldOpenInstallmentSheet = params.addInstallment === 'true';
 
   const { data: exchange, isLoading } = useExchange(exchangeId);
   const markAsSettled = useMarkExchangeAsSettled();
   const { settings } = useSettingsStore();
   const currencySymbol = getCurrencySymbol(settings?.currency || "INR");
+  
+  // Installments
+  const { data: installments = [], isLoading: isLoadingInstallments } = useInstallments(exchangeId);
+  const { data: progress } = useInstallmentProgress(exchangeId, exchange?.amount || 0);
+  const deleteInstallment = useDeleteInstallment();
+  const createInstallment = useCreateInstallment();
+  const installmentBottomSheetRef = useRef<{ present: (exchangeId: number, installment?: any) => void; dismiss: () => void }>(null);
+  const hasOpenedSheetRef = useRef(false);
 
-  const handleMarkAsSettled = () => {
+  // Auto-open installment sheet if requested (only once)
+  useEffect(() => {
+    if (shouldOpenInstallmentSheet && exchangeId && exchange && !isLoading && !hasOpenedSheetRef.current) {
+      // Small delay to ensure the screen is fully rendered
+      const timer = setTimeout(() => {
+        installmentBottomSheetRef.current?.present(exchangeId);
+        hasOpenedSheetRef.current = true;
+        
+        // Clear the URL parameter to prevent reopening
+        router.setParams({ addInstallment: undefined });
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [shouldOpenInstallmentSheet, exchangeId, exchange, isLoading]);
+
+  // Reset the ref when the exchangeId changes
+  useEffect(() => {
+    hasOpenedSheetRef.current = false;
+  }, [exchangeId]);
+
+  const handleMarkAsSettled = async () => {
     if (!exchange) return;
 
     const actionText = exchange.type === "lent" ? "paid" : "received";
-    Alert.alert(
-      `Mark as ${actionText === "paid" ? "Paid" : "Received"}`,
-      `Are you sure this exchange has been ${actionText}?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Confirm",
-          onPress: async () => {
-            try {
-              await markAsSettled.mutateAsync(exchangeId);
-              Alert.alert(
-                "Success",
-                `Exchange marked as ${
-                  actionText === "paid" ? "paid" : "received"
-                }`
-              );
-            } catch (error) {
-              Alert.alert("Error", "Failed to update exchange status");
-            }
+    const remainingAmount = progress?.remaining || exchange.amount;
+    const hasPartialPayments = progress && progress.totalPaid > 0;
+
+    // If there are partial payments, create installment for remaining amount first
+    if (hasPartialPayments && remainingAmount > 0.01) {
+      Alert.alert(
+        `Mark as ${actionText === "paid" ? "Paid" : "Received"}`,
+        `This will add an installment of ${currencySymbol}${remainingAmount.toLocaleString(undefined, {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })} for the remaining amount and mark the exchange as ${actionText}. Continue?`,
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Confirm",
+            onPress: async () => {
+              try {
+                // Create installment for remaining amount with today's date
+                await createInstallment.mutateAsync({
+                  exchange_id: exchangeId,
+                  amount: remainingAmount,
+                  payment_date: format(new Date(), "yyyy-MM-dd"),
+                  note: `Final payment - marked as ${actionText}`,
+                });
+
+                // Then mark as settled
+                await markAsSettled.mutateAsync(exchangeId);
+                
+                Alert.alert(
+                  "Success",
+                  `Installment added and exchange marked as ${actionText}`
+                );
+              } catch (error) {
+                Alert.alert("Error", "Failed to update exchange status");
+              }
+            },
           },
-        },
-      ]
-    );
+        ]
+      );
+    } else {
+      // No partial payments, just mark as settled
+      Alert.alert(
+        `Mark as ${actionText === "paid" ? "Paid" : "Received"}`,
+        `Are you sure this exchange has been ${actionText}?`,
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Confirm",
+            onPress: async () => {
+              try {
+                // Create installment for full amount with today's date
+                await createInstallment.mutateAsync({
+                  exchange_id: exchangeId,
+                  amount: exchange.amount,
+                  payment_date: format(new Date(), "yyyy-MM-dd"),
+                  note: `Marked as ${actionText}`,
+                });
+
+                // Then mark as settled
+                await markAsSettled.mutateAsync(exchangeId);
+                
+                Alert.alert(
+                  "Success",
+                  `Installment added and exchange marked as ${actionText}`
+                );
+              } catch (error) {
+                Alert.alert("Error", "Failed to update exchange status");
+              }
+            },
+          },
+        ]
+      );
+    }
   };
 
   if (isLoading) {
@@ -147,6 +230,36 @@ export default function ExchangeDetailScreen() {
                     maximumFractionDigits: 2,
                   })}
                 </Text>
+                
+                {/* Installment Progress */}
+                {isPending && progress && progress.totalPaid > 0 && (
+                  <View className="w-full px-4 mt-3 mb-2">
+                    <View className="flex-row justify-between items-center mb-1">
+                      <Text className="text-xs text-gray-500 dark:text-gray-400">
+                        Paid: {currencySymbol}{progress.totalPaid.toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </Text>
+                      <Text className="text-xs text-gray-500 dark:text-gray-400">
+                        {progress.percentage.toFixed(0)}%
+                      </Text>
+                    </View>
+                    <View className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                      <View
+                        className="h-full bg-green-500 rounded-full"
+                        style={{ width: `${progress.percentage}%` }}
+                      />
+                    </View>
+                    <Text className="text-xs text-gray-500 dark:text-gray-400 mt-1 text-right">
+                      Remaining: {currencySymbol}{progress.remaining.toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </Text>
+                  </View>
+                )}
+                
                 <View
                   className="px-4 py-2 rounded-full mt-2"
                   style={{
@@ -249,6 +362,70 @@ export default function ExchangeDetailScreen() {
               </View>
             </Card>
 
+            {/* Installments Section */}
+            <Card className="mb-4">
+              <View className="flex-row items-center justify-between mb-4">
+                <Text className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                  Installments
+                </Text>
+                {isPending && (
+                  <TouchableOpacity
+                    onPress={() => installmentBottomSheetRef.current?.present(exchangeId)}
+                    className="flex-row items-center bg-blue-600 dark:bg-blue-500 px-3 py-1.5 rounded-lg"
+                  >
+                    <Ionicons name="add" size={16} color="#FFFFFF" />
+                    <Text className="text-white font-semibold text-sm ml-1">Add</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+                
+                {isLoadingInstallments ? (
+                  <View className="py-4">
+                    <ActivityIndicator size="small" color="#3B82F6" />
+                  </View>
+                ) : installments.length > 0 ? (
+                  <View>
+                    {installments.map((inst) => (
+                      <InstallmentItem
+                        key={inst.id}
+                        installment={inst}
+                        currencySymbol={currencySymbol}
+                        onPress={() => installmentBottomSheetRef.current?.present(exchangeId, inst)}
+                        onDelete={() => {
+                          Alert.alert(
+                            "Delete Installment",
+                            "Are you sure you want to delete this installment?",
+                            [
+                              { text: "Cancel", style: "cancel" },
+                              {
+                                text: "Delete",
+                                style: "destructive",
+                                onPress: () => {
+                                  deleteInstallment.mutate({
+                                    id: inst.id,
+                                    exchangeId: exchangeId,
+                                  });
+                                },
+                              },
+                            ]
+                          );
+                        }}
+                      />
+                    ))}
+                  </View>
+                ) : (
+                  <View className="py-4 items-center">
+                    <Ionicons name="receipt-outline" size={32} color="#9CA3AF" />
+                    <Text className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                      No installments yet
+                    </Text>
+                    <Text className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                      Add installments to track partial payments
+                    </Text>
+                  </View>
+                )}
+              </Card>
+
             {/* Actions */}
             {isPending && (
               <TouchableOpacity
@@ -291,6 +468,14 @@ export default function ExchangeDetailScreen() {
           </View>
         </ScrollView>
       </SafeAreaView>
+      
+      {/* Installment Bottom Sheet */}
+      <AddEditInstallmentBottomSheet
+        ref={installmentBottomSheetRef}
+        onInstallmentSaved={() => {
+          // Invalidate queries will be handled by the hook
+        }}
+      />
     </>
   );
 }

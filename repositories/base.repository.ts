@@ -1,6 +1,6 @@
-import * as SQLite from 'expo-sqlite';
 import { getDatabase } from '@/db/sqlite/db';
 import { logSQL } from '@/utils/logger';
+import * as SQLite from 'expo-sqlite';
 
 export abstract class BaseRepository<T> {
   protected abstract tableName: string;
@@ -19,9 +19,9 @@ export abstract class BaseRepository<T> {
     
     // Log the final SQL query and parameters for debugging (only in development)
     const db = await this.getDb();
-    const result = await db.getAllAsync<TResult>(query, params);
-    logSQL(queryId, query, params, result.length);
-    return result;
+    const queryResult = await db.getAllAsync<TResult>(query, params);
+    logSQL(queryId, query, params, queryResult.length);
+    return queryResult;
   }
 
   protected async executeUpdate(

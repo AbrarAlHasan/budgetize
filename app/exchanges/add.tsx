@@ -7,6 +7,7 @@ import {
   useExchange,
   useUpdateExchange,
 } from "@/hooks/queries/use-exchanges";
+import { exchangeReminderService } from "@/services/exchange-reminder-service";
 import { useSettingsStore } from "@/store/settings-store";
 import { getCurrencySymbol } from "@/utils/currencies";
 import { Ionicons } from "@expo/vector-icons";
@@ -22,8 +23,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  TouchableWithoutFeedback,
-  View,
+  View
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -90,7 +90,7 @@ export default function AddExchangeScreen() {
       const dueDateString = dueDate ? format(dueDate, "yyyy-MM-dd") : null;
 
       if (isEditMode && exchangeId) {
-        await updateExchange.mutateAsync({
+        const updatedExchange = await updateExchange.mutateAsync({
           id: exchangeId,
           person_name: personName.trim(),
           amount: amountValue,
@@ -99,9 +99,20 @@ export default function AddExchangeScreen() {
           due_date: dueDateString,
           note: note.trim() || null,
         });
+        
+        // Update reminders if due date changed
+        if (dueDateString) {
+          await exchangeReminderService.createRemindersForExchange(
+            exchangeId,
+            dueDateString
+          );
+        } else {
+          await exchangeReminderService.cancelRemindersForExchange(exchangeId);
+        }
+        
         Alert.alert("Success", "Exchange updated successfully");
       } else {
-        await createExchange.mutateAsync({
+        const newExchange = await createExchange.mutateAsync({
           person_name: personName.trim(),
           amount: amountValue,
           type,
@@ -109,6 +120,15 @@ export default function AddExchangeScreen() {
           due_date: dueDateString,
           note: note.trim() || null,
         });
+        
+        // Create reminders if due date is set
+        if (dueDateString && newExchange.id) {
+          await exchangeReminderService.createRemindersForExchange(
+            newExchange.id,
+            dueDateString
+          );
+        }
+        
         Alert.alert("Success", "Exchange created successfully");
       }
       router.back();
@@ -131,8 +151,10 @@ export default function AddExchangeScreen() {
         {
           text: "Delete",
           style: "destructive",
-          onPress: async () => {
+              onPress: async () => {
             try {
+              // Cancel reminders before deleting
+              await exchangeReminderService.cancelRemindersForExchange(exchangeId);
               await deleteExchange.mutateAsync(exchangeId);
               Alert.alert("Success", "Exchange deleted successfully");
               router.back();
@@ -154,6 +176,10 @@ export default function AddExchangeScreen() {
 
   const handleBlurAmount = () => {
     amountInputRef.current?.blur();
+  };
+
+  const handleFocusAmount = () => {
+    amountInputRef.current?.focus();
   };
 
   const typeOptions = [
@@ -286,7 +312,10 @@ export default function AddExchangeScreen() {
           </View>
 
           {/* Hero Amount Section */}
-          <TouchableWithoutFeedback onPress={handleBlurAmount}>
+          <TouchableOpacity
+            onPress={handleFocusAmount}
+            activeOpacity={0.7}
+          >
             <View
               className="px-4 py-6"
               style={{
@@ -300,32 +329,56 @@ export default function AddExchangeScreen() {
                 style={{ width: "100%", maxWidth: "100%" }}
               >
                 {/* Currency Symbol */}
-                <Text 
+                <Text
                   className="text-gray-400 dark:text-gray-500 text-4xl font-medium mr-2"
                   style={{ flexShrink: 0 }}
                 >
                   {currencySymbol}
                 </Text>
 
-                {/* Amount Input */}
-                <TextInput
-                  ref={amountInputRef}
-                  value={amount}
-                  onChangeText={handleAmountChange}
-                  placeholder="0.00"
-                  placeholderTextColor="#9CA3AF"
-                  keyboardType="numeric"
-                  className="text-gray-400 dark:text-gray-500"
-                  style={{ 
-                    fontSize: 48,
-                    fontWeight: '700',
-                    textAlign: 'center',
+                {/* Amount Container - Relative positioning for overlay */}
+                <View
+                  style={{
+                    position: 'relative',
                     minWidth: 120,
+                    alignItems: 'center',
+                    justifyContent: 'center',
                   }}
-                />
+                >
+                  {/* Hidden Amount Input */}
+                  <TextInput
+                    ref={amountInputRef}
+                    value={amount}
+                    onChangeText={handleAmountChange}
+                    placeholder="0.00"
+                    placeholderTextColor="#9CA3AF"
+                    keyboardType="numeric"
+                    style={{
+                      position: 'absolute',
+                      opacity: 0,
+                      fontSize: 48,
+                      fontWeight: '700',
+                      textAlign: 'center',
+                      width: '100%',
+                      height: 60,
+                    }}
+                  />
+
+                  {/* Visible Amount Label */}
+                  <Text
+                    className="text-gray-400 dark:text-gray-500"
+                    style={{
+                      fontSize: 48,
+                      fontWeight: '700',
+                      textAlign: 'center',
+                    }}
+                  >
+                    {amount || "0.00"}
+                  </Text>
+                </View>
               </View>
             </View>
-          </TouchableWithoutFeedback>
+          </TouchableOpacity>
 
           {/* Quick Details Section */}
           <View className="px-4 mb-6">
@@ -572,7 +625,7 @@ export default function AddExchangeScreen() {
         )}
       </View>
 
-      {/* Hidden Components for Date Pickers */}
+      {/* Hidden Components for Date Pickers and Amount Input */}
       <View style={{ position: "absolute", opacity: 0, pointerEvents: "none" }}>
         <DatePicker
           ref={datePickerRef}

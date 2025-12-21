@@ -1,0 +1,11 @@
+appId: com.budgetize.app
+---
+# - launchApp:
+#     clearState: false
+- tapOn: , Accounts
+- assertVisible: ICICI BANK
+- swipe:
+    from:
+      text: DEBIT CARD, ICICI BANK, Total Spend This Month, ₹0, , Total Spent Today, ₹0, 
+    direction: UP
+- assertVisible: HDFC BANK

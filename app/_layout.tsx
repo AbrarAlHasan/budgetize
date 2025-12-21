@@ -4,7 +4,7 @@ import {
   ThemeProvider,
 } from "@react-navigation/native";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { Stack } from "expo-router";
+import { Stack, useNavigationContainerRef } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-reanimated";
@@ -25,20 +25,49 @@ import { useSecurityStore } from "@/store/security-store";
 import { useSettingsStore } from "@/store/settings-store";
 import { logError } from "@/utils/logger";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
+import * as Sentry from "@sentry/react-native";
+import { isRunningInExpoGo } from "expo";
 import { router } from "expo-router";
 import { colorScheme, useColorScheme } from "nativewind";
-import { PostHogProvider } from "posthog-react-native";
+
 import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, AppState, AppStateStatus, View } from "react-native";
+import {
+  ActivityIndicator,
+  AppState,
+  AppStateStatus,
+  View,
+} from "react-native";
+
+const navigationIntegration = Sentry.reactNavigationIntegration({
+  enableTimeToInitialDisplay: !isRunningInExpoGo(),
+});
+
+Sentry.init({
+  dsn: "https://60311b20b7888ddc2048ae7881323d91@o4505251515465728.ingest.us.sentry.io/4510549092401152",
+
+  // Adds more context data to events (IP address, cookies, user, etc.)
+  // For more information, visit: https://docs.sentry.io/platforms/react-native/data-management/data-collected/
+  sendDefaultPii: true,
+
+  // Configure Session Replay
+  replaysSessionSampleRate: 0.1,
+  replaysOnErrorSampleRate: 1,
+  integrations: [Sentry.mobileReplayIntegration()],
+  enableNativeFramesTracking: !isRunningInExpoGo(),
+  tracesSampleRate: 1.0,
+
+  debug: __DEV__,
+});
 
 export const unstable_settings = {
   anchor: "(tabs)",
 };
 
-export default function RootLayout() {
+export default Sentry.wrap(function RootLayout() {
   const nativeWindColorScheme = useColorScheme();
   const { loadSettings, settings } = useSettingsStore();
-  const { isLockEnabled, isAuthenticated, setAuthenticated } = useSecurityStore();
+  const { isLockEnabled, isAuthenticated, setAuthenticated } =
+    useSecurityStore();
   const [isReady, setIsReady] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [themeSynced, setThemeSynced] = useState(false);
@@ -47,11 +76,13 @@ export default function RootLayout() {
   const [hasDismissedUpdate, setHasDismissedUpdate] = useState(false);
   const [appState, setAppState] = useState<AppStateStatus>(() => {
     try {
-      return AppState.currentState || 'active';
+      return AppState.currentState || "active";
     } catch {
-      return 'active';
+      return "active";
     }
   });
+
+  const ref = useNavigationContainerRef();
 
   // Sync widget data (only when app is ready and not showing onboarding)
   useWidgetSync();
@@ -67,7 +98,8 @@ export default function RootLayout() {
   // Initialize in-app updates (only checks after app is ready and onboarding complete)
   // Don't auto-check if update screen is shown or if user has dismissed it
   const { startUpdate } = useInAppUpdates({
-    autoCheck: isReady && !showOnboarding && !showUpdateScreen && !hasDismissedUpdate,
+    autoCheck:
+      isReady && !showOnboarding && !showUpdateScreen && !hasDismissedUpdate,
     daysBeforePrompt: 0, // Show updates immediately when available
     immediateUpdate: false,
     onUpdateAvailable: handleUpdateAvailable,
@@ -167,7 +199,7 @@ export default function RootLayout() {
         setAppState(currentState);
       }
     } catch (error) {
-      logError('Error getting initial app state:', error);
+      logError("Error getting initial app state:", error);
     }
 
     const subscription = AppState.addEventListener(
@@ -175,7 +207,7 @@ export default function RootLayout() {
       (nextAppState: AppStateStatus) => {
         try {
           setAppState(nextAppState);
-          
+
           if (isLockEnabled) {
             // Only reset authentication when app goes to background (not inactive)
             // Inactive state shows splash overlay, background state requires re-authentication
@@ -184,7 +216,7 @@ export default function RootLayout() {
             }
           }
         } catch (error) {
-          logError('Error handling app state change:', error);
+          logError("Error handling app state change:", error);
         }
       }
     );
@@ -193,10 +225,16 @@ export default function RootLayout() {
       try {
         subscription.remove();
       } catch (error) {
-        logError('Error removing app state listener:', error);
+        logError("Error removing app state listener:", error);
       }
     };
   }, [isLockEnabled, setAuthenticated]);
+
+  useEffect(() => {
+    if (ref) {
+      navigationIntegration.registerNavigationContainer(ref);
+    }
+  }, [ref]);
 
   const handleOnboardingComplete = (navigateToCloudBackup?: boolean) => {
     onboardingStorage.setCompleted();
@@ -284,41 +322,34 @@ export default function RootLayout() {
       style={{ flex: 1 }}
       className={normalizedColorScheme === "dark" ? "dark" : ""}
     >
-      <PostHogProvider
-        apiKey={process.env.EXPO_PUBLIC_POST_HOG_API_KEY!}
-        options={{
-          host: process.env.EXPO_PUBLIC_POST_HOG_HOST!,
-        }}
-      >
-        <GestureHandlerRootView style={{ flex: 1 }}>
-          <QueryClientProvider client={queryClient}>
-            <AlertProvider>
-              <BottomSheetModalProvider>
-                <ThemeProvider
-                  value={
-                    normalizedColorScheme === "dark" ? DarkTheme : DefaultTheme
-                  }
-                >
-                  <Stack>
-                    <Stack.Screen
-                      name="(tabs)"
-                      options={{ headerShown: false }}
-                    />
-                    <Stack.Screen
-                      name="modal"
-                      options={{ presentation: "modal", title: "Modal" }}
-                    />
-                  </Stack>
-                  <StatusBar
-                    style={normalizedColorScheme === "dark" ? "light" : "dark"}
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <QueryClientProvider client={queryClient}>
+          <AlertProvider>
+            <BottomSheetModalProvider>
+              <ThemeProvider
+                value={
+                  normalizedColorScheme === "dark" ? DarkTheme : DefaultTheme
+                }
+              >
+                <Stack>
+                  <Stack.Screen
+                    name="(tabs)"
+                    options={{ headerShown: false }}
                   />
-                </ThemeProvider>
-              </BottomSheetModalProvider>
-            </AlertProvider>
-          </QueryClientProvider>
-        </GestureHandlerRootView>
-      </PostHogProvider>
+                  <Stack.Screen
+                    name="modal"
+                    options={{ presentation: "modal", title: "Modal" }}
+                  />
+                </Stack>
+                <StatusBar
+                  style={normalizedColorScheme === "dark" ? "light" : "dark"}
+                />
+              </ThemeProvider>
+            </BottomSheetModalProvider>
+          </AlertProvider>
+        </QueryClientProvider>
+      </GestureHandlerRootView>
       <SplashOverlay />
     </View>
   );
-}
+});

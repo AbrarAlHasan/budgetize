@@ -5,7 +5,6 @@ import { pickBackupFile, restoreAppData } from '@/utils/backup';
 import { logError } from '@/utils/logger';
 import { seedDefaultCategoriesAndTags } from '@/utils/seed-defaults';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
 import React, { useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -42,7 +41,7 @@ interface OnboardingScreenProps {
 const DataSetupSlide: React.FC<{
   index: number;
   scrollX: SharedValue<number>;
-  onComplete: () => void;
+  onComplete: OnboardingScreenProps['onComplete'];
 }> = ({ index, scrollX, onComplete }) => {
   // Note: QueryClient is not available during onboarding (rendered before QueryClientProvider)
   // Queries will be fresh when the app loads, so invalidation is not needed
@@ -199,7 +198,7 @@ const DataSetupSlide: React.FC<{
       Alert.alert(
         'Setup Complete',
         'Your account has been created. Some default categories and tags could not be created, but you can add them manually later.',
-        [{ text: 'OK', onPress: onComplete }]
+        [{ text: 'OK', onPress: () => onComplete() }]
       );
     }
   };
@@ -233,7 +232,7 @@ const DataSetupSlide: React.FC<{
         Alert.alert(
           "Restore Complete",
           "Your data has been successfully restored!",
-          [{ text: "OK", onPress: onComplete }]
+          [{ text: "OK", onPress: () => onComplete() }]
         );
       } else {
         setIsRestoring(false);
@@ -736,6 +735,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
             style={styles.button}
             onPress={handleNext}
             activeOpacity={0.8}
+            testID={ONBOARDING_STEPS[currentIndex].testID+'-next-button'}
           >
               <Text style={styles.buttonText}>Next</Text>
               <Ionicons name="arrow-forward" size={24} color="#FFFFFF" />

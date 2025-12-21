@@ -4,6 +4,8 @@ import { encryptExistingData } from "./003_encrypt_existing_data";
 import { addCurrencyToAccounts } from "./004_add_currency_to_accounts";
 import { makePaymentModeNullable } from "./006_make_payment_mode_nullable";
 import { addExchangesTable } from "./007_add_exchanges_table";
+import { addExchangeInstallmentsTable } from "./008_add_exchange_installments";
+import { addExchangeRemindersTable } from "./009_add_exchange_reminders";
 
 const INITIAL_SCHEMA_SQL = `
 -- Accounts table
@@ -320,6 +322,64 @@ CREATE INDEX IF NOT EXISTS idx_transactions_type_date ON transactions(type, date
       log("Migration 007_add_exchanges_table re-applied successfully");
     } else {
       log(`Migration 7 verification: exchanges table exists (already applied)`);
+    }
+  }
+
+  // Run migration 8 (add exchange_installments table)
+  if (!appliedVersions.has(8)) {
+    try {
+      log("Starting migration 008_add_exchange_installments...");
+      await addExchangeInstallmentsTable(db);
+
+      const verifyResult = await db.getAllAsync<{ name: string }>(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='exchange_installments' LIMIT 1"
+      );
+      
+      if (verifyResult.length === 0) {
+        logError("CRITICAL: Migration 008 completed but exchange_installments table not found!");
+        throw new Error("Migration 008_add_exchange_installments completed but exchange_installments table was not created");
+      }
+      
+      log(`Migration 008 verification: exchange_installments table exists`);
+
+      await db.runAsync(
+        "INSERT OR IGNORE INTO schema_migrations (version, name) VALUES (?, ?)",
+        [8, "008_add_exchange_installments"]
+      );
+
+      log("Migration 008_add_exchange_installments applied and verified successfully");
+    } catch (error) {
+      logError("Error applying migration 008_add_exchange_installments:", error);
+      throw error;
+    }
+  }
+
+  // Run migration 9 (add exchange_reminders table)
+  if (!appliedVersions.has(9)) {
+    try {
+      log("Starting migration 009_add_exchange_reminders...");
+      await addExchangeRemindersTable(db);
+
+      const verifyResult = await db.getAllAsync<{ name: string }>(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='exchange_reminders' LIMIT 1"
+      );
+      
+      if (verifyResult.length === 0) {
+        logError("CRITICAL: Migration 009 completed but exchange_reminders table not found!");
+        throw new Error("Migration 009_add_exchange_reminders completed but exchange_reminders table was not created");
+      }
+      
+      log(`Migration 009 verification: exchange_reminders table exists`);
+
+      await db.runAsync(
+        "INSERT OR IGNORE INTO schema_migrations (version, name) VALUES (?, ?)",
+        [9, "009_add_exchange_reminders"]
+      );
+
+      log("Migration 009_add_exchange_reminders applied and verified successfully");
+    } catch (error) {
+      logError("Error applying migration 009_add_exchange_reminders:", error);
+      throw error;
     }
   }
 }

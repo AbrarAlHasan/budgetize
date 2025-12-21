@@ -1,0 +1,17 @@
+appId: com.budgetize.app
+---
+# - launchApp:
+#     clearState: false
+- tapOn: , Dashboard
+- tapOn: , Add Account
+- tapOn: Account Name
+- inputText: HDFC BANK
+- tapOn: , Create Account
+- tapOn: OK
+
+- tapOn: , Add Account
+- tapOn: Account Name
+- inputText: ICICI BANK
+- tapOn: , Create Account
+- tapOn: OK
+- runFlow: verify-created-account.yaml

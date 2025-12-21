@@ -45,3 +45,4 @@ app-example
 *.apk
 *.aab
 *.ipa
+.env.local

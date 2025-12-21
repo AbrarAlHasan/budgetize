@@ -10,12 +10,12 @@ import {
   encrypt,
   encryptAmount,
 } from "@/services/encryption";
-import { logError, logPerformance } from "@/utils/logger";
+import { logError } from "@/utils/logger";
 import { BaseRepository } from "./base.repository";
 import { transactionTagRepository } from "./transaction-tag.repository";
 
 export class TransactionRepository extends BaseRepository<Transaction> {
-  protected tableName = "transactions"
+  protected tableName = "transactions";
 
   /**
    * Helper method to add date filter conditions to a query
@@ -31,8 +31,12 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     // Normalize dates by trimming whitespace for accurate comparison
     const normalizedStartDate = startDate?.trim();
     const normalizedEndDate = endDate?.trim();
-    
-    if (normalizedStartDate && normalizedEndDate && normalizedStartDate === normalizedEndDate) {
+
+    if (
+      normalizedStartDate &&
+      normalizedEndDate &&
+      normalizedStartDate === normalizedEndDate
+    ) {
       // Same date - use equality check for better performance and clarity
       conditions.push(`${tableAlias}.date = ?`);
       params.push(normalizedStartDate);
@@ -58,17 +62,20 @@ export class TransactionRepository extends BaseRepository<Transaction> {
    */
   private async batchDecryptAmounts<T extends { amount: string }>(
     items: T[],
-    transform: (item: T, decryptedAmount: number) => Omit<T, 'amount'> & { amount: number }
-  ): Promise<Array<Omit<T, 'amount'> & { amount: number }>> {
+    transform: (
+      item: T,
+      decryptedAmount: number
+    ) => Omit<T, "amount"> & { amount: number }
+  ): Promise<Array<Omit<T, "amount"> & { amount: number }>> {
     if (items.length === 0) return [];
-    
+
     // Use progressively smaller batches for larger datasets
     // This prevents overwhelming the system with too many parallel operations
     // Smaller batches = better memory management and less context switching
     // For medium datasets, use smaller batches with concurrency for better throughput
     let BATCH_SIZE: number;
     let CONCURRENT_BATCHES: number; // Number of batches to process concurrently
-    
+
     if (items.length > 15000) {
       BATCH_SIZE = 50; // Very large datasets: 50 at a time
       CONCURRENT_BATCHES = 3; // Process 3 batches concurrently (150 total operations)
@@ -88,19 +95,19 @@ export class TransactionRepository extends BaseRepository<Transaction> {
       BATCH_SIZE = 100; // Small datasets: 100 at a time
       CONCURRENT_BATCHES = 1; // Process 1 batch at a time
     }
-    
-    const results: Array<Omit<T, 'amount'> & { amount: number }> = [];
+
+    const results: Array<Omit<T, "amount"> & { amount: number }> = [];
     const batches: T[][] = [];
-    
+
     // Create all batches
     for (let i = 0; i < items.length; i += BATCH_SIZE) {
       batches.push(items.slice(i, i + BATCH_SIZE));
     }
-    
+
     // Process batches with controlled concurrency
     for (let i = 0; i < batches.length; i += CONCURRENT_BATCHES) {
       const concurrentBatches = batches.slice(i, i + CONCURRENT_BATCHES);
-      
+
       // Process multiple batches concurrently
       const batchResults = await Promise.all(
         concurrentBatches.map(async (batch) => {
@@ -112,13 +119,13 @@ export class TransactionRepository extends BaseRepository<Transaction> {
           );
         })
       );
-      
+
       // Flatten and add results
       for (const batchResult of batchResults) {
         results.push(...batchResult);
       }
     }
-    
+
     return results;
   }
 
@@ -126,7 +133,9 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     // Encrypt sensitive fields
     const encryptedAmount = await encryptAmount(input.amount);
     const encryptedNote = input.note ? await encrypt(input.note) : null;
-    const encryptedPaymentMode = input.payment_mode ? await encrypt(input.payment_mode) : null;
+    const encryptedPaymentMode = input.payment_mode
+      ? await encrypt(input.payment_mode)
+      : null;
 
     const db = await getDatabase();
 
@@ -138,7 +147,9 @@ export class TransactionRepository extends BaseRepository<Transaction> {
       const hasCategoryId = tableInfo.some((col) => col.name === "category_id");
 
       if (!hasCategoryId) {
-        logError("category_id column missing from transactions table. Adding it now...");
+        logError(
+          "category_id column missing from transactions table. Adding it now..."
+        );
         await db.execAsync(
           "ALTER TABLE transactions ADD COLUMN category_id INTEGER REFERENCES categories(id)"
         );
@@ -229,7 +240,9 @@ export class TransactionRepository extends BaseRepository<Transaction> {
         updateData.note = input.note ? await encrypt(input.note) : null;
       }
       if (input.payment_mode !== undefined) {
-        updateData.payment_mode = input.payment_mode ? await encrypt(input.payment_mode) : null;
+        updateData.payment_mode = input.payment_mode
+          ? await encrypt(input.payment_mode)
+          : null;
       }
 
       // Update transaction
@@ -294,7 +307,7 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     // Normalize dates by trimming whitespace for accurate comparison
     const normalizedStartDate = startDate.trim();
     const normalizedEndDate = endDate.trim();
-    
+
     // If start and end dates are the same, use equality check for better performance
     if (normalizedStartDate === normalizedEndDate) {
       const query = `SELECT * FROM ${this.tableName} 
@@ -367,7 +380,12 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     }
 
     // Handle date filters
-    this.addDateFilterConditions(conditions, params, filters?.startDate, filters?.endDate);
+    this.addDateFilterConditions(
+      conditions,
+      params,
+      filters?.startDate,
+      filters?.endDate
+    );
 
     // Handle transaction type filters (support both single and array)
     const types = filters?.types || (filters?.type ? [filters.type] : []);
@@ -458,7 +476,12 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     }
 
     // Handle date filters
-    this.addDateFilterConditions(conditions, params, filters?.startDate, filters?.endDate);
+    this.addDateFilterConditions(
+      conditions,
+      params,
+      filters?.startDate,
+      filters?.endDate
+    );
 
     // Handle transaction type filters
     const types = filters?.types || (filters?.type ? [filters.type] : []);
@@ -519,7 +542,11 @@ export class TransactionRepository extends BaseRepository<Transaction> {
       countParams.push(...categoryIds);
     }
     // Handle date filters for count query
-    if (filters?.startDate && filters?.endDate && filters.startDate === filters.endDate) {
+    if (
+      filters?.startDate &&
+      filters?.endDate &&
+      filters.startDate === filters.endDate
+    ) {
       countConditions.push("t.date = ?");
       countParams.push(filters.startDate);
     } else {
@@ -578,7 +605,9 @@ export class TransactionRepository extends BaseRepository<Transaction> {
   > {
     const amount = await decryptAmount(transaction.amount);
     const note = transaction.note ? await decrypt(transaction.note) : null;
-    const payment_mode = transaction.payment_mode ? await decrypt(transaction.payment_mode) : null;
+    const payment_mode = transaction.payment_mode
+      ? await decrypt(transaction.payment_mode)
+      : null;
 
     return {
       ...transaction,
@@ -607,7 +636,7 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     // Use field-based parallel decryption, but process in smaller batches
     // to avoid overwhelming the system with too many parallel operations
     const BATCH_SIZE = 10; // Process 10 transactions at a time
-    
+
     // Process in batches, using field-based parallel decryption within each batch
     const results: Array<
       Omit<Transaction, "amount" | "note" | "payment_mode"> & {
@@ -619,28 +648,30 @@ export class TransactionRepository extends BaseRepository<Transaction> {
 
     for (let i = 0; i < transactions.length; i += BATCH_SIZE) {
       const batch = transactions.slice(i, i + BATCH_SIZE);
-      
+
       // Decrypt all fields in parallel for this batch
-    const amounts = await Promise.all(
+      const amounts = await Promise.all(
         batch.map((t) => decryptAmount(t.amount))
-    );
+      );
 
-    const notes = await Promise.all(
+      const notes = await Promise.all(
         batch.map((t) => (t.note ? decrypt(t.note) : Promise.resolve(null)))
-    );
+      );
 
-    const paymentModes = await Promise.all(
-        batch.map((t) => (t.payment_mode ? decrypt(t.payment_mode) : Promise.resolve(null)))
-    );
+      const paymentModes = await Promise.all(
+        batch.map((t) =>
+          t.payment_mode ? decrypt(t.payment_mode) : Promise.resolve(null)
+        )
+      );
 
       // Combine results for this batch
       const decryptedBatch = batch.map((t, index) => ({
-      ...t,
-      amount: amounts[index],
-      note: notes[index],
-      payment_mode: paymentModes[index],
-    }));
-      
+        ...t,
+        amount: amounts[index],
+        note: notes[index],
+        payment_mode: paymentModes[index],
+      }));
+
       results.push(...decryptedBatch);
     }
 
@@ -707,7 +738,12 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     }
 
     // Handle date filters
-    this.addDateFilterConditions(conditions, params, filters?.startDate, filters?.endDate);
+    this.addDateFilterConditions(
+      conditions,
+      params,
+      filters?.startDate,
+      filters?.endDate
+    );
 
     // Handle transaction type filters
     const types = filters?.types || (filters?.type ? [filters.type] : []);
@@ -833,7 +869,12 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     }
 
     // Handle date filters
-    this.addDateFilterConditions(conditions, params, filters?.startDate, filters?.endDate);
+    this.addDateFilterConditions(
+      conditions,
+      params,
+      filters?.startDate,
+      filters?.endDate
+    );
 
     // Handle transaction type filters - only expenses for category breakdown
     const types =
@@ -959,7 +1000,12 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     }
 
     // Handle date filters
-    this.addDateFilterConditions(conditions, params, filters?.startDate, filters?.endDate);
+    this.addDateFilterConditions(
+      conditions,
+      params,
+      filters?.startDate,
+      filters?.endDate
+    );
 
     // Handle transaction type filters - only expenses for daily patterns
     const types =
@@ -1004,17 +1050,17 @@ export class TransactionRepository extends BaseRepository<Transaction> {
       type: Transaction["type"];
       date: string;
     }> = [];
-    
+
     for (let i = 0; i < results.length; i += BATCH_SIZE) {
       const batch = results.slice(i, i + BATCH_SIZE);
       const decryptedBatch = await Promise.all(
         batch.map(async (row) => ({
-        id: row.id,
-        amount: await decryptAmount(row.amount),
-        type: row.type,
-        date: row.date,
-      }))
-    );
+          id: row.id,
+          amount: await decryptAmount(row.amount),
+          type: row.type,
+          date: row.date,
+        }))
+      );
       decryptedAmounts.push(...decryptedBatch);
     }
 
@@ -1096,7 +1142,12 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     }
 
     // Handle date filters
-    this.addDateFilterConditions(conditions, params, filters?.startDate, filters?.endDate);
+    this.addDateFilterConditions(
+      conditions,
+      params,
+      filters?.startDate,
+      filters?.endDate
+    );
 
     // Handle transaction type filters - allow both income and expenses for monthly trends
     const types =
@@ -1141,17 +1192,17 @@ export class TransactionRepository extends BaseRepository<Transaction> {
       type: Transaction["type"];
       date: string;
     }> = [];
-    
+
     for (let i = 0; i < results.length; i += BATCH_SIZE) {
       const batch = results.slice(i, i + BATCH_SIZE);
       const decryptedBatch = await Promise.all(
         batch.map(async (row) => ({
-        id: row.id,
-        amount: await decryptAmount(row.amount),
-        type: row.type,
-        date: row.date,
-      }))
-    );
+          id: row.id,
+          amount: await decryptAmount(row.amount),
+          type: row.type,
+          date: row.date,
+        }))
+      );
       decryptedAmounts.push(...decryptedBatch);
     }
 
@@ -1245,7 +1296,12 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     }
 
     // Handle date filters
-    this.addDateFilterConditions(conditions, params, filters?.startDate, filters?.endDate);
+    this.addDateFilterConditions(
+      conditions,
+      params,
+      filters?.startDate,
+      filters?.endDate
+    );
 
     // Handle transaction type filters - only expenses for tag breakdown
     const types =
@@ -1372,7 +1428,12 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     }
 
     // Handle date filters
-    this.addDateFilterConditions(conditions, params, filters?.startDate, filters?.endDate);
+    this.addDateFilterConditions(
+      conditions,
+      params,
+      filters?.startDate,
+      filters?.endDate
+    );
 
     // Handle transaction type filters - allow both income and expenses for account breakdown
     const types =
@@ -1402,18 +1463,14 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     query += ` WHERE ${conditions.join(" AND ")}`;
 
     // Execute query to get only id, amount, type, account_id
-    const queryStartTime = Date.now();
     const results = await this.executeQuery<{
       id: number;
       amount: string;
       type: Transaction["type"];
       account_id: number;
     }>(query, params);
-    const queryEndTime = Date.now();
-    logPerformance('calculateAccountBreakdown query fetch', queryEndTime - queryStartTime, `${results.length} transactions`);
 
     // Decrypt amounts in batches to avoid overwhelming the system
-    const decryptStartTime = Date.now();
     const decryptedAmounts = await this.batchDecryptAmounts(
       results,
       (row, amount) => ({
@@ -1423,8 +1480,6 @@ export class TransactionRepository extends BaseRepository<Transaction> {
         account_id: row.account_id,
       })
     );
-    const decryptEndTime = Date.now();
-    logPerformance('calculateAccountBreakdown decrypt', decryptEndTime - decryptStartTime, `${decryptedAmounts.length} transactions`);
 
     // Group by account
     const accountMap = new Map<
@@ -1468,43 +1523,54 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     accountIds?: number[];
     startDate?: string;
     endDate?: string;
-    type?: Transaction['type'];
-    types?: Transaction['type'][];
+    type?: Transaction["type"];
+    types?: Transaction["type"][];
   }): Promise<number> {
     let query = `SELECT t.id, t.amount, t.type FROM ${this.tableName} t`;
     const params: any[] = [];
-    const conditions: string[] = ['t.deleted_at IS NULL'];
+    const conditions: string[] = ["t.deleted_at IS NULL"];
 
-    const accountIds = filters?.accountIds || (filters?.accountId ? [filters.accountId] : []);
+    const accountIds =
+      filters?.accountIds || (filters?.accountId ? [filters.accountId] : []);
     if (accountIds.length > 0) {
-      const placeholders = accountIds.map(() => '?').join(',');
+      const placeholders = accountIds.map(() => "?").join(",");
       conditions.push(`t.account_id IN (${placeholders})`);
       params.push(...accountIds);
     }
 
     // Handle date filters
-    this.addDateFilterConditions(conditions, params, filters?.startDate, filters?.endDate);
+    this.addDateFilterConditions(
+      conditions,
+      params,
+      filters?.startDate,
+      filters?.endDate
+    );
 
-    const types = filters?.types || (filters?.type ? [filters.type] : ['expense']); // Default to expense
+    const types =
+      filters?.types || (filters?.type ? [filters.type] : ["expense"]); // Default to expense
     if (types.length > 0) {
-      const placeholders = types.map(() => '?').join(',');
+      const placeholders = types.map(() => "?").join(",");
       conditions.push(`t.type IN (${placeholders})`);
       params.push(...types);
     }
 
-    query += ` WHERE ${conditions.join(' AND ')}`;
+    query += ` WHERE ${conditions.join(" AND ")}`;
 
-    const results = await this.executeQuery<{ id: number; amount: string; type: Transaction['type'] }>(query, params);
+    const results = await this.executeQuery<{
+      id: number;
+      amount: string;
+      type: Transaction["type"];
+    }>(query, params);
 
     // Decrypt amounts in batches to avoid overwhelming the system
     const BATCH_SIZE = 500;
     let total = 0;
-    
+
     for (let i = 0; i < results.length; i += BATCH_SIZE) {
       const batch = results.slice(i, i + BATCH_SIZE);
       const decryptedBatch = await Promise.all(
         batch.map(async (row) => await decryptAmount(row.amount))
-    );
+      );
       total += decryptedBatch.reduce((sum, amount) => sum + amount, 0);
     }
 
@@ -1585,7 +1651,12 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     }
 
     // Handle date filters
-    this.addDateFilterConditions(conditions, params, filters?.startDate, filters?.endDate);
+    this.addDateFilterConditions(
+      conditions,
+      params,
+      filters?.startDate,
+      filters?.endDate
+    );
 
     // Handle transaction type filters
     const types = filters?.types || (filters?.type ? [filters.type] : []);
@@ -1630,59 +1701,68 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     categoryIds?: number[];
     startDate?: string;
     endDate?: string;
-    type?: Transaction['type'];
-    types?: Transaction['type'][];
+    type?: Transaction["type"];
+    types?: Transaction["type"][];
     accountType?: string;
     accountTypes?: string[];
   }): Promise<number[]> {
     let query = `SELECT DISTINCT tt.tag_id FROM ${this.tableName} t 
                  INNER JOIN transaction_tags tt ON t.id = tt.transaction_id`;
     const params: any[] = [];
-    const conditions: string[] = ['t.deleted_at IS NULL'];
+    const conditions: string[] = ["t.deleted_at IS NULL"];
     let hasJoin = true; // Already have transaction_tags join
 
     // Handle account filters
-    const accountIds = filters?.accountIds || (filters?.accountId ? [filters.accountId] : []);
+    const accountIds =
+      filters?.accountIds || (filters?.accountId ? [filters.accountId] : []);
     if (accountIds.length > 0) {
-      const placeholders = accountIds.map(() => '?').join(',');
+      const placeholders = accountIds.map(() => "?").join(",");
       conditions.push(`t.account_id IN (${placeholders})`);
       params.push(...accountIds);
     }
 
     // Handle category filters
-    const categoryIds = filters?.categoryIds || (filters?.categoryId ? [filters.categoryId] : []);
+    const categoryIds =
+      filters?.categoryIds || (filters?.categoryId ? [filters.categoryId] : []);
     if (categoryIds.length > 0) {
-      const placeholders = categoryIds.map(() => '?').join(',');
+      const placeholders = categoryIds.map(() => "?").join(",");
       conditions.push(`t.category_id IN (${placeholders})`);
       params.push(...categoryIds);
     }
 
     // Handle date filters
-    this.addDateFilterConditions(conditions, params, filters?.startDate, filters?.endDate);
+    this.addDateFilterConditions(
+      conditions,
+      params,
+      filters?.startDate,
+      filters?.endDate
+    );
 
     // Handle transaction type filters
     const types = filters?.types || (filters?.type ? [filters.type] : []);
     if (types.length > 0) {
-      const placeholders = types.map(() => '?').join(',');
+      const placeholders = types.map(() => "?").join(",");
       conditions.push(`t.type IN (${placeholders})`);
       params.push(...types);
     }
 
     // Handle account type filters
-    const accountTypes = filters?.accountTypes || (filters?.accountType ? [filters.accountType] : []);
+    const accountTypes =
+      filters?.accountTypes ||
+      (filters?.accountType ? [filters.accountType] : []);
     if (accountTypes.length > 0) {
-      if (!query.includes('INNER JOIN accounts')) {
-        query += ' INNER JOIN accounts a ON t.account_id = a.id';
+      if (!query.includes("INNER JOIN accounts")) {
+        query += " INNER JOIN accounts a ON t.account_id = a.id";
       }
-      const placeholders = accountTypes.map(() => '?').join(',');
+      const placeholders = accountTypes.map(() => "?").join(",");
       conditions.push(`a.type IN (${placeholders})`);
       params.push(...accountTypes);
     }
 
-    query += ` WHERE ${conditions.join(' AND ')} AND tt.tag_id IS NOT NULL`;
+    query += ` WHERE ${conditions.join(" AND ")} AND tt.tag_id IS NOT NULL`;
 
     const results = await this.executeQuery<{ tag_id: number }>(query, params);
-    return results.map(row => row.tag_id);
+    return results.map((row) => row.tag_id);
   }
 }
 

@@ -25,7 +25,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { endOfMonth, format, startOfMonth } from "date-fns";
 import { router } from "expo-router";
-import { usePostHog } from "posthog-react-native";
 import React from "react";
 import {
   RefreshControl,
@@ -43,22 +42,20 @@ export default function DashboardScreen() {
   const setCurrentFilterContext = useUIStore(
     (state) => state.setCurrentFilterContext
   );
-  const posthog = usePostHog();
 
   const { settings, loadSettings } = useSettingsStore();
 
   React.useEffect(() => {
     loadSettings();
-    posthog.capture("Dashboard Screen Loaded");
   }, []);
 
   // Ensure dates are never null - set to current month if null
   React.useEffect(() => {
     if (!filters.startDate || !filters.endDate) {
       const now = new Date();
-      const start = format(startOfMonth(now), 'yyyy-MM-dd');
-      const end = format(endOfMonth(now), 'yyyy-MM-dd');
-      setDateRangeFilter('dashboard', start, end);
+      const start = format(startOfMonth(now), "yyyy-MM-dd");
+      const end = format(endOfMonth(now), "yyyy-MM-dd");
+      setDateRangeFilter("dashboard", start, end);
     }
   }, [filters.startDate, filters.endDate, setDateRangeFilter]);
 
@@ -131,7 +128,6 @@ export default function DashboardScreen() {
     ],
     queryFn: async () => {
       const startTime = Date.now();
-      logPerformance("Dashboard latest transactions query started", 0);
 
       const filterOptions = useFilters
         ? {
@@ -166,42 +162,25 @@ export default function DashboardScreen() {
         : { startDate, endDate };
 
       // Fetch only latest 10 transactions directly from database
-      const queryStartTime = Date.now();
       const rawTransactions =
         await transactionRepository.findLatestTransactionsWithFilters(
           10,
           filterOptions
         );
-      const queryEndTime = Date.now();
-      logPerformance(
-        "Dashboard query fetch",
-        queryEndTime - queryStartTime,
-        `${rawTransactions.length} transactions`
-      );
 
       // Decrypt only the transactions we need
-      const decryptStartTime = Date.now();
       const decrypted = await transactionRepository.decryptTransactions(
         rawTransactions
       );
-      const decryptEndTime = Date.now();
-      logPerformance(
-        "Dashboard decrypt",
-        decryptEndTime - decryptStartTime,
-        `${decrypted.length} transactions`
-      );
 
-      const filterStartTime = Date.now();
       const filtered = filterTransactionsByIncomePreference(
         decrypted,
         settings.incomeCalculationEnabled
       );
-      const filterEndTime = Date.now();
-      logPerformance("Dashboard filter", filterEndTime - filterStartTime);
 
       const endTime = Date.now();
       logPerformance(
-        "Dashboard latest transactions query completed",
+        "Dashboard_latest_transactions_query",
         endTime - startTime,
         `${filtered.length} transactions`
       );

@@ -1,0 +1,8 @@
+appId: com.budgetize.app
+---
+# - launchApp:
+#     clearState: true
+- tapOn: Next, 
+- tapOn: Next, 
+- tapOn: Next, 
+- tapOn: Start Fresh

@@ -19,7 +19,6 @@ export function useAccountBalances() {
     gcTime: 1000 * 60 * 10, // Keep in cache for 10 minutes
     queryFn: async (): Promise<Map<number, number>> => {
       const startTime = Date.now();
-      logPerformance('useAccountBalances query started', 0);
       
       // Use optimized method that only fetches and decrypts amounts with account_id and type
       // Filter by income preference in the query if needed
@@ -37,7 +36,7 @@ export function useAccountBalances() {
       }
 
       const endTime = Date.now();
-      logPerformance('useAccountBalances query completed', endTime - startTime);
+      logPerformance('useAccountBalances_query', endTime - startTime);
 
       return balanceMap;
     },
