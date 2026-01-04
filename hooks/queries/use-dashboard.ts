@@ -5,12 +5,15 @@ import { Transaction } from '@/db/schema/types';
 import { startOfMonth, endOfMonth, format } from 'date-fns';
 import { useUIStore } from '@/store/ui-store';
 import { useSettingsStore } from '@/store/settings-store';
+import { useProfileStore } from '@/store/profile-store';
 import { filterTransactionsByIncomePreference, incomePreferenceKey } from '@/utils/income-preference';
+
+const getProfileId = () => useProfileStore.getState().activeProfileId;
 
 const QUERY_KEYS = {
   all: ['dashboard'] as const,
-  monthly: (month: string) => [...QUERY_KEYS.all, 'monthly', month] as const,
-  categoryBreakdown: (month: string) => [...QUERY_KEYS.all, 'category', month] as const,
+  monthly: (month: string) => [...QUERY_KEYS.all, 'monthly', month, getProfileId()] as const,
+  categoryBreakdown: (month: string) => [...QUERY_KEYS.all, 'category', month, getProfileId()] as const,
 };
 
 interface DashboardData {

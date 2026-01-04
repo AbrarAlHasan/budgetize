@@ -32,6 +32,8 @@ import { useAuthStore } from "@/store/auth-store";
 import { useNotificationStore } from "@/store/notification-store";
 import { useSecurityStore } from "@/store/security-store";
 import { useSettingsStore } from "@/store/settings-store";
+import { useProfileStore } from "@/store/profile-store";
+import { useProfiles } from "@/hooks/queries/use-profiles";
 import { createBackupFile, restoreAppData } from "@/utils/backup";
 import { clearDatabase } from "@/utils/clear-database";
 import { uploadBackupToCloud } from "@/utils/cloud-backup";
@@ -85,6 +87,9 @@ export default function SettingsScreen() {
   const { checkAndPromptUpdate } = useInAppUpdates({ autoCheck: false });
   const { isNetworkAvailable } = useNetworkStatus();
   const { data: tags } = useTags();
+  const { data: profiles } = useProfiles();
+  const activeProfileId = useProfileStore((state) => state.activeProfileId);
+  const activeProfile = profiles?.find((p) => p.id === activeProfileId);
   const defaultTagSelectorRef = useRef<BottomSheetMultiSelectRef>(null);
   const [permissionGranted, setPermissionGranted] = useState(false);
   const [isSeedingDummyData, setIsSeedingDummyData] = useState(false);
@@ -276,7 +281,7 @@ export default function SettingsScreen() {
       setDummyDataProgress(100);
       alert(
         "Dummy Data Ready",
-        `Generated ${summary.transactions} transactions across ${summary.accounts} accounts.\nPull to refresh to see the latest data.`
+        `Generated ${summary.transactions} transactions across ${summary.accounts} accounts, and ${summary.exchanges} exchanges.\nPull to refresh to see the latest data.`
       );
     } catch (error) {
       logError("Failed to seed dummy data:", error);
@@ -374,10 +379,17 @@ export default function SettingsScreen() {
         // Reload settings and preferences after restore
         await loadSettings();
         await loadPreferences();
+        
+        // Reinitialize profile store to ensure active profile is set correctly
+        const { initialize: initializeProfile } = useProfileStore.getState();
+        await initializeProfile();
+        
+        // Invalidate all queries to refresh UI with restored data
+        await queryClient.invalidateQueries();
 
         alert(
           "Restore Complete",
-          "Your data has been successfully restored. The app will now use the restored data.",
+          "Your data has been successfully restored. All profiles, transactions, accounts, categories, tags, and exchanges have been restored. The app will now use the restored data.",
           [
             {
               text: "OK",
@@ -511,9 +523,11 @@ export default function SettingsScreen() {
       // Invalidate all queries to refresh the UI
       await queryClient.invalidateQueries();
 
+      const currentProfile = profiles?.find((p) => p.id === activeProfileId);
+
       alert(
-        "Database Cleared",
-        "All data has been successfully cleared from the database.",
+        "Profile Data Cleared",
+        `All data for the "${currentProfile?.name || 'active'}" profile has been successfully cleared.`,
         [{ text: "OK" }]
       );
     } catch (error) {
@@ -532,13 +546,17 @@ export default function SettingsScreen() {
       return;
     }
 
+    const activeProfileId = useProfileStore.getState().activeProfileId;
+    const { data: profiles } = useProfiles();
+    const activeProfile = profiles?.find((p) => p.id === activeProfileId);
+
     alert(
-      "Clear All Data",
-      "This will permanently delete ALL data from the database:\n\n• All accounts\n• All transactions\n• All categories\n• All tags\n\nThis action CANNOT be undone. Make sure you have a backup if you want to restore this data later.",
+      "Clear Profile Data",
+      `This will permanently delete ALL data for the "${activeProfile?.name || 'active'}" profile:\n\n• All accounts\n• All transactions\n• All categories\n• All tags\n• All exchanges\n\nThis action CANNOT be undone. Data from other profiles will NOT be affected. Make sure you have a backup if you want to restore this data later.`,
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: "Clear All Data",
+          text: "Clear Profile Data",
           style: "destructive",
           onPress: runClearDatabase,
         },
@@ -970,80 +988,7 @@ export default function SettingsScreen() {
             <Text className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
               Transaction Defaults
             </Text>
-
-            {/* Default Tags Selector */}
-            <View className="mb-4">
-              {/* Button to Open Bottom Sheet - Similar to Data Management */}
-              <TouchableOpacity
-                onPress={() => defaultTagSelectorRef.current?.present()}
-                className="flex-row items-center justify-between py-3"
-                activeOpacity={0.7}
-              >
-                <View className="flex-row items-center gap-3 flex-1">
-                  <View className="bg-blue-100 dark:bg-blue-900/30 rounded-full p-2">
-                    <Ionicons name="pricetags" size={20} color="#3B82F6" />
-                  </View>
-                  <View className="flex-1">
-                    <Text className="text-base font-medium text-gray-900 dark:text-gray-100">
-                      Default Tags
-                    </Text>
-                    <Text className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                      {settings.defaultTagIds &&
-                      settings.defaultTagIds.length > 0
-                        ? `${settings.defaultTagIds.length} tag${
-                            settings.defaultTagIds.length > 1 ? "s" : ""
-                          } selected`
-                        : "Select tags to auto-apply when creating transactions"}
-                    </Text>
-                  </View>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-              </TouchableOpacity>
-
-              {/* Selected Tags Chips - Display below button if tags are selected */}
-              {settings.defaultTagIds && settings.defaultTagIds.length > 0 && (
-                <View className="flex-row flex-wrap gap-2 mt-3">
-                  {settings.defaultTagIds.map((tagId) => {
-                    const tag = tags?.find((t) => t.id === tagId);
-                    if (!tag) return null;
-                    return (
-                      <View key={tagId} className="flex-col items-start gap-1">
-                        <TagChip
-                          name={tag.name}
-                          selected={true}
-                          showIcon={false}
-                          size="small"
-                          onPress={() => {
-                            const updatedIds = settings.defaultTagIds.filter((id) => id !== tagId);
-                            updateDefaultTagIds(updatedIds);
-                          }}
-                        />
-                      </View>
-                    );
-                  })}
-                </View>
-              )}
-
-              {/* Multi-Select Bottom Sheet - Hidden input, only bottom sheet */}
-              {tags && tags.length > 0 && (
-                <View style={{ height: 0, overflow: "hidden" }}>
-                  <BottomSheetMultiSelect
-                    ref={defaultTagSelectorRef}
-                    label=""
-                    options={tags.map((tag) => ({
-                      label: tag.name,
-                      value: tag.id,
-                    }))}
-                    value={settings.defaultTagIds || []}
-                    onValueChange={(selectedIds) => {
-                      updateDefaultTagIds(selectedIds as number[]);
-                    }}
-                    placeholder="Select default tags"
-                    showSelectAll={true}
-                  />
-                </View>
-              )}
-            </View>
+            {/* Note: Default Tags moved to Content Management section */}
           </Card>
 
           {/* Exchange Feature Toggle */}
@@ -1088,6 +1033,153 @@ export default function SettingsScreen() {
                 </View>
               )}
             </View>
+          </Card>
+
+          {/* Content Management */}
+          <Card className="mb-4">
+            <Text className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+              Content Management
+            </Text>
+
+            {/* Default Tags Selector */}
+            <View className="mb-4">
+              {/* Button to Open Bottom Sheet */}
+              <TouchableOpacity
+                onPress={() => defaultTagSelectorRef.current?.present()}
+                className="flex-row items-center justify-between py-3 mb-3"
+                activeOpacity={0.7}
+              >
+                <View className="flex-row items-center gap-3 flex-1">
+                  <View className="bg-blue-100 dark:bg-blue-900/30 rounded-full p-2">
+                    <Ionicons name="pricetags" size={20} color="#3B82F6" />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-base font-medium text-gray-900 dark:text-gray-100">
+                      Default Tags
+                    </Text>
+                    <Text className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                      {settings.defaultTagIds &&
+                      settings.defaultTagIds.length > 0
+                        ? `${settings.defaultTagIds.length} tag${
+                            settings.defaultTagIds.length > 1 ? "s" : ""
+                          } selected`
+                        : "Select tags to auto-apply when creating transactions"}
+                    </Text>
+                  </View>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+              </TouchableOpacity>
+
+              {/* Selected Tags Chips - Display below button if tags are selected */}
+              {settings.defaultTagIds && settings.defaultTagIds.length > 0 && (
+                <View className="flex-row flex-wrap gap-2 mb-3">
+                  {settings.defaultTagIds.map((tagId) => {
+                    const tag = tags?.find((t) => t.id === tagId);
+                    if (!tag) return null;
+                    return (
+                      <View key={tagId} className="flex-col items-start gap-1">
+                        <TagChip
+                          name={tag.name}
+                          selected={true}
+                          showIcon={false}
+                          size="small"
+                          onPress={() => {
+                            const updatedIds = settings.defaultTagIds.filter((id) => id !== tagId);
+                            updateDefaultTagIds(updatedIds);
+                          }}
+                        />
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
+
+              {/* Multi-Select Bottom Sheet - Hidden input, only bottom sheet */}
+              {tags && tags.length > 0 && (
+                <View style={{ height: 0, overflow: "hidden" }}>
+                  <BottomSheetMultiSelect
+                    ref={defaultTagSelectorRef}
+                    label=""
+                    options={tags.map((tag) => ({
+                      label: tag.name,
+                      value: tag.id,
+                    }))}
+                    value={settings.defaultTagIds || []}
+                    onValueChange={(selectedIds) => {
+                      updateDefaultTagIds(selectedIds as number[]);
+                    }}
+                    placeholder="Select default tags"
+                    showSelectAll={true}
+                  />
+                </View>
+              )}
+            </View>
+
+            {/* Manage Categories */}
+            <TouchableOpacity
+              onPress={() => router.push("/settings/categories")}
+              className="flex-row items-center justify-between py-3 mb-3"
+              activeOpacity={0.7}
+            >
+              <View className="flex-row items-center gap-3 flex-1">
+                <View className="bg-purple-100 dark:bg-purple-900/30 rounded-full p-2">
+                  <Ionicons name="apps" size={20} color="#9333EA" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-base font-medium text-gray-900 dark:text-gray-100">
+                    Manage Categories
+                  </Text>
+                  <Text className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                    Add, edit, or delete categories
+                  </Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+            </TouchableOpacity>
+
+            {/* Manage Tags */}
+            <TouchableOpacity
+              onPress={() => router.push("/settings/tags")}
+              className="flex-row items-center justify-between py-3 mb-3"
+              activeOpacity={0.7}
+            >
+              <View className="flex-row items-center gap-3 flex-1">
+                <View className="bg-blue-100 dark:bg-blue-900/30 rounded-full p-2">
+                  <Ionicons name="pricetag" size={20} color="#3B82F6" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-base font-medium text-gray-900 dark:text-gray-100">
+                    Manage Tags
+                  </Text>
+                  <Text className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                    Add, edit, or delete tags
+                  </Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+            </TouchableOpacity>
+
+            {/* Manage Profiles */}
+            <TouchableOpacity
+              onPress={() => router.push("/settings/profiles")}
+              className="flex-row items-center justify-between py-3"
+              activeOpacity={0.7}
+            >
+              <View className="flex-row items-center gap-3 flex-1">
+                <View className="bg-indigo-100 dark:bg-indigo-900/30 rounded-full p-2">
+                  <Ionicons name="people" size={20} color="#6366F1" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-base font-medium text-gray-900 dark:text-gray-100">
+                    Manage Profiles
+                  </Text>
+                  <Text className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                    Create, switch, or delete profiles
+                  </Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+            </TouchableOpacity>
           </Card>
 
           {/* Data Management */}
@@ -1213,50 +1305,6 @@ export default function SettingsScreen() {
               <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
             </TouchableOpacity>
 
-            {/* Manage Categories */}
-            <TouchableOpacity
-              onPress={() => router.push("/settings/categories")}
-              className="flex-row items-center justify-between py-3 mb-3"
-              activeOpacity={0.7}
-            >
-              <View className="flex-row items-center gap-3 flex-1">
-                <View className="bg-purple-100 dark:bg-purple-900/30 rounded-full p-2">
-                  <Ionicons name="apps" size={20} color="#9333EA" />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-base font-medium text-gray-900 dark:text-gray-100">
-                    Manage Categories
-                  </Text>
-                  <Text className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                    Add, edit, or delete categories
-                  </Text>
-                </View>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-            </TouchableOpacity>
-
-            {/* Manage Tags */}
-            <TouchableOpacity
-              onPress={() => router.push("/settings/tags")}
-              className="flex-row items-center justify-between py-3 mb-3"
-              activeOpacity={0.7}
-            >
-              <View className="flex-row items-center gap-3 flex-1">
-                <View className="bg-blue-100 dark:bg-blue-900/30 rounded-full p-2">
-                  <Ionicons name="pricetag" size={20} color="#3B82F6" />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-base font-medium text-gray-900 dark:text-gray-100">
-                    Manage Tags
-                  </Text>
-                  <Text className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                    Add, edit, or delete tags
-                  </Text>
-                </View>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-            </TouchableOpacity>
-
             {/* Clear Database */}
             <TouchableOpacity
               onPress={handleClearDatabase}
@@ -1271,11 +1319,10 @@ export default function SettingsScreen() {
                 </View>
                 <View className="flex-1">
                   <Text className="text-base font-medium text-gray-900 dark:text-gray-100">
-                    Clear All Data
+                    Clear Profile Data
                   </Text>
                   <Text className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                    Permanently delete all accounts, transactions, categories,
-                    and tags
+                    Permanently delete all data for the active profile only
                   </Text>
                   {isClearingDatabase && (
                     <Text className="text-xs text-red-600 dark:text-red-400 mt-1">

@@ -7,6 +7,7 @@ import { tagRepository } from "@/repositories/tag.repository";
 import { transactionTagRepository } from "@/repositories/transaction-tag.repository";
 import { transactionRepository } from "@/repositories/transaction.repository";
 import { useSettingsStore } from "@/store/settings-store";
+import { useProfileStore } from "@/store/profile-store";
 import { useUIStore } from "@/store/ui-store";
 import { getCurrencySymbol } from "@/utils/currencies";
 import { filterTransactionsByIncomePreference } from "@/utils/income-preference";
@@ -42,6 +43,9 @@ export function AccountLatestTransactions({
   const opacity = useSharedValue(1);
   const previousAccountId = React.useRef<number | null>(null);
   
+  // Get active profile ID for query key
+  const activeProfileId = useProfileStore((state) => state.activeProfileId);
+  
   // Use optimized query to fetch only latest 5 transactions with keepPreviousData
   const {
     data: transactions,
@@ -49,7 +53,7 @@ export function AccountLatestTransactions({
     isFetching,
     refetch,
   } = useQuery<DecryptedTransaction[]>({
-    queryKey: ["account-latest-transactions", accountId],
+    queryKey: ["account-latest-transactions", accountId, activeProfileId],
     queryFn: async () => {
       const startTime = Date.now();
       

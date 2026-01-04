@@ -1,13 +1,16 @@
 import { useQuery } from '@tanstack/react-query';
 import { transactionRepository } from '@/repositories/transaction.repository';
 import { useSettingsStore } from '@/store/settings-store';
+import { useProfileStore } from '@/store/profile-store';
 import { incomePreferenceKey } from '@/utils/income-preference';
 import { Transaction } from '@/db/schema/types';
 import { logPerformance } from '@/utils/logger';
 
+const getProfileId = () => useProfileStore.getState().activeProfileId;
+
 const QUERY_KEYS = {
   all: ['account-balances'] as const,
-  balances: () => [...QUERY_KEYS.all, 'balances'] as const,
+  balances: () => [...QUERY_KEYS.all, 'balances', getProfileId()] as const,
 };
 
 export function useAccountBalances() {

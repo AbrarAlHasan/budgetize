@@ -50,10 +50,11 @@ export class ExchangeRepository extends BaseRepository<Exchange> {
 
     try {
       const now = new Date().toISOString();
+      const profileId = await this.getActiveProfileId();
       const result = await db.runAsync(
         `INSERT INTO ${this.tableName} 
-         (person_name, amount, type, status, date, due_date, note, created_at, updated_at, is_synced)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
+         (person_name, amount, type, status, date, due_date, note, profile_id, created_at, updated_at, is_synced)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
         [
           encryptedPersonName,
           encryptedAmount,
@@ -62,6 +63,7 @@ export class ExchangeRepository extends BaseRepository<Exchange> {
           input.date,
           input.due_date || null,
           encryptedNote,
+          profileId,
           now,
           now,
         ]
@@ -139,16 +141,24 @@ export class ExchangeRepository extends BaseRepository<Exchange> {
   }
 
   async findByType(type: ExchangeType): Promise<Exchange[]> {
+    const conditions: string[] = ["type = ?", "deleted_at IS NULL"];
+    const params: any[] = [type];
+    await this.addProfileFilter(conditions, params);
+    
     return this.executeQuery<Exchange>(
-      `SELECT * FROM ${this.tableName} WHERE type = ? AND deleted_at IS NULL ORDER BY date DESC, created_at DESC`,
-      [type]
+      `SELECT * FROM ${this.tableName} WHERE ${conditions.join(" AND ")} ORDER BY date DESC, created_at DESC`,
+      params
     );
   }
 
   async findByStatus(status: ExchangeStatus): Promise<Exchange[]> {
+    const conditions: string[] = ["status = ?", "deleted_at IS NULL"];
+    const params: any[] = [status];
+    await this.addProfileFilter(conditions, params);
+    
     return this.executeQuery<Exchange>(
-      `SELECT * FROM ${this.tableName} WHERE status = ? AND deleted_at IS NULL ORDER BY date DESC, created_at DESC`,
-      [status]
+      `SELECT * FROM ${this.tableName} WHERE ${conditions.join(" AND ")} ORDER BY date DESC, created_at DESC`,
+      params
     );
   }
 
@@ -156,9 +166,13 @@ export class ExchangeRepository extends BaseRepository<Exchange> {
     type: ExchangeType,
     status: ExchangeStatus
   ): Promise<Exchange[]> {
+    const conditions: string[] = ["type = ?", "status = ?", "deleted_at IS NULL"];
+    const params: any[] = [type, status];
+    await this.addProfileFilter(conditions, params);
+    
     return this.executeQuery<Exchange>(
-      `SELECT * FROM ${this.tableName} WHERE type = ? AND status = ? AND deleted_at IS NULL ORDER BY date DESC, created_at DESC`,
-      [type, status]
+      `SELECT * FROM ${this.tableName} WHERE ${conditions.join(" AND ")} ORDER BY date DESC, created_at DESC`,
+      params
     );
   }
 
@@ -172,6 +186,9 @@ export class ExchangeRepository extends BaseRepository<Exchange> {
   }): Promise<Exchange[]> {
     const conditions: string[] = ["deleted_at IS NULL"];
     const params: any[] = [];
+    
+    // Add profile filter
+    await this.addProfileFilter(conditions, params);
 
     if (filters?.type) {
       conditions.push("type = ?");
@@ -204,9 +221,16 @@ export class ExchangeRepository extends BaseRepository<Exchange> {
     // Get all pending exchanges grouped by type
     // We need to decrypt amounts, so we'll fetch them and decrypt in batches
     // But we'll use SQL to group and count
-    const query = `SELECT type, amount FROM ${this.tableName} WHERE status = 'pending' AND deleted_at IS NULL ORDER BY type`;
+    const conditions: string[] = ["status = 'pending'", "deleted_at IS NULL"];
+    const params: any[] = [];
+    
+    // Add profile filter
+    await this.addProfileFilter(conditions, params);
+    
+    const query = `SELECT type, amount FROM ${this.tableName} WHERE ${conditions.join(" AND ")} ORDER BY type`;
     const results = await this.executeQuery<{ type: ExchangeType; amount: string }>(
-      query
+      query,
+      params
     );
 
     // Decrypt amounts in batches

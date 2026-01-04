@@ -34,7 +34,7 @@ export const customLog = logger.createLogger({
   printLevel: true,
   printDate: true,
   fixedExtLvlLength: false,
-  enabled: true, // Always enabled
+  enabled: false, // Always enabled
 });
 
 /**

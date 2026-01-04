@@ -1,13 +1,16 @@
 import { Account, CreateAccountInput, DecryptedAccount, UpdateAccountInput } from '@/db/schema/types';
 import { accountRepository } from '@/repositories/account.repository';
+import { useProfileStore } from '@/store/profile-store';
 import { logPerformance } from '@/utils/logger';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+const getProfileId = () => useProfileStore.getState().activeProfileId;
+
 const QUERY_KEYS = {
   all: ['accounts'] as const,
-  lists: () => [...QUERY_KEYS.all, 'list'] as const,
+  lists: () => [...QUERY_KEYS.all, 'list', getProfileId()] as const,
   list: (filters?: { type?: Account['type'] }) => [...QUERY_KEYS.lists(), filters] as const,
-  details: () => [...QUERY_KEYS.all, 'detail'] as const,
+  details: () => [...QUERY_KEYS.all, 'detail', getProfileId()] as const,
   detail: (id: number) => [...QUERY_KEYS.details(), id] as const,
 };
 

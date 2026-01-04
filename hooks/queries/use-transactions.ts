@@ -2,13 +2,16 @@ import { CreateTransactionInput, Transaction, UpdateTransactionInput } from '@/d
 import { transactionRepository } from '@/repositories/transaction.repository';
 import { syncWidgetData } from '@/services/widget-sync';
 import { useSettingsStore } from '@/store/settings-store';
+import { useProfileStore } from '@/store/profile-store';
 import { filterTransactionsByIncomePreference, incomePreferenceKey } from '@/utils/income-preference';
 import { logError, logPerformance } from '@/utils/logger';
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+const getProfileId = () => useProfileStore.getState().activeProfileId;
+
 const QUERY_KEYS = {
   all: ['transactions'] as const,
-  lists: () => [...QUERY_KEYS.all, 'list'] as const,
+  lists: () => [...QUERY_KEYS.all, 'list', getProfileId()] as const,
   list: (filters?: {
     accountId?: number;
     accountIds?: number[];
@@ -23,11 +26,11 @@ const QUERY_KEYS = {
     accountType?: string;
     accountTypes?: string[];
   }) => [...QUERY_KEYS.lists(), filters] as const,
-  details: () => [...QUERY_KEYS.all, 'detail'] as const,
+  details: () => [...QUERY_KEYS.all, 'detail', getProfileId()] as const,
   detail: (id: number) => [...QUERY_KEYS.details(), id] as const,
-  byAccount: (accountId: number) => [...QUERY_KEYS.all, 'account', accountId] as const,
+  byAccount: (accountId: number) => [...QUERY_KEYS.all, 'account', accountId, getProfileId()] as const,
   byDateRange: (startDate: string, endDate: string) => 
-    [...QUERY_KEYS.all, 'dateRange', startDate, endDate] as const,
+    [...QUERY_KEYS.all, 'dateRange', startDate, endDate, getProfileId()] as const,
 };
 
 export function useTransactions(filters?: {

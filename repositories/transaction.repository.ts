@@ -133,11 +133,13 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     // Encrypt sensitive fields
     const encryptedAmount = await encryptAmount(input.amount);
     const encryptedNote = input.note ? await encrypt(input.note) : null;
-    const encryptedPaymentMode = input.payment_mode
+      const encryptedPaymentMode = input.payment_mode
       ? await encrypt(input.payment_mode)
       : null;
 
     const db = await getDatabase();
+    // Get profile ID for this transaction
+    const profileId = await this.getActiveProfileId();
 
     // Verify category_id column exists, add it if missing (safety check)
     try {
@@ -170,8 +172,8 @@ export class TransactionRepository extends BaseRepository<Transaction> {
       const now = new Date().toISOString();
       const result = await db.runAsync(
         `INSERT INTO ${this.tableName} 
-         (account_id, category_id, amount, type, date, note, payment_mode, created_at, updated_at, is_synced)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
+         (account_id, category_id, amount, type, date, note, payment_mode, profile_id, created_at, updated_at, is_synced)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
         [
           input.account_id,
           input.category_id || null,
@@ -180,6 +182,7 @@ export class TransactionRepository extends BaseRepository<Transaction> {
           input.date,
           encryptedNote,
           encryptedPaymentMode,
+          profileId,
           now,
           now,
         ]
@@ -294,9 +297,13 @@ export class TransactionRepository extends BaseRepository<Transaction> {
   }
 
   async findByAccountId(accountId: number): Promise<Transaction[]> {
+    const conditions: string[] = ['account_id = ?', 'deleted_at IS NULL'];
+    const params: any[] = [accountId];
+    await this.addProfileFilter(conditions, params);
+    
     return this.executeQuery<Transaction>(
-      `SELECT * FROM ${this.tableName} WHERE account_id = ? AND deleted_at IS NULL ORDER BY date DESC, created_at DESC`,
-      [accountId]
+      `SELECT * FROM ${this.tableName} WHERE ${conditions.join(' AND ')} ORDER BY date DESC, created_at DESC`,
+      params
     );
   }
 
@@ -308,25 +315,34 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     const normalizedStartDate = startDate.trim();
     const normalizedEndDate = endDate.trim();
 
+    const conditions: string[] = ['deleted_at IS NULL'];
+    const params: any[] = [];
+
     // If start and end dates are the same, use equality check for better performance
     if (normalizedStartDate === normalizedEndDate) {
-      const query = `SELECT * FROM ${this.tableName} 
-         WHERE date = ? AND deleted_at IS NULL 
-         ORDER BY date DESC, created_at DESC`;
-      const params = [normalizedStartDate];
-      return this.executeQuery<Transaction>(query, params);
+      conditions.push('date = ?');
+      params.push(normalizedStartDate);
+    } else {
+      conditions.push('date >= ?', 'date <= ?');
+      params.push(normalizedStartDate, normalizedEndDate);
     }
+    
+    await this.addProfileFilter(conditions, params);
+
     const query = `SELECT * FROM ${this.tableName} 
-       WHERE date >= ? AND date <= ? AND deleted_at IS NULL 
+       WHERE ${conditions.join(' AND ')} 
        ORDER BY date DESC, created_at DESC`;
-    const params = [normalizedStartDate, normalizedEndDate];
     return this.executeQuery<Transaction>(query, params);
   }
 
   async findByType(type: Transaction["type"]): Promise<Transaction[]> {
+    const conditions: string[] = ['type = ?', 'deleted_at IS NULL'];
+    const params: any[] = [type];
+    await this.addProfileFilter(conditions, params);
+    
     return this.executeQuery<Transaction>(
-      `SELECT * FROM ${this.tableName} WHERE type = ? AND deleted_at IS NULL ORDER BY date DESC`,
-      [type]
+      `SELECT * FROM ${this.tableName} WHERE ${conditions.join(' AND ')} ORDER BY date DESC`,
+      params
     );
   }
 
@@ -348,6 +364,13 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     const params: any[] = [];
     const conditions: string[] = ["t.deleted_at IS NULL"];
     let hasJoin = false;
+    
+    // Add profile filter
+    const profileId = await this.getActiveProfileId();
+    if (profileId !== null) {
+      conditions.push("t.profile_id = ?");
+      params.push(profileId);
+    }
 
     // Handle account filters (support both single and array)
     const accountIds =
@@ -706,6 +729,13 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     const params: any[] = [];
     const conditions: string[] = ["t.deleted_at IS NULL"];
     let hasJoin = false;
+    
+    // Add profile filter
+    const profileId = await this.getActiveProfileId();
+    if (profileId !== null) {
+      conditions.push("t.profile_id = ?");
+      params.push(profileId);
+    }
 
     // Handle account filters
     const accountIds =
@@ -837,6 +867,13 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     const params: any[] = [];
     const conditions: string[] = ["t.deleted_at IS NULL"];
     let hasJoin = false;
+    
+    // Add profile filter
+    const profileId = await this.getActiveProfileId();
+    if (profileId !== null) {
+      conditions.push("t.profile_id = ?");
+      params.push(profileId);
+    }
 
     // Handle account filters
     const accountIds =
@@ -1110,6 +1147,13 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     const params: any[] = [];
     const conditions: string[] = ["t.deleted_at IS NULL"];
     let hasJoin = false;
+    
+    // Add profile filter
+    const profileId = await this.getActiveProfileId();
+    if (profileId !== null) {
+      conditions.push("t.profile_id = ?");
+      params.push(profileId);
+    }
 
     // Handle account filters
     const accountIds =
@@ -1265,6 +1309,13 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     const params: any[] = [];
     const conditions: string[] = ["t.deleted_at IS NULL"];
     let hasJoin = true; // Already have transaction_tags join
+    
+    // Add profile filter
+    const profileId = await this.getActiveProfileId();
+    if (profileId !== null) {
+      conditions.push("t.profile_id = ?");
+      params.push(profileId);
+    }
 
     // Handle account filters
     const accountIds =
@@ -1396,6 +1447,13 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     const params: any[] = [];
     const conditions: string[] = ["t.deleted_at IS NULL"];
     let hasJoin = false;
+    
+    // Add profile filter
+    const profileId = await this.getActiveProfileId();
+    if (profileId !== null) {
+      conditions.push("t.profile_id = ?");
+      params.push(profileId);
+    }
 
     // Handle account filters
     const accountIds =
@@ -1529,6 +1587,13 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     let query = `SELECT t.id, t.amount, t.type FROM ${this.tableName} t`;
     const params: any[] = [];
     const conditions: string[] = ["t.deleted_at IS NULL"];
+    
+    // Add profile filter
+    const profileId = await this.getActiveProfileId();
+    if (profileId !== null) {
+      conditions.push("t.profile_id = ?");
+      params.push(profileId);
+    }
 
     const accountIds =
       filters?.accountIds || (filters?.accountId ? [filters.accountId] : []);
@@ -1585,13 +1650,17 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     accountId: number,
     limit: number = 5
   ): Promise<Transaction[]> {
+    const conditions: string[] = ['deleted_at IS NULL', 'account_id = ?'];
+    const params: any[] = [accountId];
+    await this.addProfileFilter(conditions, params);
+    params.push(limit);
+    
     const query = `SELECT * FROM ${this.tableName} 
-                   WHERE deleted_at IS NULL 
-                   AND account_id = ? 
+                   WHERE ${conditions.join(' AND ')} 
                    ORDER BY date DESC, created_at DESC 
                    LIMIT ?`;
 
-    return this.executeQuery<Transaction>(query, [accountId, limit]);
+    return this.executeQuery<Transaction>(query, params);
   }
 
   /**
@@ -1619,6 +1688,13 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     const params: any[] = [];
     const conditions: string[] = ["t.deleted_at IS NULL"];
     let hasJoin = false;
+    
+    // Add profile filter
+    const profileId = await this.getActiveProfileId();
+    if (profileId !== null) {
+      conditions.push("t.profile_id = ?");
+      params.push(profileId);
+    }
 
     // Handle account filters
     const accountIds =
@@ -1711,6 +1787,13 @@ export class TransactionRepository extends BaseRepository<Transaction> {
     const params: any[] = [];
     const conditions: string[] = ["t.deleted_at IS NULL"];
     let hasJoin = true; // Already have transaction_tags join
+    
+    // Add profile filter
+    const profileId = await this.getActiveProfileId();
+    if (profileId !== null) {
+      conditions.push("t.profile_id = ?");
+      params.push(profileId);
+    }
 
     // Handle account filters
     const accountIds =

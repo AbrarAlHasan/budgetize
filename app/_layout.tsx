@@ -21,6 +21,7 @@ import { useWidgetSync } from "@/hooks/use-widget-sync";
 import { trackInstallation } from "@/services/installation-tracker";
 import { onboardingStorage } from "@/storage/onboarding";
 import { useAuthStore } from "@/store/auth-store";
+import { useProfileStore } from "@/store/profile-store";
 import { useSecurityStore } from "@/store/security-store";
 import { useSettingsStore } from "@/store/settings-store";
 import { logError } from "@/utils/logger";
@@ -56,7 +57,7 @@ Sentry.init({
   enableNativeFramesTracking: !isRunningInExpoGo(),
   tracesSampleRate: 1.0,
 
-  debug: __DEV__,
+  debug: false,
 });
 
 export const unstable_settings = {
@@ -144,6 +145,10 @@ export default Sentry.wrap(function RootLayout() {
 
         // Load settings first
         await loadSettings();
+
+        // Initialize profile store (must happen after database is ready)
+        const { initialize: initializeProfile } = useProfileStore.getState();
+        await initializeProfile();
 
         // Get the latest settings after load
         const { settings: loadedSettings } = useSettingsStore.getState();

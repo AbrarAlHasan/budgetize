@@ -2,9 +2,10 @@ import { Account } from '@/db/schema/types';
 import { getDatabase } from '@/db/sqlite/db';
 import { accountRepository } from '@/repositories/account.repository';
 import { categoryRepository } from '@/repositories/category.repository';
+import { exchangeRepository } from '@/repositories/exchange.repository';
 import { tagRepository } from '@/repositories/tag.repository';
 import { transactionRepository } from '@/repositories/transaction.repository';
-import { format } from 'date-fns';
+import { format, addDays, subDays } from 'date-fns';
 import { log } from '@/utils/logger';
 
 export interface DummyDataOptions {
@@ -60,11 +61,23 @@ const ACCOUNT_TEMPLATES = [
 
 const PAYMENT_MODES = ['cash', 'card', 'upi', 'bank-transfer', 'online-wallet'];
 
+const PERSON_NAMES = [
+  'John Smith',
+  'Sarah Johnson',
+  'Mike Williams',
+  'Emily Davis',
+  'David Brown',
+  'Lisa Anderson',
+  'Robert Taylor',
+  'Jennifer Martinez',
+];
+
 interface DummySeedSummary {
   accounts: number;
   transactions: number;
   categories: number;
   tags: number;
+  exchanges: number;
 }
 
 function randomBetween(min: number, max: number, precision = 2): number {
@@ -130,16 +143,28 @@ function pickRandomTags(tagMap: Map<string, number>, max = 2): number[] | undefi
 
 async function clearExistingData(): Promise<void> {
   const db = await getDatabase();
+  // Get active profile ID
+  const { useProfileStore } = await import('@/store/profile-store');
+  const activeProfileId = useProfileStore.getState().activeProfileId;
+  
+  if (!activeProfileId) {
+    throw new Error('No active profile found. Cannot clear data.');
+  }
+
   const tables = [
     'transaction_tags',
     'transactions',
     'accounts',
     'tags',
     'categories',
+    'exchanges',
+    'exchange_installments',
+    'exchange_reminders',
   ];
 
+  // Clear only data for the active profile
   for (const table of tables) {
-    await db.runAsync(`DELETE FROM ${table}`);
+    await db.runAsync(`DELETE FROM ${table} WHERE profile_id = ?`, [activeProfileId]);
   }
 }
 
@@ -282,6 +307,98 @@ async function seedTransactions(
   return transactionCount;
 }
 
+async function seedExchanges(
+  options: DummyDataOptions,
+  onProgress?: (progress: number) => void
+): Promise<number> {
+  let exchangeCount = 0;
+  const now = new Date();
+  const startDate = new Date(now);
+  startDate.setMonth(now.getMonth() - options.months);
+  startDate.setHours(0, 0, 0, 0);
+
+  // Generate 5-10 exchanges per month
+  const totalExchanges = Math.floor((options.months * 7.5)); // Average 7.5 per month
+  const exchangesPerMonth = Math.ceil(totalExchanges / options.months);
+
+  log(`[dummy-data] Generating ${totalExchanges} exchanges over ${options.months} months...`);
+
+  const exchangeTypes: Array<'lent' | 'borrowed'> = ['lent', 'borrowed'];
+  const exchangeStatuses: Array<'pending' | 'paid' | 'received'> = ['pending', 'paid', 'received'];
+
+  for (let monthOffset = 0; monthOffset < options.months; monthOffset++) {
+    const monthDate = new Date(startDate);
+    monthDate.setMonth(startDate.getMonth() + monthOffset);
+
+    // Generate exchanges for this month
+    const exchangesThisMonth = monthOffset === options.months - 1 
+      ? totalExchanges - exchangeCount // Last month gets remaining exchanges
+      : exchangesPerMonth;
+
+    for (let i = 0; i < exchangesThisMonth; i++) {
+      const type = pickRandomItem(exchangeTypes);
+      const status = pickRandomItem(exchangeStatuses);
+      
+      // Random date within the month
+      const daysInMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0).getDate();
+      const randomDay = Math.floor(Math.random() * daysInMonth) + 1;
+      const exchangeDate = new Date(monthDate.getFullYear(), monthDate.getMonth(), randomDay);
+      
+      // Don't create exchanges in the future
+      if (exchangeDate > now) {
+        continue;
+      }
+
+      const personName = pickRandomItem(PERSON_NAMES);
+      const amount = randomBetween(500, 5000);
+      
+      // For pending exchanges, set a due date in the future
+      // For paid/received, set due date in the past
+      let dueDate: string | null = null;
+      if (status === 'pending') {
+        // Set due date 7-37 days from exchange date (or from today if exchange is old)
+        const daysFromExchange = Math.floor(Math.random() * 30) + 7; // 7-37 days
+        const dueDateObj = addDays(exchangeDate > now ? exchangeDate : now, daysFromExchange);
+        dueDate = format(dueDateObj, 'yyyy-MM-dd');
+      } else {
+        // For paid/received, due date was in the past (0-10 days before exchange date)
+        const dueDateObj = subDays(exchangeDate, Math.floor(Math.random() * 10) + 1); // 1-10 days before
+        dueDate = format(dueDateObj, 'yyyy-MM-dd');
+      }
+
+      const notes = [
+        `Money ${type === 'lent' ? 'lent to' : 'borrowed from'} ${personName}`,
+        `Payment for shared expenses`,
+        `Emergency ${type === 'lent' ? 'loan' : 'borrowing'}`,
+        `Personal ${type === 'lent' ? 'loan' : 'debt'}`,
+        null, // Sometimes no note
+      ];
+
+      await exchangeRepository.create({
+        person_name: personName,
+        amount: amount,
+        type: type,
+        status: status,
+        date: format(exchangeDate, 'yyyy-MM-dd'),
+        due_date: dueDate,
+        note: pickRandomItem(notes),
+      });
+
+      exchangeCount++;
+
+      // Report progress every 5 exchanges
+      if (exchangeCount % 5 === 0 && onProgress) {
+        const progress = Math.min(100, Math.round((exchangeCount / totalExchanges) * 100));
+        onProgress(progress);
+        log(`[dummy-data] Exchange progress: ${exchangeCount}/${totalExchanges} (${progress}%)`);
+      }
+    }
+  }
+
+  log(`[dummy-data] Completed! Generated ${exchangeCount} exchanges.`);
+  return exchangeCount;
+}
+
 export async function resetAppWithDummyData(
   options: DummyDataOptions,
   onProgress?: (progress: number) => void
@@ -301,9 +418,18 @@ export async function resetAppWithDummyData(
 
   if (onProgress) onProgress(25);
   const transactions = await seedTransactions(accounts, categoryMap, tagMap, options, (transactionProgress) => {
-    // Map transaction progress (0-100) to overall progress (25-100)
+    // Map transaction progress (0-100) to overall progress (25-85)
     if (onProgress) {
-      const overallProgress = 25 + (transactionProgress * 0.75);
+      const overallProgress = 25 + (transactionProgress * 0.60);
+      onProgress(Math.round(overallProgress));
+    }
+  });
+
+  if (onProgress) onProgress(85);
+  const exchanges = await seedExchanges(options, (exchangeProgress) => {
+    // Map exchange progress (0-100) to overall progress (85-100)
+    if (onProgress) {
+      const overallProgress = 85 + (exchangeProgress * 0.15);
       onProgress(Math.round(overallProgress));
     }
   });
@@ -315,6 +441,7 @@ export async function resetAppWithDummyData(
     transactions,
     categories: categoryMap.size,
     tags: tagMap.size,
+    exchanges,
   };
 }
 

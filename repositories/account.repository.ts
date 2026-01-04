@@ -26,10 +26,12 @@ export class AccountRepository extends BaseRepository<Account> {
     try {
       const now = new Date().toISOString();
       const currency = input.currency || 'INR'; // Default to INR if not provided
+      // Get profile ID for this account
+      const profileId = await this.getActiveProfileId();
       const result = await db.runAsync(
         `INSERT INTO ${this.tableName} 
-         (name, type, currency, bank_name, credit_limit, billing_start_date, billing_end_date, payment_due_date, created_at, updated_at, is_synced)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
+         (name, type, currency, bank_name, credit_limit, billing_start_date, billing_end_date, payment_due_date, profile_id, created_at, updated_at, is_synced)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
         [
           encryptedName,
           input.type,
@@ -39,6 +41,7 @@ export class AccountRepository extends BaseRepository<Account> {
           encryptedBillingStartDate,
           encryptedBillingEndDate,
           encryptedPaymentDueDate,
+          profileId,
           now,
           now,
         ]
@@ -119,9 +122,13 @@ export class AccountRepository extends BaseRepository<Account> {
   }
 
   async findByType(type: Account['type']): Promise<Account[]> {
+    const conditions: string[] = ['type = ?', 'deleted_at IS NULL'];
+    const params: any[] = [type];
+    await this.addProfileFilter(conditions, params);
+    
     return this.executeQuery<Account>(
-      `SELECT * FROM ${this.tableName} WHERE type = ? AND deleted_at IS NULL ORDER BY created_at DESC`,
-      [type]
+      `SELECT * FROM ${this.tableName} WHERE ${conditions.join(' AND ')} ORDER BY created_at DESC`,
+      params
     );
   }
 

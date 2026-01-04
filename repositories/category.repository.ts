@@ -25,11 +25,12 @@ export class CategoryRepository extends BaseRepository<Category> {
 
     try {
       const now = new Date().toISOString();
+      const profileId = await this.getActiveProfileId();
       const result = await db.runAsync(
         `INSERT INTO ${this.tableName} 
-         (name, created_at, updated_at, is_synced)
-         VALUES (?, ?, ?, 0)`,
-        [encryptedName, now, now]
+         (name, profile_id, created_at, updated_at, is_synced)
+         VALUES (?, ?, ?, ?, 0)`,
+        [encryptedName, profileId, now, now]
       );
 
       await db.execAsync('COMMIT');

@@ -6,14 +6,17 @@ import {
   UpdateExchangeInstallmentInput,
 } from "@/db/schema/types";
 import { exchangeInstallmentRepository } from "@/repositories/exchange-installment.repository";
+import { useProfileStore } from "@/store/profile-store";
+
+const getProfileId = () => useProfileStore.getState().activeProfileId;
 
 const QUERY_KEYS = {
   all: ["exchange-installments"] as const,
-  lists: () => [...QUERY_KEYS.all, "list"] as const,
+  lists: () => [...QUERY_KEYS.all, "list", getProfileId()] as const,
   list: (exchangeId: number) => [...QUERY_KEYS.lists(), exchangeId] as const,
   details: () => [...QUERY_KEYS.all, "detail"] as const,
-  detail: (id: number) => [...QUERY_KEYS.details(), id] as const,
-  progress: (exchangeId: number) => [...QUERY_KEYS.all, "progress", exchangeId] as const,
+  detail: (id: number) => [...QUERY_KEYS.details(), id, getProfileId()] as const,
+  progress: (exchangeId: number) => [...QUERY_KEYS.all, "progress", exchangeId, getProfileId()] as const,
 };
 
 export function useInstallments(exchangeId: number) {

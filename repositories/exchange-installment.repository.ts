@@ -39,15 +39,17 @@ export class ExchangeInstallmentRepository extends BaseRepository<ExchangeInstal
 
     try {
       const now = new Date().toISOString();
+      const profileId = await this.getActiveProfileId();
       const result = await db.runAsync(
         `INSERT INTO ${this.tableName} 
-         (exchange_id, amount, payment_date, note, created_at, updated_at, is_synced)
-         VALUES (?, ?, ?, ?, ?, ?, 0)`,
+         (exchange_id, amount, payment_date, note, profile_id, created_at, updated_at, is_synced)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 0)`,
         [
           input.exchange_id,
           encryptedAmount,
           input.payment_date,
           encryptedNote,
+          profileId,
           now,
           now,
         ]

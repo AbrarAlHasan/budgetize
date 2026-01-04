@@ -18,15 +18,17 @@ export class ExchangeReminderRepository extends BaseRepository<ExchangeReminder>
 
     try {
       const now = new Date().toISOString();
+      const profileId = await this.getActiveProfileId();
       const result = await db.runAsync(
         `INSERT INTO ${this.tableName} 
-         (exchange_id, reminder_type, reminder_date, notification_id, is_sent, created_at, updated_at, is_synced)
-         VALUES (?, ?, ?, ?, 0, ?, ?, 0)`,
+         (exchange_id, reminder_type, reminder_date, notification_id, is_sent, profile_id, created_at, updated_at, is_synced)
+         VALUES (?, ?, ?, ?, 0, ?, ?, ?, 0)`,
         [
           input.exchange_id,
           input.reminder_type,
           input.reminder_date,
           input.notification_id || null,
+          profileId,
           now,
           now,
         ]
@@ -121,13 +123,16 @@ export class ExchangeReminderRepository extends BaseRepository<ExchangeReminder>
   async getUpcomingReminders(limit?: number): Promise<ExchangeReminder[]> {
     const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD format
     const limitClause = limit ? `LIMIT ${limit}` : "";
+    const conditions: string[] = ["reminder_date >= ?", "is_sent = 0", "deleted_at IS NULL"];
+    const params: any[] = [today];
+    await this.addProfileFilter(conditions, params);
 
     return this.executeQuery<ExchangeReminder>(
       `SELECT * FROM ${this.tableName} 
-       WHERE reminder_date >= ? AND is_sent = 0 AND deleted_at IS NULL 
+       WHERE ${conditions.join(" AND ")} 
        ORDER BY reminder_date ASC, created_at ASC 
        ${limitClause}`,
-      [today]
+      params
     );
   }
 
@@ -136,12 +141,15 @@ export class ExchangeReminderRepository extends BaseRepository<ExchangeReminder>
    */
   async getOverdueReminders(): Promise<ExchangeReminder[]> {
     const today = new Date().toISOString().split("T")[0];
+    const conditions: string[] = ["reminder_date < ?", "is_sent = 0", "deleted_at IS NULL"];
+    const params: any[] = [today];
+    await this.addProfileFilter(conditions, params);
 
     return this.executeQuery<ExchangeReminder>(
       `SELECT * FROM ${this.tableName} 
-       WHERE reminder_date < ? AND is_sent = 0 AND deleted_at IS NULL 
+       WHERE ${conditions.join(" AND ")} 
        ORDER BY reminder_date ASC`,
-      [today]
+      params
     );
   }
 

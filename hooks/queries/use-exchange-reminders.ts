@@ -5,15 +5,18 @@ import {
   UpdateExchangeReminderInput,
 } from "@/db/schema/types";
 import { exchangeReminderRepository } from "@/repositories/exchange-reminder.repository";
+import { useProfileStore } from "@/store/profile-store";
+
+const getProfileId = () => useProfileStore.getState().activeProfileId;
 
 const QUERY_KEYS = {
   all: ["exchange-reminders"] as const,
-  lists: () => [...QUERY_KEYS.all, "list"] as const,
+  lists: () => [...QUERY_KEYS.all, "list", getProfileId()] as const,
   list: (exchangeId: number) => [...QUERY_KEYS.lists(), exchangeId] as const,
-  upcoming: () => [...QUERY_KEYS.all, "upcoming"] as const,
-  overdue: () => [...QUERY_KEYS.all, "overdue"] as const,
+  upcoming: () => [...QUERY_KEYS.all, "upcoming", getProfileId()] as const,
+  overdue: () => [...QUERY_KEYS.all, "overdue", getProfileId()] as const,
   details: () => [...QUERY_KEYS.all, "detail"] as const,
-  detail: (id: number) => [...QUERY_KEYS.details(), id] as const,
+  detail: (id: number) => [...QUERY_KEYS.details(), id, getProfileId()] as const,
 };
 
 export function useReminders(exchangeId: number) {

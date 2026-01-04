@@ -6,6 +6,7 @@ import { makePaymentModeNullable } from "./006_make_payment_mode_nullable";
 import { addExchangesTable } from "./007_add_exchanges_table";
 import { addExchangeInstallmentsTable } from "./008_add_exchange_installments";
 import { addExchangeRemindersTable } from "./009_add_exchange_reminders";
+import { addProfilesTable } from "./010_add_profiles";
 
 const INITIAL_SCHEMA_SQL = `
 -- Accounts table
@@ -379,6 +380,35 @@ CREATE INDEX IF NOT EXISTS idx_transactions_type_date ON transactions(type, date
       log("Migration 009_add_exchange_reminders applied and verified successfully");
     } catch (error) {
       logError("Error applying migration 009_add_exchange_reminders:", error);
+      throw error;
+    }
+  }
+
+  // Run migration 10 (add profiles table and profile_id columns)
+  if (!appliedVersions.has(10)) {
+    try {
+      log("Starting migration 010_add_profiles...");
+      await addProfilesTable(db);
+
+      const verifyResult = await db.getAllAsync<{ name: string }>(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='profiles' LIMIT 1"
+      );
+      
+      if (verifyResult.length === 0) {
+        logError("CRITICAL: Migration 010 completed but profiles table not found!");
+        throw new Error("Migration 010_add_profiles completed but profiles table was not created");
+      }
+      
+      log(`Migration 010 verification: profiles table exists`);
+
+      await db.runAsync(
+        "INSERT OR IGNORE INTO schema_migrations (version, name) VALUES (?, ?)",
+        [10, "010_add_profiles"]
+      );
+
+      log("Migration 010_add_profiles applied and verified successfully");
+    } catch (error) {
+      logError("Error applying migration 010_add_profiles:", error);
       throw error;
     }
   }

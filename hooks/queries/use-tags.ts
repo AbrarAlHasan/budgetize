@@ -4,14 +4,17 @@ import { transactionRepository } from '@/repositories/transaction.repository';
 import { transactionTagRepository } from '@/repositories/transaction-tag.repository';
 import { CreateTagInput, UpdateTagInput, TransactionType, AccountType } from '@/db/schema/types';
 import { useSettingsStore } from '@/store/settings-store';
+import { useProfileStore } from '@/store/profile-store';
 import { incomePreferenceKey } from '@/utils/income-preference';
+
+const getProfileId = () => useProfileStore.getState().activeProfileId;
 
 const QUERY_KEYS = {
   all: ['tags'] as const,
-  lists: () => [...QUERY_KEYS.all, 'list'] as const,
-  details: () => [...QUERY_KEYS.all, 'detail'] as const,
+  lists: () => [...QUERY_KEYS.all, 'list', getProfileId()] as const,
+  details: () => [...QUERY_KEYS.all, 'detail', getProfileId()] as const,
   detail: (id: number) => [...QUERY_KEYS.details(), id] as const,
-  withTransactions: (filters: any) => [...QUERY_KEYS.all, 'withTransactions', filters] as const,
+  withTransactions: (filters: any) => [...QUERY_KEYS.all, 'withTransactions', filters, getProfileId()] as const,
 };
 
 export function useTags() {

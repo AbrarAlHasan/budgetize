@@ -2,6 +2,7 @@ import { closeDatabase, getDatabase } from "@/db/sqlite/db";
 import { clearEncryptionKeyCache } from "@/services/encryption";
 import { mmkv } from "@/storage/mmkv";
 import { useNotificationStore } from "@/store/notification-store";
+import { useProfileStore } from "@/store/profile-store";
 import { useSettingsStore } from "@/store/settings-store";
 import { log, logError, logWarn } from "@/utils/logger";
 import { Directory, File, Paths } from "expo-file-system";
@@ -106,6 +107,7 @@ export async function createBackupFile(): Promise<string | null> {
     const ENCRYPTION_KEY_STORAGE_KEY = "budgetize_encryption_key";
     const SETTINGS_STORE_KEY = "app_settings";
     const NOTIFICATION_STORE_KEY = "notification_preferences";
+    const PROFILE_STORE_KEY = "profile_store";
 
     // Save encryption key
     try {
@@ -152,6 +154,21 @@ export async function createBackupFile(): Promise<string | null> {
       }
     } catch (error) {
       logWarn("⚠ Failed to read notification preferences:", error);
+    }
+
+    // Save profile store (activeProfileId) from MMKV
+    try {
+      const profileStore = mmkv.getString(PROFILE_STORE_KEY);
+      if (profileStore) {
+        const profileStoreFilePath = `${tempBackupDir.uri}/profile_store.txt`;
+        const profileStoreFile = new File(profileStoreFilePath);
+        profileStoreFile.write(profileStore);
+        log("✓ Profile store (activeProfileId) saved");
+      } else {
+        logWarn("⚠ Profile store not found in MMKV");
+      }
+    } catch (error) {
+      logWarn("⚠ Failed to read profile store:", error);
     }
 
     // Note: Device ID is NOT backed up as it's device-specific and should not be migrated
@@ -679,6 +696,55 @@ export async function restoreAppData(backupZipPath?: string): Promise<boolean> {
       }
     } else {
       logWarn("⚠ Notification preferences not found in backup");
+    }
+
+    // Restore profile store (activeProfileId) to MMKV and Zustand
+    const restoredProfileStorePath = `${tempRestoreDir.uri}/profile_store.txt`;
+    const restoredProfileStoreFile = new File(restoredProfileStorePath);
+
+    if (restoredProfileStoreFile.exists) {
+      const profileStoreJson = restoredProfileStoreFile.textSync();
+
+      try {
+        // The exported data is already in Zustand persist format: { state: {...}, version: 0 }
+        // Restore directly to MMKV
+        mmkv.set(PROFILE_STORE_KEY, profileStoreJson);
+        
+        // Parse and extract the profile store state to update Zustand store directly
+        const zustandPersistedData = JSON.parse(profileStoreJson);
+        if (zustandPersistedData?.state?.activeProfileId !== undefined) {
+          // Force update Zustand store directly so it's immediately reflected
+          useProfileStore.setState({
+            activeProfileId: zustandPersistedData.state.activeProfileId,
+            isInitialized: false, // Reset initialization flag so it reinitializes after restore
+            isLoading: false,
+          });
+          log("✓ Profile store (activeProfileId) restored to MMKV and Zustand");
+        } else {
+          // Legacy format: just the activeProfileId
+          const restoredActiveProfileId = zustandPersistedData?.activeProfileId ?? null;
+          useProfileStore.setState({
+            activeProfileId: restoredActiveProfileId,
+            isInitialized: false, // Reset initialization flag so it reinitializes after restore
+            isLoading: false,
+          });
+          // Also update MMKV in correct format
+          const zustandState = {
+            state: {
+              activeProfileId: restoredActiveProfileId,
+              isLoading: false,
+              isInitialized: false,
+            },
+            version: 0,
+          };
+          mmkv.set(PROFILE_STORE_KEY, JSON.stringify(zustandState));
+          log("✓ Profile store restored (legacy format) to MMKV and Zustand");
+        }
+      } catch (error) {
+        logWarn("⚠ Failed to restore profile store:", error);
+      }
+    } else {
+      logWarn("⚠ Profile store not found in backup");
     }
 
     // Note: Device ID is NOT restored as it's device-specific and should remain unique per device

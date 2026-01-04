@@ -1,8 +1,8 @@
 import { ActiveFilterChips } from "@/components/filters/active-filter-chips";
 import { SpendingVelocity } from "@/components/reports/spending-velocity";
 import {
-  RecentTransactionsSkeleton,
-  SummaryCardsSkeleton,
+    RecentTransactionsSkeleton,
+    SummaryCardsSkeleton,
 } from "@/components/skeletons";
 import { TransactionItem } from "@/components/transaction-item";
 import { Card } from "@/components/ui/card";
@@ -13,12 +13,13 @@ import { categoryRepository } from "@/repositories/category.repository";
 import { tagRepository } from "@/repositories/tag.repository";
 import { transactionTagRepository } from "@/repositories/transaction-tag.repository";
 import { transactionRepository } from "@/repositories/transaction.repository";
+import { useProfileStore } from "@/store/profile-store";
 import { useSettingsStore } from "@/store/settings-store";
 import { useUIStore } from "@/store/ui-store";
 import { getCurrencySymbol } from "@/utils/currencies";
 import {
-  filterTransactionsByIncomePreference,
-  incomePreferenceKey,
+    filterTransactionsByIncomePreference,
+    incomePreferenceKey,
 } from "@/utils/income-preference";
 import { logPerformance } from "@/utils/logger";
 import { Ionicons } from "@expo/vector-icons";
@@ -27,11 +28,11 @@ import { endOfMonth, format, startOfMonth } from "date-fns";
 import { router } from "expo-router";
 import React from "react";
 import {
-  RefreshControl,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
+    RefreshControl,
+    ScrollView,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -117,6 +118,8 @@ export default function DashboardScreen() {
       ? filters.endDate
       : format(endOfMonth(currentMonth), "yyyy-MM-dd");
 
+  const activeProfileId = useProfileStore((state) => state.activeProfileId);
+  
   // Use optimized query to fetch only latest 10 transactions instead of all
   const { data: transactions, isLoading: transactionsLoading } = useQuery({
     queryKey: [
@@ -125,6 +128,7 @@ export default function DashboardScreen() {
       endDate,
       filterKey,
       incomePreferenceKey(settings.incomeCalculationEnabled),
+      activeProfileId,
     ],
     queryFn: async () => {
       const startTime = Date.now();

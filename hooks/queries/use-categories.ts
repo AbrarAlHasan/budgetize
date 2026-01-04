@@ -1,12 +1,15 @@
 import { CreateCategoryInput, UpdateCategoryInput } from '@/db/schema/types';
 import { categoryRepository } from '@/repositories/category.repository';
+import { useProfileStore } from '@/store/profile-store';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { logPerformance } from '@/utils/logger';
 
+const getProfileId = () => useProfileStore.getState().activeProfileId;
+
 const QUERY_KEYS = {
   all: ['categories'] as const,
-  lists: () => [...QUERY_KEYS.all, 'list'] as const,
-  details: () => [...QUERY_KEYS.all, 'detail'] as const,
+  lists: () => [...QUERY_KEYS.all, 'list', getProfileId()] as const,
+  details: () => [...QUERY_KEYS.all, 'detail', getProfileId()] as const,
   detail: (id: number) => [...QUERY_KEYS.details(), id] as const,
 };
 
