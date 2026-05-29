@@ -7,7 +7,10 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
 import {
   TransactionFilters,
   useTransactionSummaryTotals,
@@ -15,7 +18,8 @@ import {
 } from '@/hooks/queries/use-transactions';
 import { useDebouncedSearch } from '@/hooks/use-debounced-search';
 import { TransactionSearchBar } from '@/components/expenses/transaction-search-bar';
-import { TransactionSummaryTotalsBar } from '@/components/expenses/transaction-summary-totals';
+import { ExpensesInlineTotal } from '@/components/expenses/expenses-inline-total';
+import { ExpensesListHeader } from '@/components/expenses/expenses-list-header';
 import { ActiveFilterChips } from '@/components/filters/active-filter-chips';
 import { TransactionItem } from '@/components/transaction-item';
 import { TransactionsListSkeleton } from '@/components/skeletons';
@@ -41,7 +45,10 @@ type DecryptedTransaction = Omit<
   payment_mode: string | null;
 };
 
+const LIST_BOTTOM_PADDING = 24;
+
 export default function ExpensesScreen() {
+  const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const filters = useUIStore((state) => state.filters.expenses);
   const setDateRangeFilter = useUIStore((state) => state.setDateRangeFilter);
@@ -419,24 +426,57 @@ export default function ExpensesScreen() {
     );
   }, [isFetchingNextPage]);
 
+  const isSummaryFetchingVisible =
+    !isDebouncing && isSummaryFetching && !!summaryTotals;
+
+  const incomeEnabled = settings.incomeCalculationEnabled;
+
+  const listHeaderComponent = React.useMemo(() => {
+    if (!incomeEnabled) {
+      return null;
+    }
+
+    return (
+      <ExpensesListHeader
+        summary={summaryTotals}
+        currencySymbol={currencySymbol}
+        incomeEnabled
+        isLoading={isSummaryLoading && !summaryTotals}
+        isFetching={isSummaryFetchingVisible}
+      />
+    );
+  }, [
+    currencySymbol,
+    incomeEnabled,
+    isSummaryFetchingVisible,
+    isSummaryLoading,
+    summaryTotals,
+  ]);
+
+  const expenseCountLabel = React.useMemo(() => {
+    if (incomeEnabled || !summaryTotals) {
+      return null;
+    }
+
+    const count = summaryTotals.transactionCount;
+    const suffix = isSummaryFetchingVisible ? ' · Updating…' : ' in this period';
+    return `${count} ${count === 1 ? 'transaction' : 'transactions'}${suffix}`;
+  }, [incomeEnabled, isSummaryFetchingVisible, summaryTotals]);
+
+  const listBottomPadding = insets.bottom + LIST_BOTTOM_PADDING;
+
   return (
     <SafeAreaView className="flex-1 bg-gray-50 dark:bg-black" edges={['top']}>
-      <View className="px-5 pt-6">
-        <View className="mb-6 flex-row items-center justify-between">
-          <View>
-            <Text className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-1">
-              Expenses
-            </Text>
-            <Text className="text-sm text-gray-500 dark:text-gray-400">
-              Totals for your filtered transactions
-            </Text>
-          </View>
+      <View className="px-5 pt-3 pb-0.5">
+        <View className="relative mb-2 h-10 flex-row items-center justify-between">
           <TouchableOpacity
             onPress={handleOpenFilters}
-            className="flex-row items-center gap-2 px-4 py-2.5 rounded-xl"
+            className="h-10 w-10 items-center justify-center rounded-xl z-10"
             style={{
               backgroundColor: hasActiveFilters ? '#EFF6FF' : '#F3F4F6',
             }}
+            accessibilityRole="button"
+            accessibilityLabel="Open filters"
           >
             <Ionicons
               name="filter"
@@ -444,40 +484,67 @@ export default function ExpensesScreen() {
               color={hasActiveFilters ? '#3B82F6' : '#6B7280'}
             />
             {hasActiveFilters ? (
-              <View className="w-2 h-2 rounded-full bg-blue-600" />
+              <View className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-blue-600" />
             ) : null}
+          </TouchableOpacity>
+
+          <Text
+            className="absolute inset-x-0 text-center text-xl font-bold text-gray-900 dark:text-gray-100"
+            pointerEvents="none"
+          >
+            Expenses
+          </Text>
+
+          <TouchableOpacity
+            onPress={handleAddTransaction}
+            className="h-10 w-10 items-center justify-center rounded-xl bg-blue-600 z-10"
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel="Add transaction"
+          >
+            <Ionicons name="add" size={24} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
 
         <ActiveFilterChips context="expenses" />
 
-        <TransactionSearchBar
-          value={searchInput}
-          onChangeText={handleSearchChange}
-          onClear={clearSearch}
-          isDebouncing={isDebouncing}
-        />
-
-        <TransactionSummaryTotalsBar
-          summary={summaryTotals}
-          currencySymbol={currencySymbol}
-          incomeEnabled={settings.incomeCalculationEnabled}
-          isLoading={isSummaryLoading && !summaryTotals}
-          isFetching={
-            !isDebouncing &&
-            isSummaryFetching &&
-            !!summaryTotals
-          }
-        />
-
-        <TouchableOpacity
-          onPress={handleAddTransaction}
-          className="mb-4 bg-blue-600 rounded-2xl py-4 items-center flex-row justify-center"
-          activeOpacity={0.8}
-        >
-          <Ionicons name="add-circle" size={24} color="#FFFFFF" />
-          <Text className="text-white font-semibold ml-2">Add Transaction</Text>
-        </TouchableOpacity>
+        {incomeEnabled ? (
+          <TransactionSearchBar
+            value={searchInput}
+            onChangeText={handleSearchChange}
+            onClear={clearSearch}
+            isDebouncing={isDebouncing}
+            compact
+            variant="filled"
+          />
+        ) : (
+          <>
+            <View className="mb-2 flex-row items-stretch gap-2">
+              <View className="flex-1">
+                <TransactionSearchBar
+                  value={searchInput}
+                  onChangeText={handleSearchChange}
+                  onClear={clearSearch}
+                  isDebouncing={isDebouncing}
+                  compact
+                  embedded
+                  variant="filled"
+                />
+              </View>
+              <ExpensesInlineTotal
+                summary={summaryTotals}
+                currencySymbol={currencySymbol}
+                isLoading={isSummaryLoading && !summaryTotals}
+                isFetching={isSummaryFetchingVisible}
+              />
+            </View>
+            {expenseCountLabel ? (
+              <Text className="text-xs text-gray-500 dark:text-gray-400 text-center mb-2">
+                {expenseCountLabel}
+              </Text>
+            ) : null}
+          </>
+        )}
       </View>
 
       <FlatList
@@ -485,6 +552,7 @@ export default function ExpensesScreen() {
         data={transactions}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
+        ListHeaderComponent={listHeaderComponent}
         ListEmptyComponent={listEmptyComponent}
         ListFooterComponent={listFooterComponent}
         onEndReached={loadMore}
@@ -498,8 +566,8 @@ export default function ExpensesScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={
           transactions.length === 0
-            ? { flexGrow: 1, paddingBottom: 20 }
-            : { paddingBottom: 20 }
+            ? { flexGrow: 1, paddingBottom: listBottomPadding }
+            : { paddingBottom: listBottomPadding }
         }
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
