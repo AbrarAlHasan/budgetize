@@ -11,6 +11,7 @@ import {
   encryptAmount,
 } from "@/services/encryption";
 import { logError } from "@/utils/logger";
+import { transactionMatchesSearch } from "@/utils/transaction-search";
 import { BaseRepository } from "./base.repository";
 import { transactionTagRepository } from "./transaction-tag.repository";
 
@@ -591,6 +592,203 @@ export class TransactionRepository extends BaseRepository<Transaction> {
       hasMore,
       total,
     };
+  }
+
+  /**
+   * Search note and payment_mode within filtered transactions (fields are encrypted).
+   */
+  async findNoteOrPaymentModeSearchMatches(
+    filters: {
+      accountId?: number;
+      accountIds?: number[];
+      tagId?: number;
+      tagIds?: number[];
+      categoryId?: number;
+      categoryIds?: number[];
+      startDate?: string;
+      endDate?: string;
+      type?: Transaction["type"];
+      types?: Transaction["type"][];
+      accountType?: string;
+      accountTypes?: string[];
+    } | undefined,
+    searchQuery: string
+  ): Promise<{
+    ids: number[];
+    totalExpenses: number;
+    totalIncome: number;
+    transactionCount: number;
+  }> {
+    const rows = await this.findSearchCandidateRows(filters);
+    if (rows.length === 0) {
+      return {
+        ids: [],
+        totalExpenses: 0,
+        totalIncome: 0,
+        transactionCount: 0,
+      };
+    }
+
+    const BATCH_SIZE = 20;
+    const matchingIds: number[] = [];
+    let totalExpenses = 0;
+    let totalIncome = 0;
+
+    for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+      const batch = rows.slice(i, i + BATCH_SIZE);
+
+      const [notes, paymentModes, amounts] = await Promise.all([
+        Promise.all(
+          batch.map((row) =>
+            row.note ? decrypt(row.note) : Promise.resolve(null)
+          )
+        ),
+        Promise.all(
+          batch.map((row) =>
+            row.payment_mode
+              ? decrypt(row.payment_mode)
+              : Promise.resolve(null)
+          )
+        ),
+        Promise.all(batch.map((row) => decryptAmount(row.amount))),
+      ]);
+
+      batch.forEach((row, index) => {
+        if (
+          !transactionMatchesSearch(
+            notes[index],
+            paymentModes[index],
+            searchQuery
+          )
+        ) {
+          return;
+        }
+
+        matchingIds.push(row.id);
+        if (row.type === "expense") {
+          totalExpenses += amounts[index];
+        } else {
+          totalIncome += amounts[index];
+        }
+      });
+    }
+
+    return {
+      ids: matchingIds,
+      totalExpenses,
+      totalIncome,
+      transactionCount: matchingIds.length,
+    };
+  }
+
+  async findByIds(ids: number[]): Promise<Transaction[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+
+    const placeholders = ids.map(() => "?").join(",");
+    return this.executeQuery<Transaction>(
+      `SELECT * FROM ${this.tableName} WHERE id IN (${placeholders}) AND deleted_at IS NULL`,
+      ids
+    );
+  }
+
+  private async findSearchCandidateRows(
+    filters?: {
+      accountId?: number;
+      accountIds?: number[];
+      tagId?: number;
+      tagIds?: number[];
+      categoryId?: number;
+      categoryIds?: number[];
+      startDate?: string;
+      endDate?: string;
+      type?: Transaction["type"];
+      types?: Transaction["type"][];
+      accountType?: string;
+      accountTypes?: string[];
+    }
+  ): Promise<
+    Array<{
+      id: number;
+      note: string | null;
+      payment_mode: string | null;
+      amount: string;
+      type: Transaction["type"];
+    }>
+  > {
+    let query = `SELECT DISTINCT t.id, t.note, t.payment_mode, t.amount, t.type, t.date, t.created_at FROM ${this.tableName} t`;
+    const params: unknown[] = [];
+    const conditions: string[] = ["t.deleted_at IS NULL"];
+    let hasJoin = false;
+
+    const accountIds =
+      filters?.accountIds || (filters?.accountId ? [filters.accountId] : []);
+    if (accountIds.length > 0) {
+      const placeholders = accountIds.map(() => "?").join(",");
+      conditions.push(`t.account_id IN (${placeholders})`);
+      params.push(...accountIds);
+    }
+
+    const tagIds = filters?.tagIds || (filters?.tagId ? [filters.tagId] : []);
+    if (tagIds.length > 0) {
+      if (!hasJoin) {
+        query += " INNER JOIN transaction_tags tt ON t.id = tt.transaction_id";
+        hasJoin = true;
+      }
+      const placeholders = tagIds.map(() => "?").join(",");
+      conditions.push(`tt.tag_id IN (${placeholders})`);
+      params.push(...tagIds);
+    }
+
+    const categoryIds =
+      filters?.categoryIds || (filters?.categoryId ? [filters.categoryId] : []);
+    if (categoryIds.length > 0) {
+      const placeholders = categoryIds.map(() => "?").join(",");
+      conditions.push(`t.category_id IN (${placeholders})`);
+      params.push(...categoryIds);
+    }
+
+    this.addDateFilterConditions(
+      conditions,
+      params,
+      filters?.startDate,
+      filters?.endDate
+    );
+
+    const types = filters?.types || (filters?.type ? [filters.type] : []);
+    if (types.length > 0) {
+      const placeholders = types.map(() => "?").join(",");
+      conditions.push(`t.type IN (${placeholders})`);
+      params.push(...types);
+    }
+
+    const accountTypes =
+      filters?.accountTypes ||
+      (filters?.accountType ? [filters.accountType] : []);
+    if (accountTypes.length > 0) {
+      if (!hasJoin) {
+        query += " INNER JOIN accounts a ON t.account_id = a.id";
+        hasJoin = true;
+      } else if (!query.includes("INNER JOIN accounts")) {
+        query += " INNER JOIN accounts a ON t.account_id = a.id";
+      }
+      const placeholders = accountTypes.map(() => "?").join(",");
+      conditions.push(`a.type IN (${placeholders})`);
+      params.push(...accountTypes);
+    }
+
+    query += ` WHERE ${conditions.join(
+      " AND "
+    )} ORDER BY t.date DESC, t.created_at DESC`;
+
+    return this.executeQuery<{
+      id: number;
+      note: string | null;
+      payment_mode: string | null;
+      amount: string;
+      type: Transaction["type"];
+    }>(query, params);
   }
 
   /**
