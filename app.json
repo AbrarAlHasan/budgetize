@@ -2,7 +2,7 @@
   "expo": {
     "name": "Budgetize",
     "slug": "budgetize",
-    "version": "1.0.11",
+    "version": "1.0.12",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "com.budgetize.app",
@@ -19,7 +19,13 @@
         "tinted": "./assets/app-icons/ios-tinted.png"
       },
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "UIBackgroundModes": [
+          "processing"
+        ],
+        "BGTaskSchedulerPermittedIdentifiers": [
+          "com.expo.modules.backgroundtask.processing"
+        ]
       },
       "entitlements": {
         "com.apple.security.application-groups": [
@@ -38,7 +44,7 @@
       "softwareKeyboardLayoutMode": "pan",
       "package": "com.budgetize.app",
       "googleServicesFile": "./google-services.json",
-      "versionCode": 42
+      "versionCode": 47
     },
     "web": {
       "output": "static",
@@ -95,7 +101,8 @@
           "project": "budgetize",
           "organization": "developer-ik0"
         }
-      ]
+      ],
+      "expo-background-task"
     ],
     "experiments": {
       "typedRoutes": true,
