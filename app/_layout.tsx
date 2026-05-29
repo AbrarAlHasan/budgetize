@@ -9,12 +9,15 @@ import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-reanimated";
 import "../global.css";
+// Registers the cloud backup background task handler (global scope).
+import "@/tasks/cloud-backup-background-task";
 
 import { OnboardingScreen } from "@/components/onboarding/onboarding-screen";
 import { LockScreen } from "@/components/security/lock-screen";
 import { SplashOverlay } from "@/components/security/splash-overlay";
 import { AlertProvider } from "@/components/ui/alert";
 import { UpdateScreen } from "@/components/update-screen";
+import { useAutoCloudBackup } from "@/hooks/use-auto-cloud-backup";
 import { useInAppUpdates } from "@/hooks/use-in-app-updates";
 import { queryClient } from "@/hooks/use-query-client";
 import { useWidgetSync } from "@/hooks/use-widget-sync";
@@ -86,6 +89,9 @@ export default Sentry.wrap(function RootLayout() {
 
   // Sync widget data (only when app is ready and not showing onboarding)
   useWidgetSync();
+
+  // Daily automatic cloud backup (background + foreground catch-up)
+  useAutoCloudBackup();
 
   // Handle update available callback
   const handleUpdateAvailable = useCallback(() => {

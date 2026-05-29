@@ -34,7 +34,19 @@ import { useSecurityStore } from "@/store/security-store";
 import { useSettingsStore } from "@/store/settings-store";
 import { createBackupFile, restoreAppData } from "@/utils/backup";
 import { clearDatabase } from "@/utils/clear-database";
+import { getCloudBackupBackgroundAvailability } from "@/services/cloud-backup-background-availability";
+import {
+  registerCloudBackupBackgroundTask,
+  unregisterCloudBackupBackgroundTask,
+} from "@/services/cloud-backup-background-registration";
+import { cloudBackupScheduleStorage } from "@/storage/cloud-backup-schedule";
 import { uploadBackupToCloud } from "@/utils/cloud-backup";
+import { reportAutoBackupError } from "@/utils/auto-backup-sentry";
+import {
+  formatLastBackupLabel,
+  formatLocalDateKey,
+  isWithinDailyBackupWindow,
+} from "@/utils/cloud-backup-schedule";
 import { getCurrencyOptions, getCurrencySymbol } from "@/utils/currencies";
 import { resetAppWithDummyData } from "@/utils/dummy-data";
 import { exportAndShareTransactionsToExcel } from "@/utils/excel-export";
@@ -46,10 +58,11 @@ import Constants from "expo-constants";
 import * as DocumentPicker from "expo-document-picker";
 import { Paths } from "expo-file-system";
 import * as LocalAuthentication from "expo-local-authentication";
+import { useFocusEffect } from "@react-navigation/native";
 import { router, useLocalSearchParams } from "expo-router";
 import * as Sharing from "expo-sharing";
 import { colorScheme } from "nativewind";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   ScrollView,
@@ -92,6 +105,37 @@ export default function SettingsScreen() {
   const [isRestoring, setIsRestoring] = useState(false);
   const [isClearingDatabase, setIsClearingDatabase] = useState(false);
   const [isUploadingToCloud, setIsUploadingToCloud] = useState(false);
+  const [autoCloudBackupEnabled, setAutoCloudBackupEnabled] = useState(
+    () => cloudBackupScheduleStorage.isAutoBackupEnabled()
+  );
+  const [lastAutoCloudBackupDate, setLastAutoCloudBackupDate] = useState<
+    string | null
+  >(() => cloudBackupScheduleStorage.getLastBackupDate());
+  const [backgroundBackupWarning, setBackgroundBackupWarning] = useState<
+    string | null
+  >(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      setAutoCloudBackupEnabled(cloudBackupScheduleStorage.isAutoBackupEnabled());
+      setLastAutoCloudBackupDate(cloudBackupScheduleStorage.getLastBackupDate());
+
+      if (!isAuthenticated) {
+        setBackgroundBackupWarning(null);
+        return;
+      }
+
+      getCloudBackupBackgroundAvailability()
+        .then((availability) => {
+          setBackgroundBackupWarning(
+            availability.available ? null : (availability.message ?? null)
+          );
+        })
+        .catch(() => {
+          setBackgroundBackupWarning(null);
+        });
+    }, [isAuthenticated])
+  );
   const [isCheckingForUpdates, setIsCheckingForUpdates] = useState(false);
   const [backupListRefreshTrigger, setBackupListRefreshTrigger] = useState(0);
   const [showDeveloperOptions, setShowDeveloperOptions] = useState(false);
@@ -1414,7 +1458,7 @@ export default function SettingsScreen() {
                         Upload Backup to Cloud
                       </Text>
                       <Text className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                        Automatically backup to cloud (keeps latest 3 backups)
+                        Upload or schedule cloud backup (keeps latest 3)
                       </Text>
                       <Text className="text-xs text-red-600 dark:text-red-400 mt-1">
                         Network not available
@@ -1464,7 +1508,7 @@ export default function SettingsScreen() {
                         Upload Backup to Cloud
                       </Text>
                       <Text className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                        Automatically backup to cloud (keeps latest 3 backups)
+                        Upload or schedule cloud backup (keeps latest 3)
                       </Text>
                       <Text className="text-xs text-red-600 dark:text-red-400 mt-1">
                         Session not available - Please login
@@ -1477,6 +1521,73 @@ export default function SettingsScreen() {
             ) : (
               /* Network available and authenticated - enable cloud backup */
               <View>
+                {autoCloudBackupEnabled && backgroundBackupWarning ? (
+                  <View className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg mb-3">
+                    <View className="flex-row items-start gap-3">
+                      <Ionicons name="warning" size={20} color="#F59E0B" />
+                      <Text className="text-sm text-amber-800 dark:text-amber-200 flex-1">
+                        {backgroundBackupWarning}
+                      </Text>
+                    </View>
+                  </View>
+                ) : null}
+                <View className="flex-row items-center justify-between py-3 mb-2 border-b border-gray-100 dark:border-gray-800">
+                  <View className="flex-1 pr-3">
+                    <Text className="text-base font-medium text-gray-900 dark:text-gray-100">
+                      Automatic daily backup
+                    </Text>
+                    <Text className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                      {autoCloudBackupEnabled
+                        ? "On — backs up to cloud around 10–11 PM when possible (keeps latest 3)"
+                        : "Off — turn on to schedule daily cloud backups at night"}
+                    </Text>
+                    <Text className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Last automatic backup:{" "}
+                      {formatLastBackupLabel(lastAutoCloudBackupDate)}
+                      {isWithinDailyBackupWindow()
+                        ? " · Window active now"
+                        : ""}
+                    </Text>
+                    <Text className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                      Runs in the background when the app is not open. On iOS,
+                      force-quitting the app pauses background backups until you
+                      open it again.
+                    </Text>
+                  </View>
+                  <Switch
+                    value={autoCloudBackupEnabled}
+                    onValueChange={async (enabled) => {
+                      cloudBackupScheduleStorage.setAutoBackupEnabled(enabled);
+                      setAutoCloudBackupEnabled(enabled);
+                      try {
+                        if (enabled) {
+                          const result =
+                            await registerCloudBackupBackgroundTask();
+                          if (!result.registered && result.message) {
+                            setBackgroundBackupWarning(result.message);
+                            alert(
+                              "Background backup limited",
+                              `${result.message}\n\nYou can still use "Upload backup now" or open the app after 10 PM for catch-up backups.`
+                            );
+                          } else {
+                            setBackgroundBackupWarning(null);
+                          }
+                        } else {
+                          await unregisterCloudBackupBackgroundTask();
+                          setBackgroundBackupWarning(null);
+                        }
+                      } catch (error) {
+                        reportAutoBackupError(error, {
+                          phase: "settings_toggle",
+                          toggleEnabled: enabled,
+                        });
+                      }
+                    }}
+                    trackColor={{ false: "#D1D5DB", true: "#3B82F6" }}
+                    thumbColor="#FFFFFF"
+                  />
+                </View>
+
                 <TouchableOpacity
                   onPress={async () => {
                     if (!user?.id) {
@@ -1496,6 +1607,9 @@ export default function SettingsScreen() {
                         );
                         return;
                       }
+                      const todayKey = formatLocalDateKey();
+                      cloudBackupScheduleStorage.setLastBackupDate(todayKey);
+                      setLastAutoCloudBackupDate(todayKey);
                       alert(
                         "Success",
                         "Backup uploaded to cloud successfully!"
@@ -1528,10 +1642,10 @@ export default function SettingsScreen() {
                     </View>
                     <View className="flex-1">
                       <Text className="text-base font-medium text-gray-900 dark:text-gray-100">
-                        Upload Backup to Cloud
+                        Upload backup now
                       </Text>
                       <Text className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                        Automatically backup to cloud (keeps latest 3 backups)
+                        Upload a backup immediately (keeps latest 3 in cloud)
                       </Text>
                       {isUploadingToCloud && (
                         <Text className="text-xs text-blue-600 dark:text-blue-400 mt-1">
