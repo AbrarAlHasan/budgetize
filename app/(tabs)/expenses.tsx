@@ -201,15 +201,6 @@ export default function ExpensesScreen() {
     [settings.currency]
   );
 
-  const previousDebouncedSearchRef = React.useRef(debouncedSearch);
-  React.useEffect(() => {
-    if (previousDebouncedSearchRef.current !== debouncedSearch) {
-      previousDebouncedSearchRef.current = debouncedSearch;
-      setTransactionTags(new Map());
-      setTransactionCategories(new Map());
-    }
-  }, [debouncedSearch]);
-
   React.useEffect(() => {
     if (transactions.length === 0) {
       return;
