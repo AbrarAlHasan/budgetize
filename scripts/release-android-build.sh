@@ -43,5 +43,5 @@ echo ""
 
 # Run EAS build
 cd "$PROJECT_ROOT"
-npx eas-cli build --platform android --profile production-apk --local
+npx eas-cli build --platform android --profile production --local
 
