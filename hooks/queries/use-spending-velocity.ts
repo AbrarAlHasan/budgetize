@@ -63,7 +63,7 @@ export function useSpendingVelocity(
                   ? filters.categoryIds
                   : undefined,
               categoryId: filters.categoryId || undefined,
-              types: EXPENSE_TYPES,
+              types: ['expense'] as const,
               transactionTypes:
                 filters.transactionTypes &&
                 filters.transactionTypes.length > 0
@@ -78,13 +78,13 @@ export function useSpendingVelocity(
           : {
               startDate,
               endDate: format(actualEndDate, 'yyyy-MM-dd'),
-              types: EXPENSE_TYPES,
+              types: ['expense'] as const,
             };
 
       const expenseFilter = {
         accountIds: filterOptions.accountIds,
         accountId: filterOptions.accountId,
-        types: EXPENSE_TYPES,
+        types: ['expense'] as const,
       };
 
       const [currentSpending, activeSpendingDays, priorToDateSpending] =

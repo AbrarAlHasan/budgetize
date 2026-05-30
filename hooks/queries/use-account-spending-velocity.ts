@@ -50,7 +50,7 @@ export function useAccountSpendingVelocity(accountId: number) {
 
       const expenseFilter = {
         accountIds: [accountId],
-        types: EXPENSE_TYPES,
+        types: ['expense'] as const,
       };
 
       const [currentSpending, activeSpendingDays, priorToDateSpending] =
