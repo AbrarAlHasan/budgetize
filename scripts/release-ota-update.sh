@@ -34,7 +34,7 @@ fi
 export EXPO_TOKEN
 
 # Update message (change this for each release)
-UPDATE_MESSAGE="auto-focus functionality for the amount input"
+UPDATE_MESSAGE="enhanced spending velocity calculations"
 
 npx eas-cli whoami
 
