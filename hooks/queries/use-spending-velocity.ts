@@ -1,3 +1,4 @@
+import type { TransactionType } from '@/db/schema/types';
 import { useQuery } from '@tanstack/react-query';
 import { transactionRepository } from '@/repositories/transaction.repository';
 import {
@@ -8,6 +9,7 @@ import { format, differenceInDays, subDays, addDays, min } from 'date-fns';
 import { useUIStore } from '@/store/ui-store';
 
 const QUERY_KEY = ['spendingVelocity'];
+const EXPENSE_TYPES: TransactionType[] = ['expense'];
 
 export type SpendingVelocity = SpendingVelocityResult;
 
@@ -61,7 +63,7 @@ export function useSpendingVelocity(
                   ? filters.categoryIds
                   : undefined,
               categoryId: filters.categoryId || undefined,
-              types: ['expense'] as const,
+              types: EXPENSE_TYPES,
               transactionTypes:
                 filters.transactionTypes &&
                 filters.transactionTypes.length > 0
@@ -76,13 +78,13 @@ export function useSpendingVelocity(
           : {
               startDate,
               endDate: format(actualEndDate, 'yyyy-MM-dd'),
-              types: ['expense'] as const,
+              types: EXPENSE_TYPES,
             };
 
       const expenseFilter = {
         accountIds: filterOptions.accountIds,
         accountId: filterOptions.accountId,
-        types: ['expense'] as const,
+        types: EXPENSE_TYPES,
       };
 
       const [currentSpending, activeSpendingDays, priorToDateSpending] =
