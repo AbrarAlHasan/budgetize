@@ -6,6 +6,11 @@ import { getCurrencySymbol } from '@/utils/currencies';
 import { useSettingsStore } from '@/store/settings-store';
 import { useColorScheme } from 'nativewind';
 import { Card } from '@/components/ui/card';
+import {
+  buildSpendingVelocityInsight,
+  getPaceStatusColor,
+  getPaceStatusLabel,
+} from '@/utils/spending-velocity';
 
 interface SpendingVelocityProps {
   startDate: string;
@@ -13,11 +18,19 @@ interface SpendingVelocityProps {
   useFilters: boolean;
 }
 
-export function SpendingVelocity({ startDate, endDate, useFilters }: SpendingVelocityProps) {
+export function SpendingVelocity({
+  startDate,
+  endDate,
+  useFilters,
+}: SpendingVelocityProps) {
   const { settings } = useSettingsStore();
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === 'dark';
-  const { data: velocity, isLoading } = useSpendingVelocity(startDate, endDate, useFilters);
+  const { data: velocity, isLoading } = useSpendingVelocity(
+    startDate,
+    endDate,
+    useFilters
+  );
 
   if (isLoading || !velocity) {
     return null;
@@ -25,14 +38,15 @@ export function SpendingVelocity({ startDate, endDate, useFilters }: SpendingVel
 
   const currencySymbol = getCurrencySymbol(settings.currency);
 
-  // Format amounts
-  const formatAmount = (amount: number) => {
+  const formatAmount = (amount: number): string => {
     const absAmount = Math.abs(amount);
     if (absAmount >= 10000000) {
       return `${currencySymbol}${(absAmount / 10000000).toFixed(1)}Cr`;
-    } else if (absAmount >= 100000) {
+    }
+    if (absAmount >= 100000) {
       return `${currencySymbol}${(absAmount / 100000).toFixed(1)}L`;
-    } else if (absAmount >= 1000) {
+    }
+    if (absAmount >= 1000) {
       return `${currencySymbol}${(absAmount / 1000).toFixed(1)}k`;
     }
     return `${currencySymbol}${absAmount.toLocaleString(undefined, {
@@ -41,18 +55,20 @@ export function SpendingVelocity({ startDate, endDate, useFilters }: SpendingVel
     })}`;
   };
 
-  // Determine status color based on spending progress
-  const getStatusColor = () => {
-    if (velocity.spendingProgress <= 50) {
-      return '#10B981'; // Green - on track
-    } else if (velocity.spendingProgress <= 75) {
-      return '#F59E0B'; // Amber - moderate
-    } else {
-      return '#EF4444'; // Red - high spending
-    }
-  };
+  const statusColor = getPaceStatusColor(velocity.paceStatus);
+  const periodBarColor = isDark ? '#3B82F6' : '#2563EB';
+  const insight = buildSpendingVelocityInsight(
+    velocity,
+    formatAmount,
+    'period end'
+  );
 
-  const statusColor = getStatusColor();
+  const paceComparisonLabel =
+    velocity.paceVsPriorPercent !== null
+      ? `${velocity.paceVsPriorPercent.toFixed(0)}% vs prior period`
+      : velocity.priorToDateSpending === 0
+        ? 'No prior-period spend'
+        : 'Building baseline';
 
   return (
     <Card className="mb-6">
@@ -66,8 +82,7 @@ export function SpendingVelocity({ startDate, endDate, useFilters }: SpendingVel
         <View style={[styles.statusBadge, { backgroundColor: `${statusColor}15` }]}>
           <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
           <Text style={[styles.statusText, { color: statusColor }]}>
-            {velocity.spendingProgress <= 50 ? 'On Track' : 
-             velocity.spendingProgress <= 75 ? 'Moderate' : 'High'}
+            {getPaceStatusLabel(velocity.paceStatus)}
           </Text>
         </View>
       </View>
@@ -75,30 +90,57 @@ export function SpendingVelocity({ startDate, endDate, useFilters }: SpendingVel
       <View style={styles.content}>
         <View style={styles.metricRow}>
           <View style={styles.metric}>
-            <Text className="text-xs text-gray-500 dark:text-gray-400 mb-1">Daily Average</Text>
+            <Text className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+              Spent so far
+            </Text>
             <Text className="text-lg font-bold text-gray-900 dark:text-gray-100">
-              {formatAmount(velocity.averageDailySpending)}
+              {formatAmount(velocity.currentSpending)}
             </Text>
           </View>
           <View style={styles.metric}>
-            <Text className="text-xs text-gray-500 dark:text-gray-400 mb-1">Projected Period End</Text>
+            <Text className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+              Projected period end
+            </Text>
             <Text className="text-lg font-bold text-gray-900 dark:text-gray-100">
-              {formatAmount(velocity.projectedPeriodEndSpending)}
+              {velocity.canProject
+                ? formatAmount(velocity.projectedPeriodEndSpending)
+                : '—'}
             </Text>
           </View>
         </View>
 
-        {/* Progress Bar */}
+        <View style={styles.metricRow}>
+          <View style={styles.metric}>
+            <Text className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+              Calendar daily avg
+            </Text>
+            <Text className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+              {formatAmount(velocity.averageDailySpending)}
+            </Text>
+          </View>
+          <View style={styles.metric}>
+            <Text className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+              Active spending days
+            </Text>
+            <Text className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+              {velocity.activeSpendingDays}
+            </Text>
+          </View>
+        </View>
+
         <View style={styles.progressContainer}>
+          <Text className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+            Period elapsed
+          </Text>
           <View className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-            <View 
+            <View
               style={[
-                styles.progressFill, 
-                { 
-                  width: `${Math.min(velocity.spendingProgress, 100)}%`,
-                  backgroundColor: statusColor,
-                }
-              ]} 
+                styles.progressFill,
+                {
+                  width: `${Math.min(velocity.periodProgress, 100)}%`,
+                  backgroundColor: periodBarColor,
+                },
+              ]}
             />
           </View>
           <View style={styles.progressLabels}>
@@ -106,20 +148,22 @@ export function SpendingVelocity({ startDate, endDate, useFilters }: SpendingVel
               {velocity.daysElapsed} of {velocity.totalDaysInPeriod} days
             </Text>
             <Text className="text-xs text-gray-500 dark:text-gray-400">
-              {velocity.spendingProgress.toFixed(0)}% of projection
+              {paceComparisonLabel}
             </Text>
           </View>
         </View>
 
-        {/* Insight Text */}
         <View className="flex-row items-start gap-2 bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
-          <Ionicons name="information-circle-outline" size={16} color={isDark ? '#9CA3AF' : '#6B7280'} />
+          <Ionicons
+            name="information-circle-outline"
+            size={16}
+            color={isDark ? '#9CA3AF' : '#6B7280'}
+          />
           <Text className="text-xs text-gray-600 dark:text-gray-300 flex-1 leading-4">
-            {velocity.spendingProgress <= 50 
-              ? `You're spending at a healthy pace. ${velocity.daysRemaining} days remaining.`
-              : velocity.spendingProgress <= 75
-              ? `Spending is moderate. At this rate, you'll reach ${formatAmount(velocity.projectedPeriodEndSpending)} by period end.`
-              : `Spending is high. Consider reviewing expenses. Projected: ${formatAmount(velocity.projectedPeriodEndSpending)}`}
+            {insight}
+            {velocity.daysRemaining > 0
+              ? ` ${velocity.daysRemaining} day(s) left in this period.`
+              : ''}
           </Text>
         </View>
       </View>
@@ -178,4 +222,3 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
 });
-

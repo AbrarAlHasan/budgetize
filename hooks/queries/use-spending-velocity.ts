@@ -1,20 +1,15 @@
 import { useQuery } from '@tanstack/react-query';
 import { transactionRepository } from '@/repositories/transaction.repository';
-import { format, differenceInDays } from 'date-fns';
+import {
+  deriveSpendingVelocityMetrics,
+  type SpendingVelocityResult,
+} from '@/utils/spending-velocity';
+import { format, differenceInDays, subDays, addDays, min } from 'date-fns';
 import { useUIStore } from '@/store/ui-store';
 
 const QUERY_KEY = ['spendingVelocity'];
 
-export interface SpendingVelocity {
-  currentSpending: number;
-  daysElapsed: number;
-  daysRemaining: number;
-  totalDaysInPeriod: number;
-  averageDailySpending: number;
-  projectedPeriodEndSpending: number;
-  spendingRate: number; // Percentage of period elapsed
-  spendingProgress: number; // Percentage of projected spending used
-}
+export type SpendingVelocity = SpendingVelocityResult;
 
 export function useSpendingVelocity(
   startDate: string,
@@ -24,71 +19,100 @@ export function useSpendingVelocity(
   const filters = useUIStore((state) => state.filters.reports);
 
   return useQuery({
-    queryKey: useFilters 
+    queryKey: useFilters
       ? [...QUERY_KEY, startDate, endDate, 'filters', filters]
       : [...QUERY_KEY, startDate, endDate],
     queryFn: async (): Promise<SpendingVelocity> => {
       const periodStart = new Date(startDate);
       const periodEnd = new Date(endDate);
       const now = new Date();
-      
-      // Use current date if it's before period end
+
       const actualEndDate = now < periodEnd ? now : periodEnd;
 
-      // Calculate days
       const totalDaysInPeriod = differenceInDays(periodEnd, periodStart) + 1;
-      const daysElapsed = differenceInDays(actualEndDate, periodStart) + 1; // +1 to include today
-      const daysRemaining = totalDaysInPeriod - daysElapsed;
+      const daysElapsed = differenceInDays(actualEndDate, periodStart) + 1;
 
-      const filterOptions = useFilters && filters ? {
-        startDate,
-        endDate: format(actualEndDate, 'yyyy-MM-dd'),
-        accountIds: filters.accountIds && filters.accountIds.length > 0 ? filters.accountIds : undefined,
-        accountId: filters.accountId || undefined,
-        tagIds: filters.tagIds && filters.tagIds.length > 0 ? filters.tagIds : undefined,
-        tagId: filters.tagId || undefined,
-        categoryIds: filters.categoryIds && filters.categoryIds.length > 0 ? filters.categoryIds : undefined,
-        categoryId: filters.categoryId || undefined,
-        types: ['expense'] as const,
-        transactionTypes: filters.transactionTypes && filters.transactionTypes.length > 0 ? filters.transactionTypes : undefined,
-        accountTypes: filters.accountTypes && filters.accountTypes.length > 0 ? filters.accountTypes : undefined,
-        accountType: filters.accountType || undefined,
-      } : {
-        startDate,
-        endDate: format(actualEndDate, 'yyyy-MM-dd'),
-        types: ['expense'] as const,
-      };
+      const priorPeriodEnd = subDays(periodStart, 1);
+      const priorPeriodStart = subDays(periodStart, totalDaysInPeriod);
+      const priorStartStr = format(priorPeriodStart, 'yyyy-MM-dd');
+      const priorElapsedEnd = min([
+        addDays(priorPeriodStart, daysElapsed - 1),
+        priorPeriodEnd,
+      ]);
+      const priorToDateEndStr = format(priorElapsedEnd, 'yyyy-MM-dd');
 
-      // Use optimized method that only fetches and decrypts amounts
-      const currentSpending = await transactionRepository.calculateAccountExpensesForDateRange({
+      const filterOptions =
+        useFilters && filters
+          ? {
+              startDate,
+              endDate: format(actualEndDate, 'yyyy-MM-dd'),
+              accountIds:
+                filters.accountIds && filters.accountIds.length > 0
+                  ? filters.accountIds
+                  : undefined,
+              accountId: filters.accountId || undefined,
+              tagIds:
+                filters.tagIds && filters.tagIds.length > 0
+                  ? filters.tagIds
+                  : undefined,
+              tagId: filters.tagId || undefined,
+              categoryIds:
+                filters.categoryIds && filters.categoryIds.length > 0
+                  ? filters.categoryIds
+                  : undefined,
+              categoryId: filters.categoryId || undefined,
+              types: ['expense'] as const,
+              transactionTypes:
+                filters.transactionTypes &&
+                filters.transactionTypes.length > 0
+                  ? filters.transactionTypes
+                  : undefined,
+              accountTypes:
+                filters.accountTypes && filters.accountTypes.length > 0
+                  ? filters.accountTypes
+                  : undefined,
+              accountType: filters.accountType || undefined,
+            }
+          : {
+              startDate,
+              endDate: format(actualEndDate, 'yyyy-MM-dd'),
+              types: ['expense'] as const,
+            };
+
+      const expenseFilter = {
         accountIds: filterOptions.accountIds,
         accountId: filterOptions.accountId,
-        startDate: filterOptions.startDate,
-        endDate: filterOptions.endDate,
-        types: ['expense'],
-      });
+        types: ['expense'] as const,
+      };
 
-      // Calculate metrics
-      const averageDailySpending = daysElapsed > 0 ? currentSpending / daysElapsed : 0;
-      const projectedPeriodEndSpending = averageDailySpending * totalDaysInPeriod;
-      const spendingRate = (daysElapsed / totalDaysInPeriod) * 100; // % of period elapsed
-      const spendingProgress = projectedPeriodEndSpending > 0 
-        ? (currentSpending / projectedPeriodEndSpending) * 100 
-        : 0;
+      const [currentSpending, activeSpendingDays, priorToDateSpending] =
+        await Promise.all([
+          transactionRepository.calculateAccountExpensesForDateRange({
+            ...expenseFilter,
+            startDate: filterOptions.startDate,
+            endDate: filterOptions.endDate,
+          }),
+          transactionRepository.countDistinctExpenseDates({
+            ...expenseFilter,
+            startDate: filterOptions.startDate,
+            endDate: filterOptions.endDate,
+          }),
+          transactionRepository.calculateAccountExpensesForDateRange({
+            ...expenseFilter,
+            startDate: priorStartStr,
+            endDate: priorToDateEndStr,
+          }),
+        ]);
 
-      return {
+      return deriveSpendingVelocityMetrics({
         currentSpending,
         daysElapsed,
-        daysRemaining,
         totalDaysInPeriod,
-        averageDailySpending,
-        projectedPeriodEndSpending,
-        spendingRate,
-        spendingProgress,
-      };
+        activeSpendingDays,
+        priorToDateSpending,
+      });
     },
     enabled: !!startDate && !!endDate,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
   });
 }
-

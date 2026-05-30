@@ -1,20 +1,25 @@
 import { useQuery } from '@tanstack/react-query';
 import { transactionRepository } from '@/repositories/transaction.repository';
-import { startOfMonth, endOfMonth, format, differenceInDays, getDaysInMonth } from 'date-fns';
+import {
+  deriveSpendingVelocityMetrics,
+  type SpendingVelocityResult,
+} from '@/utils/spending-velocity';
+import {
+  startOfMonth,
+  endOfMonth,
+  format,
+  differenceInDays,
+  getDaysInMonth,
+  subDays,
+  addDays,
+  min,
+} from 'date-fns';
 import { logPerformance } from '@/utils/logger';
 
 const QUERY_KEY = ['accountSpendingVelocity'];
 
-export interface AccountSpendingVelocity {
+export interface AccountSpendingVelocity extends SpendingVelocityResult {
   accountId: number;
-  currentMonthSpending: number;
-  daysElapsed: number;
-  daysRemaining: number;
-  totalDaysInMonth: number;
-  averageDailySpending: number;
-  projectedMonthEndSpending: number;
-  spendingRate: number; // Percentage of month elapsed
-  spendingProgress: number; // Percentage of projected spending used
 }
 
 export function useAccountSpendingVelocity(accountId: number) {
@@ -22,55 +27,66 @@ export function useAccountSpendingVelocity(accountId: number) {
     queryKey: [...QUERY_KEY, accountId],
     queryFn: async (): Promise<AccountSpendingVelocity> => {
       const startTime = Date.now();
-      
+
       const now = new Date();
-      
-      // Get current month range
       const monthStart = startOfMonth(now);
       const monthEnd = endOfMonth(now);
       const monthStartDate = format(monthStart, 'yyyy-MM-dd');
       const monthEndDate = format(monthEnd, 'yyyy-MM-dd');
 
-      // Calculate days
-      const totalDaysInMonth = getDaysInMonth(now);
-      const daysElapsed = differenceInDays(now, monthStart) + 1; // +1 to include today
-      const daysRemaining = totalDaysInMonth - daysElapsed;
+      const totalDaysInPeriod = getDaysInMonth(now);
+      const daysElapsed = differenceInDays(now, monthStart) + 1;
 
-      // Use optimized method that only fetches and decrypts amounts
-      const currentMonthSpending = await transactionRepository.calculateAccountExpensesForDateRange({
+      const priorPeriodEnd = subDays(monthStart, 1);
+      const priorPeriodStart = subDays(monthStart, totalDaysInPeriod);
+      const priorStartStr = format(priorPeriodStart, 'yyyy-MM-dd');
+      const priorElapsedEnd = min([
+        addDays(priorPeriodStart, daysElapsed - 1),
+        priorPeriodEnd,
+      ]);
+      const priorToDateEndStr = format(priorElapsedEnd, 'yyyy-MM-dd');
+
+      const expenseFilter = {
         accountIds: [accountId],
-        startDate: monthStartDate,
-        endDate: monthEndDate,
-        types: ['expense'],
+        types: ['expense'] as const,
+      };
+
+      const [currentSpending, activeSpendingDays, priorToDateSpending] =
+        await Promise.all([
+          transactionRepository.calculateAccountExpensesForDateRange({
+            ...expenseFilter,
+            startDate: monthStartDate,
+            endDate: monthEndDate,
+          }),
+          transactionRepository.countDistinctExpenseDates({
+            ...expenseFilter,
+            startDate: monthStartDate,
+            endDate: monthEndDate,
+          }),
+          transactionRepository.calculateAccountExpensesForDateRange({
+            ...expenseFilter,
+            startDate: priorStartStr,
+            endDate: priorToDateEndStr,
+          }),
+        ]);
+
+      const metrics = deriveSpendingVelocityMetrics({
+        currentSpending,
+        daysElapsed,
+        totalDaysInPeriod,
+        activeSpendingDays,
+        priorToDateSpending,
       });
 
-      // Calculate metrics
-      const averageDailySpending = daysElapsed > 0 ? currentMonthSpending / daysElapsed : 0;
-      const projectedMonthEndSpending = averageDailySpending * totalDaysInMonth;
-      const spendingRate = (daysElapsed / totalDaysInMonth) * 100; // % of month elapsed
-      const spendingProgress = projectedMonthEndSpending > 0 
-        ? (currentMonthSpending / projectedMonthEndSpending) * 100 
-        : 0;
-
-      const result = {
-        accountId,
-        currentMonthSpending,
-        daysElapsed,
-        daysRemaining,
-        totalDaysInMonth,
-        averageDailySpending,
-        projectedMonthEndSpending,
-        spendingRate,
-        spendingProgress,
-      };
-      
       const endTime = Date.now();
       logPerformance('useAccountSpendingVelocity_query', endTime - startTime);
 
-      return result;
+      return {
+        accountId,
+        ...metrics,
+      };
     },
     enabled: !!accountId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
   });
 }
-
