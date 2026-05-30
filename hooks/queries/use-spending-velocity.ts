@@ -1,3 +1,4 @@
+import type { TransactionType } from '@/db/schema/types';
 import { useQuery } from '@tanstack/react-query';
 import { transactionRepository } from '@/repositories/transaction.repository';
 import {
@@ -8,6 +9,7 @@ import { format, differenceInDays, subDays, addDays, min } from 'date-fns';
 import { useUIStore } from '@/store/ui-store';
 
 const QUERY_KEY = ['spendingVelocity'];
+const EXPENSE_TYPES: TransactionType[] = ['expense'];
 
 export type SpendingVelocity = SpendingVelocityResult;
 

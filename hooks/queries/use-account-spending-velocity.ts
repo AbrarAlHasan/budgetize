@@ -1,3 +1,4 @@
+import type { TransactionType } from '@/db/schema/types';
 import { useQuery } from '@tanstack/react-query';
 import { transactionRepository } from '@/repositories/transaction.repository';
 import {
@@ -17,6 +18,7 @@ import {
 import { logPerformance } from '@/utils/logger';
 
 const QUERY_KEY = ['accountSpendingVelocity'];
+const EXPENSE_TYPES: TransactionType[] = ['expense'];
 
 export interface AccountSpendingVelocity extends SpendingVelocityResult {
   accountId: number;
