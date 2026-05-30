@@ -1776,6 +1776,50 @@ export class TransactionRepository extends BaseRepository<Transaction> {
   }
 
   /**
+   * Count distinct calendar dates with at least one matching transaction.
+   */
+  async countDistinctExpenseDates(filters?: {
+    accountId?: number;
+    accountIds?: number[];
+    startDate?: string;
+    endDate?: string;
+    type?: Transaction["type"];
+    types?: Transaction["type"][];
+  }): Promise<number> {
+    let query = `SELECT COUNT(DISTINCT t.date) as count FROM ${this.tableName} t`;
+    const params: unknown[] = [];
+    const conditions: string[] = ["t.deleted_at IS NULL"];
+
+    const accountIds =
+      filters?.accountIds || (filters?.accountId ? [filters.accountId] : []);
+    if (accountIds.length > 0) {
+      const placeholders = accountIds.map(() => "?").join(",");
+      conditions.push(`t.account_id IN (${placeholders})`);
+      params.push(...accountIds);
+    }
+
+    this.addDateFilterConditions(
+      conditions,
+      params,
+      filters?.startDate,
+      filters?.endDate
+    );
+
+    const types =
+      filters?.types || (filters?.type ? [filters.type] : ["expense"]);
+    if (types.length > 0) {
+      const placeholders = types.map(() => "?").join(",");
+      conditions.push(`t.type IN (${placeholders})`);
+      params.push(...types);
+    }
+
+    query += ` WHERE ${conditions.join(" AND ")}`;
+
+    const results = await this.executeQuery<{ count: number }>(query, params);
+    return results[0]?.count ?? 0;
+  }
+
+  /**
    * Optimized method to fetch latest N transactions for an account
    * Only fetches necessary fields and limits results at the database level
    */
