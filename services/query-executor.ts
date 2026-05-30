@@ -3,6 +3,7 @@
  * Safely executes SQL queries and handles decryption of encrypted fields
  */
 
+import { humanizeSqlError } from "@/services/ai/sql-validation";
 import { getDatabase } from "@/db/sqlite/db";
 import { categoryRepository } from "@/repositories/category.repository";
 import { tagRepository } from "@/repositories/tag.repository";
@@ -173,9 +174,10 @@ export class QueryExecutor {
       };
     } catch (error) {
       logError("Query execution error:", error);
+      const rawMessage = error instanceof Error ? error.message : "Unknown error";
       return {
         success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: humanizeSqlError(rawMessage),
         query: sqlQuery,
       };
     }

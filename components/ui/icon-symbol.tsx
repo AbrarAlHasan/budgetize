@@ -26,6 +26,7 @@ const MAPPING = {
   'doc.text.fill': 'description',
   'gearshape.fill': 'settings',
   'arrow.left.arrow.right.circle.fill': 'compare-arrows',
+  'sparkles': 'auto-awesome',
 } as IconMapping;
 
 /**

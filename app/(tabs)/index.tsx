@@ -1,4 +1,6 @@
 import { ActiveFilterChips } from "@/components/filters/active-filter-chips";
+import { AiSectionHeader } from "@/components/ai/ai-glow";
+import { InsightCard } from "@/components/ai/insight-card";
 import { SpendingVelocity } from "@/components/reports/spending-velocity";
 import {
   RecentTransactionsSkeleton,
@@ -8,6 +10,7 @@ import { TransactionItem } from "@/components/transaction-item";
 import { Card } from "@/components/ui/card";
 import { useAccounts } from "@/hooks/queries/use-accounts";
 import { useDashboardData } from "@/hooks/queries/use-dashboard";
+import { useAiInsights } from "@/hooks/use-ai-insights";
 
 import { categoryRepository } from "@/repositories/category.repository";
 import { tagRepository } from "@/repositories/tag.repository";
@@ -116,6 +119,8 @@ export default function DashboardScreen() {
     useFilters && filters.endDate
       ? filters.endDate
       : format(endOfMonth(currentMonth), "yyyy-MM-dd");
+
+  const { data: aiInsights } = useAiInsights();
 
   // Use optimized query to fetch only latest 10 transactions instead of all
   const { data: transactions, isLoading: transactionsLoading } = useQuery({
@@ -456,6 +461,16 @@ export default function DashboardScreen() {
                   </Text>
                 </Card>
               )}
+            </View>
+          )}
+
+          {/* AI Insights */}
+          {aiInsights && aiInsights.length > 0 && (
+            <View className="mb-6">
+              <AiSectionHeader title="Insights" />
+              {aiInsights.map((insight) => (
+                <InsightCard key={insight.id} insight={insight} />
+              ))}
             </View>
           )}
 

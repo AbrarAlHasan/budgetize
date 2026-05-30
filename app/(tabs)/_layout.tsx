@@ -1,5 +1,6 @@
 import { Tabs } from "expo-router";
 
+import { AiSparklesIcon } from "@/components/ai/ai-glow";
 import { HapticTab } from "@/components/haptic-tab";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { Colors } from "@/constants/theme";
@@ -67,6 +68,23 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => (
             <IconSymbol size={28} name="doc.text.fill" color={color} />
           ),
+        }}
+      />
+      <Tabs.Screen
+        name="ai"
+        options={{
+          title: "Ask",
+          tabBarIcon: ({ color, focused }) =>
+            focused ? (
+              <AiSparklesIcon
+                size={28}
+                iconSize={14}
+                animated
+                innerBackgroundColor={Colors[colorScheme ?? 'light'].background}
+              />
+            ) : (
+              <IconSymbol size={28} name="sparkles" color={color} />
+            ),
         }}
       />
       <Tabs.Screen

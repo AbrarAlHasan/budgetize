@@ -18,9 +18,15 @@ import {
   BottomSheetMultiSelectRef,
 } from "@/components/ui/bottom-sheet-multi-select";
 import { BottomSheetSelect } from "@/components/ui/bottom-sheet-select";
+import {
+  getModelSelectOptions,
+  type AiOnDeviceModelId,
+} from "@/services/ai/model-catalog";
+import { AiGlowBorder, AiSparklesIcon } from "@/components/ai/ai-glow";
 import { Card } from "@/components/ui/card";
 import { useTags } from "@/hooks/queries/use-tags";
 import { useCustomAlert } from "@/hooks/use-custom-alert";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useInAppUpdates } from "@/hooks/use-in-app-updates";
 import { useNetworkStatus } from "@/hooks/use-network-status";
 import {
@@ -74,6 +80,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function SettingsScreen() {
+  const colorScheme = useColorScheme();
+  const aiIconSurface = colorScheme === "dark" ? "#111827" : "#FFFFFF";
   const queryClient = useQueryClient();
   const params = useLocalSearchParams<{ focusAccount?: string }>();
   const scrollViewRef = useRef<ScrollView>(null);
@@ -88,6 +96,10 @@ export default function SettingsScreen() {
     updateTheme,
     updateExchangeEnabled,
     updateDefaultTagIds,
+    updateAiEnabled,
+    updateAiUseCellularDownload,
+    updateAiExecutionMode,
+    updateAiOnDeviceModelId,
   } = useSettingsStore();
   const {
     user,
@@ -1089,6 +1101,94 @@ export default function SettingsScreen() {
               )}
             </View>
           </Card>
+
+          {/* AI Settings */}
+          <AiGlowBorder borderRadius={16} innerClassName="bg-white dark:bg-gray-900 mb-4">
+            <View className="p-4">
+            <View className="flex-row items-center gap-2 mb-4">
+              <AiSparklesIcon size={22} iconSize={12} innerBackgroundColor={aiIconSurface} />
+              <Text className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                AI Assistant
+              </Text>
+            </View>
+            <View className="mb-4">
+              <View className="flex-row items-center justify-between">
+                <View className="flex-1">
+                  <View className="flex-row items-center">
+                    <View style={{ marginRight: 8 }}>
+                      <AiSparklesIcon size={18} iconSize={10} innerBackgroundColor={aiIconSurface} />
+                    </View>
+                    <Text className="text-base font-medium text-gray-900 dark:text-gray-100">
+                      On-Device AI
+                    </Text>
+                  </View>
+                  <Text className="text-sm text-gray-500 dark:text-gray-400 mt-0.5 ml-7">
+                    Smarter Q&A and auto-categorization. Data stays on your phone.
+                  </Text>
+                </View>
+                <Switch
+                  onValueChange={updateAiEnabled}
+                  value={settings.aiEnabled ?? true}
+                  trackColor={{ false: "#D1D5DB", true: "#7C4DFF" }}
+                  thumbColor="#FFFFFF"
+                />
+              </View>
+            </View>
+            <View className="mb-4">
+              <BottomSheetSelect
+                label="AI Processing"
+                options={[
+                  { label: "On-Device (Private)", value: "on_device" },
+                  { label: "Cloud (Coming Soon)", value: "cloud" },
+                ]}
+                value={settings.aiExecutionMode ?? "on_device"}
+                onValueChange={(value) =>
+                  updateAiExecutionMode(value as "on_device" | "cloud")
+                }
+              />
+              <Text className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                {settings.aiExecutionMode === "cloud"
+                  ? "Cloud models are not available yet. On-device AI remains the default."
+                  : "All AI runs locally via ExecuTorch. Your data never leaves your phone."}
+              </Text>
+            </View>
+            {settings.aiExecutionMode !== "cloud" && (
+              <View className="mb-4">
+                <BottomSheetSelect
+                  label="On-Device Model"
+                  options={getModelSelectOptions()}
+                  value={settings.aiOnDeviceModelId}
+                  onValueChange={(value) =>
+                    updateAiOnDeviceModelId(value as AiOnDeviceModelId)
+                  }
+                />
+                <Text className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Models are downloaded from Hugging Face via ExecuTorch. Changing
+                  the model requires a new download.
+                </Text>
+              </View>
+            )}
+            <View>
+              <View className="flex-row items-center justify-between">
+                <View className="flex-1">
+                  <Text className="text-base font-medium text-gray-900 dark:text-gray-100">
+                    Allow Cellular Download
+                  </Text>
+                  <Text className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                    Download the selected AI model over mobile data
+                  </Text>
+                </View>
+                <Switch
+                  onValueChange={updateAiUseCellularDownload}
+                  value={settings.aiUseCellularDownload ?? false}
+                  trackColor={{ false: "#D1D5DB", true: "#7C4DFF" }}
+                  thumbColor="#FFFFFF"
+                  disabled={settings.aiExecutionMode === "cloud"}
+                />
+              </View>
+            </View>
+            </View>
+          </AiGlowBorder>
 
           {/* Exchange Feature Toggle */}
           <Card className="mb-4">

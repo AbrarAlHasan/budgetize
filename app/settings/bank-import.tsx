@@ -12,6 +12,7 @@ import { useAccounts } from '@/hooks/queries/use-accounts';
 import { useCategories } from '@/hooks/queries/use-categories';
 import { useTags } from '@/hooks/queries/use-tags';
 import { useCreateTransaction } from '@/hooks/queries/use-transactions';
+import { suggestCategoriesForImport } from '@/services/ai/categorization';
 import { useSettingsStore } from '@/store/settings-store';
 import {
   ParsedTransaction,
@@ -63,6 +64,57 @@ export default function BankImportScreen() {
   const addTagBottomSheetRef = useRef<AddTagBottomSheetRef>(null);
   const editingCategoryTransactionId = useRef<string | null>(null);
   const editingTagTransactionId = useRef<string | null>(null);
+  const autoCategorizeAppliedRef = useRef(false);
+
+  useEffect(() => {
+    autoCategorizeAppliedRef.current = false;
+  }, [params.fileUri]);
+
+  useEffect(() => {
+    if (
+      !settings.aiEnabled ||
+      !categories?.length ||
+      transactions.length === 0 ||
+      autoCategorizeAppliedRef.current
+    ) {
+      return;
+    }
+
+    const applySuggestions = async () => {
+      const uncategorized = transactions.filter(
+        (t) => !t.categoryId && !t.isDeleted
+      );
+      if (uncategorized.length === 0) {
+        autoCategorizeAppliedRef.current = true;
+        return;
+      }
+
+      const suggestions = await suggestCategoriesForImport(
+        uncategorized.map((t) => ({
+          id: t.id,
+          narration: t.narration,
+          note: t.note,
+        })),
+        categories
+      );
+
+      autoCategorizeAppliedRef.current = true;
+
+      if (suggestions.size === 0) return;
+
+      setTransactions((prev) =>
+        prev.map((transaction) => {
+          const suggestion = suggestions.get(transaction.id);
+          if (!suggestion || transaction.categoryId) {
+            return transaction;
+          }
+          return { ...transaction, categoryId: suggestion.categoryId };
+        })
+      );
+    };
+
+    applySuggestions();
+  }, [categories, settings.aiEnabled, transactions]);
 
   useEffect(() => {
     loadBankStatement();

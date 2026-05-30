@@ -1,3 +1,4 @@
+import { AiCategorySuggestion } from "@/components/ai/ai-category-suggestion";
 import {
   AddTagBottomSheet,
   AddTagBottomSheetRef,
@@ -11,6 +12,7 @@ import { useAccounts } from "@/hooks/queries/use-accounts";
 import { useCategories } from "@/hooks/queries/use-categories";
 import { useTags, useTagsForTransaction } from "@/hooks/queries/use-tags";
 import { useCreateTransaction, useDeleteTransaction, useTransaction, useUpdateTransaction } from "@/hooks/queries/use-transactions";
+import { useAiCategorize } from "@/hooks/use-ai-categorize";
 import { transactionTagRepository } from "@/repositories/transaction-tag.repository";
 import { useSettingsStore } from "@/store/settings-store";
 import { getCurrencySymbol } from "@/utils/currencies";
@@ -87,6 +89,26 @@ export default function AddTransactionScreen() {
 
   const originLabel = params.from ?? "Back";
   const { settings, loadSettings } = useSettingsStore();
+
+  const { suggestion, isSuggesting, suggestCategory, clearSuggestion } = useAiCategorize({
+    categories: categories ?? [],
+  });
+
+  const handleNoteChange = (text: string) => {
+    setNote(text);
+    if (!isEditMode && settings.aiEnabled) {
+      suggestCategory(text);
+    } else {
+      clearSuggestion();
+    }
+  };
+
+  const applySuggestedCategory = () => {
+    if (suggestion) {
+      setCategoryId(suggestion.categoryId);
+      clearSuggestion();
+    }
+  };
 
   useEffect(() => {
     loadSettings();
@@ -665,7 +687,7 @@ export default function AddTransactionScreen() {
                 </View>
                 <TextInput
                   value={note}
-                  onChangeText={setNote}
+                  onChangeText={handleNoteChange}
                   placeholder="Add a note..."
                   placeholderTextColor="#9CA3AF"
                   multiline
@@ -673,6 +695,13 @@ export default function AddTransactionScreen() {
                   className="bg-gray-50 dark:bg-gray-800 rounded-xl px-4 py-3 text-base text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-700"
                   style={{ minHeight: 80, textAlignVertical: "top" }}
                 />
+                {suggestion && categoryId !== suggestion.categoryId && (
+                  <AiCategorySuggestion
+                    categoryName={suggestion.categoryName}
+                    isSuggesting={isSuggesting}
+                    onPress={applySuggestedCategory}
+                  />
+                )}
               </View>
             </Card>
           </View>

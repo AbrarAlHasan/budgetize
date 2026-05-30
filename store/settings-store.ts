@@ -1,8 +1,14 @@
-import { logError, logWarn } from '@/utils/logger';
-import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
+import {
+  DEFAULT_AI_ON_DEVICE_MODEL_ID,
+  type AiOnDeviceModelId,
+} from '@/services/ai/model-catalog';
+import type { AiExecutionMode } from '@/services/ai/providers/types';
+import { reloadInferenceProvider } from '@/services/ai/providers/inference-router';
 import { persistentStorage } from '@/storage/mmkv';
+import { logError, logWarn } from '@/utils/logger';
 import * as SecureStore from 'expo-secure-store';
+import { create } from 'zustand';
+import { createJSONStorage, persist } from 'zustand/middleware';
 
 const SETTINGS_STORE_KEY = 'app_settings';
 const OLD_SECURE_STORE_KEY = 'app_settings'; // For migration
@@ -13,6 +19,11 @@ interface AppSettings {
   theme: 'light' | 'dark' | 'auto'; // Theme preference
   exchangeEnabled: boolean; // Exchange feature (money lent/borrowed tracking)
   defaultTagIds: number[]; // Default tags to pre-select when creating transactions
+  aiEnabled: boolean;
+  aiUseCellularDownload: boolean;
+  aiExecutionMode: AiExecutionMode;
+  aiOnDeviceModelId: AiOnDeviceModelId;
+  aiDownloadedModelId: AiOnDeviceModelId | null;
 }
 
 interface SettingsStore {
@@ -26,6 +37,11 @@ interface SettingsStore {
   updateTheme: (theme: 'light' | 'dark' | 'auto') => void;
   updateExchangeEnabled: (enabled: boolean) => void;
   updateDefaultTagIds: (tagIds: number[]) => void;
+  updateAiEnabled: (enabled: boolean) => void;
+  updateAiUseCellularDownload: (enabled: boolean) => void;
+  updateAiExecutionMode: (mode: AiExecutionMode) => void;
+  updateAiOnDeviceModelId: (modelId: AiOnDeviceModelId) => void;
+  updateAiDownloadedModelId: (modelId: AiOnDeviceModelId | null) => void;
 }
 
 const defaultSettings: AppSettings = {
@@ -34,6 +50,11 @@ const defaultSettings: AppSettings = {
   theme: 'auto', // Default to system preference
   exchangeEnabled: true, // Default to enabled
   defaultTagIds: [], // No default tags by default
+  aiEnabled: true,
+  aiUseCellularDownload: false,
+  aiExecutionMode: 'on_device',
+  aiOnDeviceModelId: DEFAULT_AI_ON_DEVICE_MODEL_ID,
+  aiDownloadedModelId: null,
 };
 
 export const useSettingsStore = create<SettingsStore>()(
@@ -139,6 +160,57 @@ export const useSettingsStore = create<SettingsStore>()(
           settings: {
             ...state.settings,
             defaultTagIds: tagIds,
+          },
+        }));
+      },
+
+      updateAiEnabled: (enabled: boolean) => {
+        set((state) => ({
+          settings: {
+            ...state.settings,
+            aiEnabled: enabled,
+          },
+        }));
+      },
+
+      updateAiUseCellularDownload: (enabled: boolean) => {
+        set((state) => ({
+          settings: {
+            ...state.settings,
+            aiUseCellularDownload: enabled,
+          },
+        }));
+      },
+
+      updateAiExecutionMode: (mode: AiExecutionMode) => {
+        set((state) => ({
+          settings: {
+            ...state.settings,
+            aiExecutionMode: mode,
+          },
+        }));
+        reloadInferenceProvider().catch((error) => {
+          logError('Failed to reload AI provider after execution mode change:', error);
+        });
+      },
+
+      updateAiOnDeviceModelId: (modelId: AiOnDeviceModelId) => {
+        set((state) => ({
+          settings: {
+            ...state.settings,
+            aiOnDeviceModelId: modelId,
+          },
+        }));
+        reloadInferenceProvider().catch((error) => {
+          logError('Failed to reload AI provider after model change:', error);
+        });
+      },
+
+      updateAiDownloadedModelId: (modelId: AiOnDeviceModelId | null) => {
+        set((state) => ({
+          settings: {
+            ...state.settings,
+            aiDownloadedModelId: modelId,
           },
         }));
       },

@@ -23,6 +23,7 @@ import { queryClient } from "@/hooks/use-query-client";
 import { useWidgetSync } from "@/hooks/use-widget-sync";
 import { trackInstallation } from "@/services/installation-tracker";
 import { onboardingStorage } from "@/storage/onboarding";
+import { initExecutorchRuntime } from "@/services/ai/executorch-init";
 import { useAuthStore } from "@/store/auth-store";
 import { useSecurityStore } from "@/store/security-store";
 import { useSettingsStore } from "@/store/settings-store";
@@ -34,12 +35,7 @@ import { router } from "expo-router";
 import { colorScheme, useColorScheme } from "nativewind";
 
 import { useCallback, useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  AppState,
-  AppStateStatus,
-  View,
-} from "react-native";
+import { ActivityIndicator, AppState, AppStateStatus, Platform, View } from "react-native";
 
 const navigationIntegration = Sentry.reactNavigationIntegration({
   enableTimeToInitialDisplay: !isRunningInExpoGo(),
@@ -128,6 +124,12 @@ export default Sentry.wrap(function RootLayout() {
     setShowUpdateScreen(false);
     setIsUpdating(false);
     setHasDismissedUpdate(true); // Mark as dismissed to prevent re-showing
+  }, []);
+
+  useEffect(() => {
+    if (Platform.OS !== "web") {
+      initExecutorchRuntime();
+    }
   }, []);
 
   useEffect(() => {

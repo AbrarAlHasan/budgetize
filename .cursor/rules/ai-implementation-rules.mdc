@@ -6,11 +6,13 @@ When generating code, you must strictly adhere to the following rules and archit
 
 1. Core Architecture (Immutable Rules)
 
-Pattern: Text-to-SQL. Do NOT use RAG (Vector Embeddings) or LangChain.
+Pattern: LLM generates SELECT SQL → Query Executor (decrypt) → LLM formats answer. Do NOT use RAG or LangChain. No rule-based intent parser.
 
-Inference Engine: Use llama.rn (llama.cpp bindings) for running GGUF models.
+Inference Engine: Use react-native-executorch (Meta ExecuTorch) for running Hugging Face .pte models.
 
-Model: Target Llama-3.2-1B-Instruct (Quantized: Q4_K_M).
+Model: User-selectable from model-catalog.ts (default: Llama 3.2 1B SpinQuant via models.llm.llama3_2_1b()).
+
+Cloud: Implement cloud inference via services/ai/providers/cloud-provider.ts using the AiInferenceProvider interface.
 
 Database: Local SQLite only expo-sqlite
 
@@ -30,36 +32,35 @@ db/schema/types.ts -> For Database schemas and execution providers.
 
 3. Implementation Rules by Module
 
-A. Model Management (ModelManager.ts)
+A. Model Management (model-manager.ts)
 
 Rule: Check for model existence before initialization.
 
-Rule: If the model is missing, implement a download function using react-native-fs from a HuggingFace URL.
+Rule: If the model is missing, implement a download function using expo-file-system/legacy from a HuggingFace URL.
 
-Rule: Store the model in DocumentDirectoryPath to ensure read/write access.
+Rule: Store models via ExecuTorch Expo resource fetcher (document directory). Wi-Fi only download by default; respect settings.aiUseCellularDownload.
 
 B. Prompt Engineering (prompts.ts)
 
-Rule: The System Prompt must be dynamic. It must strictly follow this template:
+Rule: SQL generation prompt must include schema, current date, decrypted entity id lists, and forbid SUM on encrypted amount columns.
 
-Role: SQLite Generator
-Schema: [Inject Table Schema Here]
-Date: [Inject Current Date YYYY-MM-DD]
-Constraint: Output ONLY raw SQL. Start with SELECT. No Markdown.
-Question: [User Input]
+Rule: Ask Budgetize requires downloaded model — no rule-based fallback.
 
+Rule: Categorize System Prompt outputs JSON: {"categoryId":3,"confidence":0.85}
 
 Rule: Never allow the AI to generate INSERT, UPDATE, or DELETE statements.
 
-C. Inference Service (AiService.ts)
+C. Inference Service (ai-service.ts)
 
-Rule: Initialize the Llama context only once (singleton pattern preferred).
+Rule: Initialize ExecuTorch once via initExecutorchRuntime() in app/_layout.tsx.
 
-Rule: Use a strict stop token (e.g., ; or \n) to cut off the generation immediately after the SQL query is complete.
+Rule: Use LLMModule.fromModelName() via on-device-provider for inference (singleton).
 
-Rule: Implement a "Temperature" of 0.1 to ensure deterministic, mathematical answers.
+Rule: Use temperature 0.1 for intent/categorization; stop at JSON completion.
 
-D. Query Execution (QueryExecutor.ts)
+Rule: Use query-executor for all Ask Budgetize data access after LLM generates SELECT SQL.
+
+D. Query Execution (query-executor.ts)
 
 Rule: Sanitization is Mandatory. Before running any AI-generated string:
 
@@ -72,6 +73,8 @@ If validation fails, throw a specific SecurityError.
 Rule: Execute using readOnly mode if the SQLite library supports it.
 
 Rule: Return raw JSON arrays.
+
+Rule: query-executor is the primary data path for Ask Budgetize (not a fallback).
 
 4. Interaction Guidelines
 
@@ -87,10 +90,12 @@ Generate the code focusing on safety and offline capability.
 
 Use these exact table/column names when writing prompt generators:
 
-Transactions: id, amount, date, note, account_id, category_id
+Transactions: id, amount (encrypted), date, note (encrypted), account_id, category_id, type (expense|income)
 
-Accounts: id, name, type
+Accounts: id, name (encrypted), type (debit|credit|borrowed|lent)
 
-Categories: id, name, type
+Categories: id, name (encrypted)
+
+Tags: id, name (encrypted)
 
 End of Rules.
