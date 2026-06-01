@@ -6,6 +6,7 @@ import {
   useExchange,
   useMarkExchangeAsSettled,
 } from "@/hooks/queries/use-exchanges";
+import { useMarkInteractive } from "@/hooks/use-mark-interactive";
 import { useSettingsStore } from "@/store/settings-store";
 import { getCurrencySymbol } from "@/utils/currencies";
 import { Ionicons } from "@expo/vector-icons";
@@ -23,6 +24,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function ExchangeDetailScreen() {
+  useMarkInteractive();
   const params = useLocalSearchParams<{ id: string; addInstallment?: string }>();
   const exchangeId = parseInt(params.id, 10);
   const shouldOpenInstallmentSheet = params.addInstallment === 'true';

@@ -8,6 +8,7 @@ import { useAccounts } from "@/hooks/queries/use-accounts";
 import { useCategories } from "@/hooks/queries/use-categories";
 import { useTags } from "@/hooks/queries/use-tags";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useMarkInteractive } from "@/hooks/use-mark-interactive";
 import { useSettingsStore } from "@/store/settings-store";
 import { useUIStore, type FilterContext } from "@/store/ui-store";
 import { endOfMonth, format, startOfMonth, subMonths } from "date-fns";
@@ -30,6 +31,7 @@ const resolveFilterContext = (
 };
 
 export default function FiltersScreen() {
+  useMarkInteractive();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
   const quickFiltersScrollRef = useRef<ScrollView>(null);

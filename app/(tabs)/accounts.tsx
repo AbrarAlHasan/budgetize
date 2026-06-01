@@ -3,8 +3,9 @@ import { CreditCardStack } from "@/components/accounts/credit-card-stack";
 import { CreditCardStackSkeleton } from "@/components/skeletons";
 import { useAccountBalances } from "@/hooks/queries/use-account-balances";
 import { useAccounts } from "@/hooks/queries/use-accounts";
+import { useMarkInteractive } from "@/hooks/use-mark-interactive";
 import { Ionicons } from "@expo/vector-icons";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect } from "expo-router/react-navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import React from "react";
@@ -18,6 +19,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function AccountsScreen() {
+  useMarkInteractive();
   const queryClient = useQueryClient();
   const { data: accounts, isLoading } = useAccounts();
   const { data: accountBalances, isLoading: balancesLoading } = useAccountBalances();

@@ -7,10 +7,11 @@ import {
   useDeleteAccount,
   useUpdateAccount,
 } from "@/hooks/queries/use-accounts";
+import { useMarkInteractive } from "@/hooks/use-mark-interactive";
 import { useSettingsStore } from "@/store/settings-store";
 import { getCurrencySymbol } from "@/utils/currencies";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation } from "expo-router/react-navigation";
 import { parseISO } from "date-fns";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
@@ -29,6 +30,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function AddAccountScreen() {
+  useMarkInteractive();
   const navigation = useNavigation();
   const params = useLocalSearchParams<{ id?: string; from?: string }>();
   const accountId = params.id ? parseInt(params.id, 10) : null;

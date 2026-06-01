@@ -4,10 +4,21 @@ import { mmkv } from "@/storage/mmkv";
 import { useNotificationStore } from "@/store/notification-store";
 import { useSettingsStore } from "@/store/settings-store";
 import { log, logError, logWarn } from "@/utils/logger";
+import * as DocumentPicker from "expo-document-picker";
 import { Directory, File, Paths } from "expo-file-system";
+import * as LegacyFileSystem from "expo-file-system/legacy";
 import * as SecureStore from "expo-secure-store";
 import * as Sharing from "expo-sharing";
+import { Platform } from "react-native";
 import { unzip, zip } from "react-native-zip-archive";
+
+const BACKUP_ZIP_MIME_TYPES = [
+  "application/zip",
+  "application/x-zip-compressed",
+  "application/octet-stream",
+] as const;
+
+const IMPORTED_BACKUP_ZIP = "imported-backup.zip";
 
 interface BackupMetadata {
   createdAt: string;
@@ -17,7 +28,7 @@ interface BackupMetadata {
 /**
  * Generic function that creates a backup ZIP file and returns the file location.
  * This function only creates the backup file - it does NOT share it.
- * 
+ *
  * Exports all application data:
  * - SQLite database (with WAL checkpoint)
  * - MMKV storage directory
@@ -110,7 +121,7 @@ export async function createBackupFile(): Promise<string | null> {
     // Save encryption key
     try {
       const encryptionKey = await SecureStore.getItemAsync(
-        ENCRYPTION_KEY_STORAGE_KEY
+        ENCRYPTION_KEY_STORAGE_KEY,
       );
       if (encryptionKey) {
         const keyFilePath = `${tempBackupDir.uri}/encryption_key.txt`;
@@ -212,7 +223,7 @@ export async function createBackupFile(): Promise<string | null> {
 /**
  * Complete backup function that exports all application data and shares it.
  * This function creates a backup and automatically opens the share dialog.
- * 
+ *
  * @deprecated Use createBackupFile() and Sharing.shareAsync() separately for more control
  * @returns Path to the created backup ZIP file, or null on failure
  */
@@ -246,23 +257,80 @@ export async function backupAppData(): Promise<string | null> {
 }
 
 /**
+ * Ensures the backup zip is on a local file:// path that unzip can read.
+ * DocumentPicker (with copyToCacheDirectory) already returns file:// on iOS/Android.
+ * content:// URIs must be copied into app documents first.
+ */
+async function resolveBackupPathForUnzip(
+  sourceUri: string,
+): Promise<string | null> {
+  if (sourceUri.startsWith("file://")) {
+    return sourceUri;
+  }
+
+  const destPath = `${Paths.document.uri}/${IMPORTED_BACKUP_ZIP}`;
+  const destFile = new File(destPath);
+  const sourceFile = new File(sourceUri);
+
+  if (destFile.exists) {
+    destFile.delete();
+  }
+
+  try {
+    await sourceFile.copy(destFile, { overwrite: true });
+    if (destFile.exists) {
+      log("✓ Backup copied for restore:", destPath);
+      return destPath;
+    }
+  } catch (error) {
+    logWarn("⚠ File.copy failed, trying legacy copyAsync:", error);
+  }
+
+  try {
+    await LegacyFileSystem.copyAsync({ from: sourceUri, to: destPath });
+    if (destFile.exists) {
+      log("✓ Backup copied via legacy API for restore:", destPath);
+      return destPath;
+    }
+  } catch (error) {
+    logWarn("⚠ legacy copyAsync failed, trying bytes read:", error);
+  }
+
+  try {
+    const bytes = await sourceFile.bytes();
+    destFile.write(bytes);
+    if (destFile.exists) {
+      log("✓ Backup written for restore:", destPath);
+      return destPath;
+    }
+  } catch (error) {
+    logError("ERROR: Could not read backup file:", sourceUri, error);
+  }
+
+  return null;
+}
+
+/**
  * Picks a backup file using the system file picker
  *
  * @returns Path to the selected backup file, or null if cancelled/failed
  */
 export async function pickBackupFile(): Promise<string | null> {
   try {
-    // Use File.pickFileAsync() from the new FileSystem API
-    const fileResult = await File.pickFileAsync();
+    const result = await DocumentPicker.getDocumentAsync({
+      type:
+        Platform.OS === "android"
+          ? [...BACKUP_ZIP_MIME_TYPES, "*/*"]
+          : [...BACKUP_ZIP_MIME_TYPES],
+      copyToCacheDirectory: true,
+    });
 
-    // Handle both single file and array of files
-    const file = Array.isArray(fileResult) ? fileResult[0] : fileResult;
-
-    if (file && file.exists) {
-      log("✓ Backup file selected:", file.uri);
-      return file.uri;
+    if (result.canceled || !result.assets?.[0]?.uri) {
+      return null;
     }
-    return null;
+
+    log("✓ Backup file selected:", result.assets[0].uri);
+    return result.assets[0].uri;
   } catch (error) {
     logError("ERROR PICKING BACKUP FILE:", error);
     return null;
@@ -301,11 +369,11 @@ export async function restoreAppData(backupZipPath?: string): Promise<boolean> {
       }
     }
 
-    const backupFile = new File(backupPath);
-    if (!backupFile.exists) {
-      logError("ERROR: Backup file does not exist:", backupPath);
+    const resolvedBackupPath = await resolveBackupPathForUnzip(backupPath);
+    if (!resolvedBackupPath) {
       return false;
     }
+    backupPath = resolvedBackupPath;
 
     // 2. Create temporary restore directory
     tempRestoreDir = new Directory(uri, "restore-temp");
@@ -396,10 +464,7 @@ export async function restoreAppData(backupZipPath?: string): Promise<boolean> {
         try {
           tempRestoreMmkvDir.delete();
         } catch (error) {
-          logWarn(
-            "⚠ Failed to delete existing temp restore folder:",
-            error
-          );
+          logWarn("⚠ Failed to delete existing temp restore folder:", error);
         }
       }
 
@@ -465,9 +530,7 @@ export async function restoreAppData(backupZipPath?: string): Promise<boolean> {
             }
           }
         }
-        log(
-          `✓ MMKV files copied to temporary folder (${filesCopied} files)`
-        );
+        log(`✓ MMKV files copied to temporary folder (${filesCopied} files)`);
 
         // Delete existing MMKV files/directories in mmkv/ folder
         // MMKV stores files like: mmkv/moneyManagerStorage, mmkv/moneyManagerStorage.crc
@@ -484,7 +547,7 @@ export async function restoreAppData(backupZipPath?: string): Promise<boolean> {
             } catch (error) {
               logWarn(
                 `⚠ Failed to delete existing MMKV file ${existingItem.name}:`,
-                error
+                error,
               );
             }
           } else if (
@@ -493,13 +556,11 @@ export async function restoreAppData(backupZipPath?: string): Promise<boolean> {
           ) {
             try {
               existingItem.delete();
-              log(
-                `✓ Deleted existing MMKV directory: ${existingItem.name}`
-              );
+              log(`✓ Deleted existing MMKV directory: ${existingItem.name}`);
             } catch (error) {
               logWarn(
                 `⚠ Failed to delete existing MMKV directory ${existingItem.name}:`,
-                error
+                error,
               );
             }
           }
@@ -548,10 +609,7 @@ export async function restoreAppData(backupZipPath?: string): Promise<boolean> {
             tempRestoreMmkvDir.delete();
           }
         } catch (cleanupError) {
-          logWarn(
-            "⚠ Failed to cleanup temp folder on error:",
-            cleanupError
-          );
+          logWarn("⚠ Failed to cleanup temp folder on error:", cleanupError);
         }
         logWarn("⚠ Failed to restore MMKV storage:", error);
         throw error;
@@ -575,7 +633,7 @@ export async function restoreAppData(backupZipPath?: string): Promise<boolean> {
       try {
         await SecureStore.setItemAsync(
           ENCRYPTION_KEY_STORAGE_KEY,
-          encryptionKey
+          encryptionKey,
         );
         // Clear the encryption key cache so the newly restored key is used
         clearEncryptionKeyCache();
@@ -598,7 +656,7 @@ export async function restoreAppData(backupZipPath?: string): Promise<boolean> {
         // The exported data is already in Zustand persist format: { state: {...}, version: 0 }
         // Restore directly to MMKV
         mmkv.set(SETTINGS_STORE_KEY, appSettingsJson);
-        
+
         // Parse and extract the settings to update Zustand store directly
         const zustandPersistedData = JSON.parse(appSettingsJson);
         if (zustandPersistedData?.state?.settings) {
@@ -645,7 +703,7 @@ export async function restoreAppData(backupZipPath?: string): Promise<boolean> {
         // The exported data is already in Zustand persist format: { state: {...}, version: 0 }
         // Restore directly to MMKV
         mmkv.set(NOTIFICATION_STORE_KEY, notificationPrefsJson);
-        
+
         // Parse and extract the preferences to update Zustand store directly
         const zustandPersistedData = JSON.parse(notificationPrefsJson);
         if (zustandPersistedData?.state?.preferences) {
@@ -672,7 +730,9 @@ export async function restoreAppData(backupZipPath?: string): Promise<boolean> {
             version: 0,
           };
           mmkv.set(NOTIFICATION_STORE_KEY, JSON.stringify(zustandState));
-          log("✓ Notification preferences restored (legacy format) to MMKV and Zustand");
+          log(
+            "✓ Notification preferences restored (legacy format) to MMKV and Zustand",
+          );
         }
       } catch (error) {
         logWarn("⚠ Failed to restore notification preferences:", error);

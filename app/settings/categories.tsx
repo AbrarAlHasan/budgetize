@@ -4,11 +4,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useCategories, useDeleteCategory } from '@/hooks/queries/use-categories';
+import { useMarkInteractive } from '@/hooks/use-mark-interactive';
 import { Card } from '@/components/ui/card';
 import { AddCategoryBottomSheet, AddCategoryBottomSheetRef } from '@/components/add-category-bottom-sheet';
 import { EditCategoryBottomSheet, EditCategoryBottomSheetRef } from '@/components/edit-category-bottom-sheet';
 
 export default function CategoriesManagementScreen() {
+  useMarkInteractive();
   const { data: categories, isLoading } = useCategories();
   const deleteCategory = useDeleteCategory();
   const addCategoryBottomSheetRef = useRef<AddCategoryBottomSheetRef>(null);

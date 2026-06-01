@@ -2,9 +2,10 @@ import {
   DarkTheme,
   DefaultTheme,
   ThemeProvider,
-} from "@react-navigation/native";
+} from "expo-router/react-navigation";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { Stack, useNavigationContainerRef } from "expo-router";
+import { Observe, ObserveRoot, useObserve } from "expo-observe";
+import { Stack, useNavigationContainerRef, router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-reanimated";
@@ -30,7 +31,6 @@ import { logError } from "@/utils/logger";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import * as Sentry from "@sentry/react-native";
 import { isRunningInExpoGo } from "expo";
-import { router } from "expo-router";
 import { colorScheme, useColorScheme } from "nativewind";
 
 import { useCallback, useEffect, useState } from "react";
@@ -45,6 +45,10 @@ const navigationIntegration = Sentry.reactNavigationIntegration({
   enableTimeToInitialDisplay: !isRunningInExpoGo(),
 });
 
+Observe.configure({
+  integrations: { "expo-router": true },
+});
+
 Sentry.init({
   dsn: "https://60311b20b7888ddc2048ae7881323d91@o4505251515465728.ingest.us.sentry.io/4510549092401152",
 
@@ -52,21 +56,28 @@ Sentry.init({
   // For more information, visit: https://docs.sentry.io/platforms/react-native/data-management/data-collected/
   sendDefaultPii: true,
 
-  // Configure Session Replay
-  replaysSessionSampleRate: 0.1,
-  replaysOnErrorSampleRate: 1,
-  integrations: [Sentry.mobileReplayIntegration()],
-  enableNativeFramesTracking: !isRunningInExpoGo(),
-  tracesSampleRate: 1.0,
+  // Keep dev console usable: Session Replay + native debug logging are very noisy locally.
+  replaysSessionSampleRate: __DEV__ ? 0 : 0.1,
+  replaysOnErrorSampleRate: __DEV__ ? 0 : 1,
+  integrations: __DEV__ ? [] : [Sentry.mobileReplayIntegration()],
+  enableNativeFramesTracking: !__DEV__ && !isRunningInExpoGo(),
+  tracesSampleRate: __DEV__ ? 0 : 1.0,
 
-  debug: __DEV__,
+  debug: false,
+  beforeBreadcrumb(breadcrumb) {
+    if (breadcrumb.category === "console" && typeof breadcrumb.message === "string") {
+      breadcrumb.message = breadcrumb.message.replace(/\u001b\[[0-9;]*m/g, "");
+    }
+    return breadcrumb;
+  },
 });
 
 export const unstable_settings = {
   anchor: "(tabs)",
 };
 
-export default Sentry.wrap(function RootLayout() {
+function RootLayout() {
+  const { markInteractive } = useObserve();
   const nativeWindColorScheme = useColorScheme();
   const { loadSettings, settings } = useSettingsStore();
   const { isLockEnabled, isAuthenticated, setAuthenticated } =
@@ -242,6 +253,36 @@ export default Sentry.wrap(function RootLayout() {
     }
   }, [ref]);
 
+  // EAS Observe: mark each startup entry surface interactive (onboarding, lock, update, main).
+  useEffect(() => {
+    if (!isReady || !themeSynced) {
+      return;
+    }
+
+    if (showOnboarding || showUpdateScreen) {
+      markInteractive();
+      return;
+    }
+
+    if (isLockEnabled && !isAuthenticated && appState === "active") {
+      markInteractive();
+      return;
+    }
+
+    if (!isLockEnabled || isAuthenticated) {
+      markInteractive();
+    }
+  }, [
+    isReady,
+    themeSynced,
+    showOnboarding,
+    showUpdateScreen,
+    isLockEnabled,
+    isAuthenticated,
+    appState,
+    markInteractive,
+  ]);
+
   const handleOnboardingComplete = (navigateToCloudBackup?: boolean) => {
     onboardingStorage.setCompleted();
     setShowOnboarding(false);
@@ -358,4 +399,6 @@ export default Sentry.wrap(function RootLayout() {
       <SplashOverlay />
     </View>
   );
-});
+}
+
+export default ObserveRoot.wrap(Sentry.wrap(RootLayout));

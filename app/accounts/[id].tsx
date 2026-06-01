@@ -1,7 +1,9 @@
+import { useMarkInteractive } from "@/hooks/use-mark-interactive";
 import { useEffect } from "react";
 import { useLocalSearchParams, router } from "expo-router";
 
 export default function AccountDetailScreen() {
+  useMarkInteractive();
   const { id, from } = useLocalSearchParams<{ id: string; from?: string }>();
 
   useEffect(() => {
