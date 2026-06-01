@@ -2,6 +2,7 @@ import { ExchangeItem } from "@/components/exchange-item";
 import { Card } from "@/components/ui/card";
 import { ExchangeStatus, ExchangeType } from "@/db/schema/types";
 import { useExchanges, usePendingExchangesSummary } from "@/hooks/queries/use-exchanges";
+import { useMarkInteractive } from "@/hooks/use-mark-interactive";
 import { useSettingsStore } from "@/store/settings-store";
 import { cn } from "@/utils/cn";
 import { getCurrencySymbol } from "@/utils/currencies";
@@ -22,6 +23,7 @@ type FilterType = "all" | "lent" | "borrowed";
 type FilterStatus = "all" | "pending" | "settled";
 
 export default function ExchangesScreen() {
+  useMarkInteractive();
   const [filterType, setFilterType] = useState<FilterType>("all");
   const [filterStatus, setFilterStatus] = useState<FilterStatus>("all");
   const { settings } = useSettingsStore();

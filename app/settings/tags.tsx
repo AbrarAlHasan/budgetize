@@ -4,11 +4,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTags, useDeleteTag } from '@/hooks/queries/use-tags';
+import { useMarkInteractive } from '@/hooks/use-mark-interactive';
 import { Card } from '@/components/ui/card';
 import { AddTagBottomSheet, AddTagBottomSheetRef } from '@/components/add-tag-bottom-sheet';
 import { EditTagBottomSheet, EditTagBottomSheetRef } from '@/components/edit-tag-bottom-sheet';
 
 export default function TagsManagementScreen() {
+  useMarkInteractive();
   const { data: tags, isLoading } = useTags();
   const deleteTag = useDeleteTag();
   const addTagBottomSheetRef = useRef<AddTagBottomSheetRef>(null);

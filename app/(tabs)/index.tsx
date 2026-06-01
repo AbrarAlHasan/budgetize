@@ -8,6 +8,7 @@ import { TransactionItem } from "@/components/transaction-item";
 import { Card } from "@/components/ui/card";
 import { useAccounts } from "@/hooks/queries/use-accounts";
 import { useDashboardData } from "@/hooks/queries/use-dashboard";
+import { useMarkInteractive } from "@/hooks/use-mark-interactive";
 
 import { categoryRepository } from "@/repositories/category.repository";
 import { tagRepository } from "@/repositories/tag.repository";
@@ -36,6 +37,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function DashboardScreen() {
+  useMarkInteractive();
   const queryClient = useQueryClient();
   const filters = useUIStore((state) => state.filters.dashboard);
   const setDateRangeFilter = useUIStore((state) => state.setDateRangeFilter);

@@ -12,6 +12,7 @@ import { useAccounts } from '@/hooks/queries/use-accounts';
 import { useCategories } from '@/hooks/queries/use-categories';
 import { useTags } from '@/hooks/queries/use-tags';
 import { useCreateTransaction } from '@/hooks/queries/use-transactions';
+import { useMarkInteractive } from '@/hooks/use-mark-interactive';
 import { useSettingsStore } from '@/store/settings-store';
 import {
   ParsedTransaction,
@@ -38,6 +39,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function BankImportScreen() {
+  useMarkInteractive();
   const params = useLocalSearchParams<{ fileUri: string; bank: SupportedBank }>();
   const queryClient = useQueryClient();
   const { settings } = useSettingsStore();

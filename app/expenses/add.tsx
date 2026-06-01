@@ -11,11 +11,12 @@ import { useAccounts } from "@/hooks/queries/use-accounts";
 import { useCategories } from "@/hooks/queries/use-categories";
 import { useTags, useTagsForTransaction } from "@/hooks/queries/use-tags";
 import { useCreateTransaction, useDeleteTransaction, useTransaction, useUpdateTransaction } from "@/hooks/queries/use-transactions";
+import { useMarkInteractive } from "@/hooks/use-mark-interactive";
 import { transactionTagRepository } from "@/repositories/transaction-tag.repository";
 import { useSettingsStore } from "@/store/settings-store";
 import { getCurrencySymbol } from "@/utils/currencies";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation } from "expo-router/react-navigation";
 import { format, parseISO } from "date-fns";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
@@ -32,6 +33,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function AddTransactionScreen() {
+  useMarkInteractive();
   const navigation = useNavigation();
   const params = useLocalSearchParams<{ 
     id?: string; 

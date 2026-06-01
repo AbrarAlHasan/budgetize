@@ -7,6 +7,7 @@ import {
   useExchange,
   useUpdateExchange,
 } from "@/hooks/queries/use-exchanges";
+import { useMarkInteractive } from "@/hooks/use-mark-interactive";
 import { exchangeReminderService } from "@/services/exchange-reminder-service";
 import { useSettingsStore } from "@/store/settings-store";
 import { getCurrencySymbol } from "@/utils/currencies";
@@ -28,6 +29,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function AddExchangeScreen() {
+  useMarkInteractive();
   const params = useLocalSearchParams<{ id?: string; from?: string }>();
   const exchangeId = params.id ? parseInt(params.id, 10) : null;
   const isEditMode = !!exchangeId;

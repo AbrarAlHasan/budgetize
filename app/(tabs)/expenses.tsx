@@ -17,6 +17,7 @@ import {
   useTransactionsPaginated,
 } from '@/hooks/queries/use-transactions';
 import { useDebouncedSearch } from '@/hooks/use-debounced-search';
+import { useMarkInteractive } from '@/hooks/use-mark-interactive';
 import { TransactionSearchBar } from '@/components/expenses/transaction-search-bar';
 import { ExpensesInlineTotal } from '@/components/expenses/expenses-inline-total';
 import { ExpensesListHeader } from '@/components/expenses/expenses-list-header';
@@ -48,6 +49,7 @@ type DecryptedTransaction = Omit<
 const LIST_BOTTOM_PADDING = 24;
 
 export default function ExpensesScreen() {
+  useMarkInteractive();
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const filters = useUIStore((state) => state.filters.expenses);

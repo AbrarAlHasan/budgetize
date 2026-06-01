@@ -17,6 +17,7 @@ import {
   useReportSummary,
   useTagReport
 } from '@/hooks/queries/use-reports';
+import { useMarkInteractive } from '@/hooks/use-mark-interactive';
 import { useSettingsStore } from '@/store/settings-store';
 import { useUIStore } from '@/store/ui-store';
 import { getCurrencySymbol } from '@/utils/currencies';
@@ -29,6 +30,7 @@ import { RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function ReportsScreen() {
+  useMarkInteractive();
   const queryClient = useQueryClient();
   const filters = useUIStore((state) => state.filters.reports);
   const setDateRangeFilter = useUIStore((state) => state.setDateRangeFilter);
