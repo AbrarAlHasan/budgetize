@@ -25,6 +25,51 @@ interface BackupMetadata {
   version: string;
 }
 
+export type BackupCreationStep =
+  | "wal_checkpoint"
+  | "prepare_temp_directory"
+  | "copy_database"
+  | "copy_mmkv"
+  | "read_encryption_key"
+  | "read_app_settings"
+  | "read_notification_preferences"
+  | "write_metadata"
+  | "zip"
+  | "cleanup"
+  | "unknown";
+
+export interface CreateBackupFileResult {
+  path: string | null;
+  error: Error | null;
+  step: BackupCreationStep | null;
+}
+
+function normalizeBackupError(error: unknown): Error {
+  if (error instanceof Error) {
+    return error;
+  }
+  return new Error(String(error));
+}
+
+function failBackup(
+  step: BackupCreationStep,
+  error: unknown,
+  tempBackupDir: Directory | null,
+): CreateBackupFileResult {
+  const normalizedError = normalizeBackupError(error);
+  logError(`ERROR IN BACKUP at step ${step}:`, normalizedError);
+
+  if (tempBackupDir?.exists) {
+    try {
+      tempBackupDir.delete();
+    } catch (cleanupError) {
+      logError("Failed to clean up temp directory:", cleanupError);
+    }
+  }
+
+  return { path: null, error: normalizedError, step };
+}
+
 /**
  * Generic function that creates a backup ZIP file and returns the file location.
  * This function only creates the backup file - it does NOT share it.
@@ -34,17 +79,17 @@ interface BackupMetadata {
  * - MMKV storage directory
  * - Encryption key from SecureStore
  * - Metadata (timestamp, version)
- *
- * @returns Path to the created backup ZIP file, or null on failure
  */
-export async function createBackupFile(): Promise<string | null> {
+export async function createBackupFile(): Promise<CreateBackupFileResult> {
   let tempBackupDir: Directory | null = null;
+  let step: BackupCreationStep = "prepare_temp_directory";
 
   try {
     const uri = Paths.document.uri;
     log("Starting backup process...");
 
     // 1. Force WAL checkpoint to ensure all data is in main database file
+    step = "wal_checkpoint";
     try {
       const db = await getDatabase();
       await db.execAsync("PRAGMA wal_checkpoint(FULL)");
@@ -55,6 +100,7 @@ export async function createBackupFile(): Promise<string | null> {
     }
 
     // 2. Create temporary backup directory
+    step = "prepare_temp_directory";
     tempBackupDir = new Directory(uri, "backup-temp");
     if (tempBackupDir.exists) {
       try {
@@ -67,6 +113,7 @@ export async function createBackupFile(): Promise<string | null> {
     log("✓ Temporary backup directory created");
 
     // 3. Copy SQLite database file
+    step = "copy_database";
     const dbPath = `${uri}/SQLite/budgetize.db`;
     const sourceDbFile = new File(dbPath);
 
@@ -80,6 +127,7 @@ export async function createBackupFile(): Promise<string | null> {
     }
 
     // 4. Copy MMKV storage directory
+    step = "copy_mmkv";
     // MMKV typically stores files in platform-specific locations
     // On Android: /data/data/[package]/files/mmkv/[storageId]
     // On iOS: [App Documents]/mmkv/[storageId]
@@ -119,6 +167,7 @@ export async function createBackupFile(): Promise<string | null> {
     const NOTIFICATION_STORE_KEY = "notification_preferences";
 
     // Save encryption key
+    step = "read_encryption_key";
     try {
       const encryptionKey = await SecureStore.getItemAsync(
         ENCRYPTION_KEY_STORAGE_KEY,
@@ -136,6 +185,7 @@ export async function createBackupFile(): Promise<string | null> {
     }
 
     // Save app settings (theme, currency, income calculation) from MMKV
+    step = "read_app_settings";
     try {
       const appSettings = mmkv.getString(SETTINGS_STORE_KEY);
       if (appSettings) {
@@ -151,6 +201,7 @@ export async function createBackupFile(): Promise<string | null> {
     }
 
     // Save notification preferences from MMKV
+    step = "read_notification_preferences";
     try {
       const notificationPrefs = mmkv.getString(NOTIFICATION_STORE_KEY);
       if (notificationPrefs) {
@@ -168,6 +219,7 @@ export async function createBackupFile(): Promise<string | null> {
     // Note: Device ID is NOT backed up as it's device-specific and should not be migrated
 
     // 6. Create metadata.json
+    step = "write_metadata";
     const metadata: BackupMetadata = {
       createdAt: new Date().toISOString(),
       version: "1.0",
@@ -189,10 +241,12 @@ export async function createBackupFile(): Promise<string | null> {
     const backupZipPath = `${uri}/${backupFileName}`;
 
     // 8. Zip the backup-temp directory
+    step = "zip";
     await zip(tempBackupDir.uri, backupZipPath);
     log("✓ Backup ZIP created:", backupZipPath);
 
     // 9. Clean up temporary directory
+    step = "cleanup";
     if (tempBackupDir.exists) {
       try {
         tempBackupDir.delete();
@@ -203,20 +257,9 @@ export async function createBackupFile(): Promise<string | null> {
     }
 
     log("✓ Backup file created successfully");
-    return backupZipPath;
+    return { path: backupZipPath, error: null, step: null };
   } catch (error) {
-    logError("ERROR IN BACKUP:", error);
-
-    // Clean up on error
-    if (tempBackupDir?.exists) {
-      try {
-        tempBackupDir.delete();
-      } catch (cleanupError) {
-        logError("Failed to clean up temp directory:", cleanupError);
-      }
-    }
-
-    return null;
+    return failBackup(step, error, tempBackupDir);
   }
 }
 
@@ -230,7 +273,7 @@ export async function createBackupFile(): Promise<string | null> {
 export async function backupAppData(): Promise<string | null> {
   try {
     // 1. Create the backup file
-    const backupPath = await createBackupFile();
+    const { path: backupPath } = await createBackupFile();
     if (!backupPath) {
       return null;
     }

@@ -374,11 +374,12 @@ export default function SettingsScreen() {
     try {
       setIsBackingUp(true);
       // 1. Create the backup file
-      const zipPath = await createBackupFile();
+      const { path: zipPath, error: backupError } = await createBackupFile();
       if (!zipPath) {
         alert(
           "Backup Failed",
-          "Could not create the backup. Please try again.",
+          backupError?.message ??
+            "Could not create the backup. Please try again.",
         );
         return;
       }
@@ -1623,7 +1624,8 @@ export default function SettingsScreen() {
                         if (error || !success) {
                           alert(
                             "Error",
-                            "Failed to upload backup to cloud. Please try again.",
+                            error?.message ??
+                              "Failed to upload backup to cloud. Please try again.",
                           );
                           return;
                         }

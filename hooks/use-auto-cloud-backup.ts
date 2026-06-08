@@ -15,7 +15,6 @@ import { AppState, AppStateStatus } from 'react-native';
  */
 export function useAutoCloudBackup(): void {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  const isRunningRef = useRef(false);
   const hasRunForegroundCatchUpRef = useRef(false);
 
   useEffect(() => {
@@ -38,18 +37,8 @@ export function useAutoCloudBackup(): void {
       if (!isAuthenticated || !cloudBackupScheduleStorage.isAutoBackupEnabled()) {
         return;
       }
-      if (isRunningRef.current) {
-        return;
-      }
 
-      isRunningRef.current = true;
-      try {
-        await executeAutoCloudBackupIfDue();
-      } catch (error) {
-        reportAutoBackupError(error, { phase: 'initial_catch_up' });
-      } finally {
-        isRunningRef.current = false;
-      }
+      await executeAutoCloudBackupIfDue();
     };
 
     if (!hasRunForegroundCatchUpRef.current && isAuthenticated) {
@@ -74,18 +63,10 @@ export function useAutoCloudBackup(): void {
         if (!isAuthenticated || !cloudBackupScheduleStorage.isAutoBackupEnabled()) {
           return;
         }
-        if (isRunningRef.current) {
-          return;
-        }
 
-        isRunningRef.current = true;
-        executeAutoCloudBackupIfDue()
-          .catch((error) => {
-            reportAutoBackupError(error, { phase: 'foreground_catch_up' });
-          })
-          .finally(() => {
-            isRunningRef.current = false;
-          });
+        executeAutoCloudBackupIfDue().catch((error) => {
+          reportAutoBackupError(error, { phase: 'foreground_catch_up' });
+        });
       }
     );
 

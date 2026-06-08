@@ -7,6 +7,9 @@ export interface AutoBackupSentryContext {
   phase: string;
   skippedReason?: string;
   userId?: string;
+  appState?: string;
+  backupStep?: string;
+  isCatchUp?: boolean;
   [key: string]: string | number | boolean | undefined | null;
 }
 
@@ -49,6 +52,12 @@ export function reportAutoBackupError(
       if (context.skippedReason) {
         scope.setTag('skipped_reason', context.skippedReason);
       }
+      if (context.backupStep) {
+        scope.setTag('backup_step', String(context.backupStep));
+      }
+      if (context.appState) {
+        scope.setTag('app_state', String(context.appState));
+      }
 
       Object.entries(context).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
@@ -60,7 +69,12 @@ export function reportAutoBackupError(
         scope.setExtra('stack', err.stack);
       }
 
-      scope.setFingerprint(['auto-backup', context.phase, err.message]);
+      scope.setFingerprint([
+        'auto-backup',
+        context.phase,
+        String(context.backupStep ?? 'unknown_step'),
+        err.message,
+      ]);
       Sentry.captureException(err);
     });
   } catch {

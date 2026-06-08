@@ -1,32 +1,47 @@
-import { createBackupFile, restoreAppData } from './backup';
+import { createBackupFile, restoreAppData, type BackupCreationStep } from './backup';
 import { uploadBackup, listBackups, downloadBackup, cleanupOldBackups, CloudBackup } from '@/services/supabase/storage';
 import { Paths } from 'expo-file-system';
 import { logError } from '@/utils/logger';
 
+export interface UploadBackupToCloudResult {
+  error: Error | null;
+  success: boolean;
+  backupStep: BackupCreationStep | null;
+}
+
 /**
  * Upload local backup to cloud
  */
-export async function uploadBackupToCloud(userId: string): Promise<{ error: Error | null; success: boolean }> {
+export async function uploadBackupToCloud(userId: string): Promise<UploadBackupToCloudResult> {
   try {
     // 1. Create local backup file (without sharing)
-    const localBackupPath = await createBackupFile();
+    const { path: localBackupPath, error: backupError, step: backupStep } =
+      await createBackupFile();
     if (!localBackupPath) {
-      return { error: new Error('Failed to create local backup'), success: false };
+      return {
+        error: backupError ?? new Error('Failed to create local backup'),
+        success: false,
+        backupStep,
+      };
     }
 
     // 2. Upload to Supabase Storage
     const { error: uploadError, path } = await uploadBackup(localBackupPath, userId);
     if (uploadError || !path) {
-      return { error: uploadError || new Error('Failed to upload backup'), success: false };
+      return {
+        error: uploadError || new Error('Failed to upload backup'),
+        success: false,
+        backupStep: null,
+      };
     }
 
     // 3. Clean up old backups (keep only latest 3)
     await cleanupOldBackups(userId);
 
-    return { error: null, success: true };
+    return { error: null, success: true, backupStep: null };
   } catch (error) {
     logError('Unexpected error uploading backup to cloud:', error);
-    return { error: error as Error, success: false };
+    return { error: error as Error, success: false, backupStep: null };
   }
 }
 
@@ -74,4 +89,3 @@ export async function deleteCloudBackup(backupPath: string): Promise<{ error: Er
   const { deleteBackup } = await import('@/services/supabase/storage');
   return deleteBackup(backupPath);
 }
-

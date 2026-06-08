@@ -12,7 +12,11 @@ export const CLOUD_BACKUP_BACKGROUND_INTERVAL_MINUTES = 60;
 TaskManager.defineTask(CLOUD_BACKUP_BACKGROUND_TASK, async () => {
   try {
     const result = await executeAutoCloudBackupIfDue();
-    if (result.ran && !result.success) {
+    if (!result.ran) {
+      // Skipped (background, not due, already running) — not a task failure.
+      return BackgroundTask.BackgroundTaskResult.Success;
+    }
+    if (!result.success) {
       return BackgroundTask.BackgroundTaskResult.Failed;
     }
     return BackgroundTask.BackgroundTaskResult.Success;

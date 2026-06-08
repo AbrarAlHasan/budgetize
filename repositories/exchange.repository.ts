@@ -22,30 +22,7 @@ export class ExchangeRepository extends BaseRepository<Exchange> {
     const encryptedNote = input.note ? await encrypt(input.note) : null;
     const status = input.status || "pending";
 
-    let db = await getDatabase();
-    
-    // Verify exchanges table exists before attempting to insert
-    try {
-      const tableCheck = await db.getAllAsync<{ name: string }>(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name='exchanges' LIMIT 1"
-      );
-      if (tableCheck.length === 0) {
-        logError('Exchanges table not found! Attempting to re-run migrations...');
-        const { reinitializeDatabase } = await import('@/db/sqlite/db');
-        db = await reinitializeDatabase();
-        
-        // Verify again after re-initialization
-        const verifyCheck = await db.getAllAsync<{ name: string }>(
-          "SELECT name FROM sqlite_master WHERE type='table' AND name='exchanges' LIMIT 1"
-        );
-        if (verifyCheck.length === 0) {
-          throw new Error('Exchanges table still not found after re-initialization. Please restart the app.');
-        }
-      }
-    } catch (error) {
-      logError('Error verifying exchanges table:', error);
-      throw new Error('Failed to verify exchanges table exists. Please restart the app.');
-    }
+    const db = await getDatabase();
     await db.execAsync("BEGIN TRANSACTION");
 
     try {
