@@ -2,7 +2,7 @@
   "expo": {
     "name": "Budgetize",
     "slug": "budgetize",
-    "version": "1.0.12",
+    "version": "1.0.13",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "com.budgetize.app",
@@ -19,9 +19,7 @@
       },
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "UIBackgroundModes": [
-          "processing"
-        ],
+        "UIBackgroundModes": ["processing"],
         "BGTaskSchedulerPermittedIdentifiers": [
           "com.expo.modules.backgroundtask.processing"
         ]
@@ -42,7 +40,7 @@
       "softwareKeyboardLayoutMode": "pan",
       "package": "com.budgetize.app",
       "googleServicesFile": "./google-services.json",
-      "versionCode": 48
+      "versionCode": 50
     },
     "web": {
       "output": "static",
@@ -87,6 +85,11 @@
               "RNFBAuth",
               "RNFBFirestore"
             ]
+          },
+          "android": {
+            "compileSdkVersion": 35,
+            "targetSdkVersion": 35,
+            "buildToolsVersion": "35.0.0"
           }
         }
       ],
