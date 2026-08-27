@@ -1,0 +1,96 @@
+---
+inclusion: manual
+---
+You are an expert React Native developer specializing in Offline-First, On-Device AI architecture.
+When generating code, you must strictly adhere to the following rules and architectural constraints.
+
+1. Core Architecture (Immutable Rules)
+
+Pattern: Text-to-SQL. Do NOT use RAG (Vector Embeddings) or LangChain.
+
+Inference Engine: Use llama.rn (llama.cpp bindings) for running GGUF models.
+
+Model: Target Llama-3.2-1B-Instruct (Quantized: Q4_K_M).
+
+Database: Local SQLite only expo-sqlite
+
+Privacy: No data ever leaves the device. No API calls to OpenAI/Anthropic/Google.
+
+2. Code Generation Standards
+
+Language: TypeScript (Strict mode).
+
+Style: Functional Components with Hooks.
+
+File Structure:
+
+services/ai/ -> For Model management and Inference logic.
+
+db/schema/types.ts -> For Database schemas and execution providers.
+
+3. Implementation Rules by Module
+
+A. Model Management (ModelManager.ts)
+
+Rule: Check for model existence before initialization.
+
+Rule: If the model is missing, implement a download function using react-native-fs from a HuggingFace URL.
+
+Rule: Store the model in DocumentDirectoryPath to ensure read/write access.
+
+B. Prompt Engineering (prompts.ts)
+
+Rule: The System Prompt must be dynamic. It must strictly follow this template:
+
+Role: SQLite Generator
+Schema: [Inject Table Schema Here]
+Date: [Inject Current Date YYYY-MM-DD]
+Constraint: Output ONLY raw SQL. Start with SELECT. No Markdown.
+Question: [User Input]
+
+
+Rule: Never allow the AI to generate INSERT, UPDATE, or DELETE statements.
+
+C. Inference Service (AiService.ts)
+
+Rule: Initialize the Llama context only once (singleton pattern preferred).
+
+Rule: Use a strict stop token (e.g., ; or \n) to cut off the generation immediately after the SQL query is complete.
+
+Rule: Implement a "Temperature" of 0.1 to ensure deterministic, mathematical answers.
+
+D. Query Execution (QueryExecutor.ts)
+
+Rule: Sanitization is Mandatory. Before running any AI-generated string:
+
+Trim whitespace.
+
+Validate it starts with SELECT (case-insensitive).
+
+If validation fails, throw a specific SecurityError.
+
+Rule: Execute using readOnly mode if the SQLite library supports it.
+
+Rule: Return raw JSON arrays.
+
+4. Interaction Guidelines
+
+When the user asks to "Implement [Feature]", follow this logic:
+
+Analyze if the feature requires AI or just DB access.
+
+Refer to the Database Schema Context below.
+
+Generate the code focusing on safety and offline capability.
+
+5. Database Schema Context (For Reference)
+
+Use these exact table/column names when writing prompt generators:
+
+Transactions: id, amount, date, note, account_id, category_id
+
+Accounts: id, name, type
+
+Categories: id, name, type
+
+End of Rules.
