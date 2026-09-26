@@ -3,6 +3,7 @@ import {
   AddTagBottomSheetRef,
 } from "@/components/add-tag-bottom-sheet";
 import { DatePicker } from "@/components/date-picker";
+import { ExtractFromImageBar } from "@/components/extract-from-image-bar";
 import { TagChip } from "@/components/tag-chip";
 import { BottomSheetSelect } from "@/components/ui/bottom-sheet-select";
 import { Card } from "@/components/ui/card";
@@ -10,33 +11,43 @@ import { TransactionType } from "@/db/schema/types";
 import { useAccounts } from "@/hooks/queries/use-accounts";
 import { useCategories } from "@/hooks/queries/use-categories";
 import { useTags, useTagsForTransaction } from "@/hooks/queries/use-tags";
-import { useCreateTransaction, useDeleteTransaction, useTransaction, useUpdateTransaction } from "@/hooks/queries/use-transactions";
+import {
+  useCreateTransaction,
+  useDeleteTransaction,
+  useTransaction,
+  useUpdateTransaction,
+} from "@/hooks/queries/use-transactions";
+import { useUpsertUpiPreference } from "@/hooks/queries/use-upi-preferences";
+import { useImageTransactionExtractor } from "@/hooks/use-image-transaction-extractor";
 import { useMarkInteractive } from "@/hooks/use-mark-interactive";
 import { transactionTagRepository } from "@/repositories/transaction-tag.repository";
+import { upiPreferenceRepository } from "@/repositories/upi-preference.repository";
 import { useSettingsStore } from "@/store/settings-store";
 import { getCurrencySymbol } from "@/utils/currencies";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "expo-router/react-navigation";
 import { format, parseISO } from "date-fns";
 import { router, Stack, useLocalSearchParams } from "expo-router";
+import { useNavigation } from "expo-router/react-navigation";
 import { useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator, Alert,
+  ActivityIndicator,
+  Alert,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function AddTransactionScreen() {
   useMarkInteractive();
   const navigation = useNavigation();
-  const params = useLocalSearchParams<{ 
-    id?: string; 
+  const params = useLocalSearchParams<{
+    id?: string;
     from?: string;
     duplicate?: string;
     amount?: string;
@@ -50,17 +61,21 @@ export default function AddTransactionScreen() {
   }>();
   const transactionId = params.id ? parseInt(params.id, 10) : null;
   const isEditMode = !!transactionId;
-  const isDuplicateMode = params.duplicate === 'true';
+  const isDuplicateMode = params.duplicate === "true";
   const insets = useSafeAreaInsets();
 
   const createTransaction = useCreateTransaction();
   const updateTransaction = useUpdateTransaction();
   const deleteTransaction = useDeleteTransaction();
-  const { data: transaction, isLoading: isLoadingTransaction } = useTransaction(transactionId || 0);
+  const { data: transaction, isLoading: isLoadingTransaction } = useTransaction(
+    transactionId || 0,
+  );
 
   const { data: accounts } = useAccounts();
   const { data: tags } = useTags();
-  const { data: tagsForTransaction } = useTagsForTransaction(transactionId || 0);
+  const { data: tagsForTransaction } = useTagsForTransaction(
+    transactionId || 0,
+  );
   const { data: categories } = useCategories();
 
   // Use transaction-specific tags in edit mode, otherwise all tags
@@ -82,6 +97,7 @@ export default function AddTransactionScreen() {
   const [note, setNote] = useState("");
   const [paymentMode, setPaymentMode] = useState("");
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
+  const [extractedUpiId, setExtractedUpiId] = useState<string | null>(null);
   const duplicateDataLoadedRef = useRef(false);
   const defaultTagsAppliedRef = useRef(false);
   const previousIsEditModeRef = useRef(isEditMode);
@@ -89,6 +105,63 @@ export default function AddTransactionScreen() {
 
   const originLabel = params.from ?? "Back";
   const { settings, loadSettings } = useSettingsStore();
+
+  // Image extraction hook (only active in create mode)
+  const { isExtracting, pickAndExtract, pasteAndExtract } =
+    useImageTransactionExtractor();
+
+  // UPI preference mutation (saves prefs after successful create)
+  const upsertUpiPreference = useUpsertUpiPreference();
+
+  /** Apply parsed transaction data to the form fields */
+  const applyExtractedData = async (
+    data: import("@/services/receipt-parser/types").ParsedTransaction,
+  ) => {
+    // Always apply OCR-extracted fields (amount, type, date)
+    if (data.amount !== undefined) setAmount(data.amount.toString());
+    if (data.type) setType(data.type);
+    if (data.date) setDate(parseISO(data.date));
+
+    // Store UPI ID for saving preferences later
+    const upiId = data.upiId ?? null;
+    setExtractedUpiId(upiId);
+
+    // If we have a UPI ID, try to load saved preferences
+    if (upiId) {
+      try {
+        const prefs = await upiPreferenceRepository.findByUpiId(upiId);
+        if (prefs) {
+          // Apply saved preferences — these override OCR-extracted values
+          if (prefs.category_id !== null) setCategoryId(prefs.category_id);
+          setNote(prefs.note || data.note || "");
+          setPaymentMode(prefs.payment_mode || data.paymentMode || "");
+          if (prefs.tag_ids.length > 0) {
+            setSelectedTagIds(prefs.tag_ids);
+            defaultTagsAppliedRef.current = true;
+          }
+          return; // Saved prefs applied
+        }
+      } catch {
+        // UPI preference table might not exist yet — fall through to OCR values
+      }
+    }
+
+    // No saved prefs — apply OCR-extracted values
+    if (data.note) setNote(data.note);
+    if (data.paymentMode) setPaymentMode(data.paymentMode);
+  };
+
+  const handlePickImage = async () => {
+    Keyboard.dismiss();
+    const result = await pickAndExtract();
+    if (result?.data) applyExtractedData(result.data);
+  };
+
+  const handlePasteImage = async () => {
+    Keyboard.dismiss();
+    const result = await pasteAndExtract();
+    if (result?.data) applyExtractedData(result.data);
+  };
 
   useEffect(() => {
     loadSettings();
@@ -122,7 +195,10 @@ export default function AddTransactionScreen() {
       if (params.note !== undefined) setNote(params.note);
       if (params.paymentMode !== undefined) setPaymentMode(params.paymentMode);
       if (params.tagIds) {
-        const tagIds = params.tagIds.split(',').map(id => parseInt(id, 10)).filter(id => !isNaN(id));
+        const tagIds = params.tagIds
+          .split(",")
+          .map((id) => parseInt(id, 10))
+          .filter((id) => !isNaN(id));
         setSelectedTagIds(tagIds);
       }
       // Mark default tags as applied in duplicate mode (don't apply defaults)
@@ -138,8 +214,9 @@ export default function AddTransactionScreen() {
   useEffect(() => {
     if (transaction && isEditMode) {
       const loadTags = async () => {
-        const transactionTags = await transactionTagRepository.findByTransactionId(transaction.id);
-        const tagIds = transactionTags.map(tt => tt.tag_id);
+        const transactionTags =
+          await transactionTagRepository.findByTransactionId(transaction.id);
+        const tagIds = transactionTags.map((tt) => tt.tag_id);
         setSelectedTagIds(tagIds);
       };
       loadTags();
@@ -150,7 +227,13 @@ export default function AddTransactionScreen() {
 
   // Auto-select account if only one is available
   useEffect(() => {
-    if (accounts && accounts.length === 1 && accountId === null && !isEditMode && !isDuplicateMode) {
+    if (
+      accounts &&
+      accounts.length === 1 &&
+      accountId === null &&
+      !isEditMode &&
+      !isDuplicateMode
+    ) {
       setAccountId(accounts[0].id);
     }
   }, [accounts, accountId, isEditMode, isDuplicateMode]);
@@ -158,14 +241,15 @@ export default function AddTransactionScreen() {
   // Reset default tags applied flag when entering create mode (not edit or duplicate)
   // Only reset when transitioning INTO create mode from edit/duplicate mode
   useEffect(() => {
-    const wasInEditOrDuplicate = previousIsEditModeRef.current || previousIsDuplicateModeRef.current;
+    const wasInEditOrDuplicate =
+      previousIsEditModeRef.current || previousIsDuplicateModeRef.current;
     const isNowInCreateMode = !isEditMode && !isDuplicateMode;
-    
+
     // Reset flag when transitioning from edit/duplicate mode to create mode
     if (isNowInCreateMode && wasInEditOrDuplicate) {
       defaultTagsAppliedRef.current = false;
     }
-    
+
     // Update previous mode refs
     previousIsEditModeRef.current = isEditMode;
     previousIsDuplicateModeRef.current = isDuplicateMode;
@@ -192,15 +276,21 @@ export default function AddTransactionScreen() {
       tags.length > 0
     ) {
       // Filter to only include tags that still exist
-      const validDefaultTagIds = settings.defaultTagIds.filter(tagId =>
-        tags.some(tag => tag.id === tagId)
+      const validDefaultTagIds = settings.defaultTagIds.filter((tagId) =>
+        tags.some((tag) => tag.id === tagId),
       );
       if (validDefaultTagIds.length > 0) {
         setSelectedTagIds(validDefaultTagIds);
         defaultTagsAppliedRef.current = true;
       }
     }
-  }, [isEditMode, isDuplicateMode, settings.defaultTagIds, tags, selectedTagIds.length]);
+  }, [
+    isEditMode,
+    isDuplicateMode,
+    settings.defaultTagIds,
+    tags,
+    selectedTagIds.length,
+  ]);
 
   // Update header color based on transaction type
   useEffect(() => {
@@ -215,9 +305,9 @@ export default function AddTransactionScreen() {
 
   const transactionTypeOptions = settings.incomeCalculationEnabled
     ? [
-      { label: "Expense", value: "expense" },
-      { label: "Income", value: "income" },
-    ]
+        { label: "Expense", value: "expense" },
+        { label: "Income", value: "income" },
+      ]
     : [{ label: "Expense", value: "expense" }];
 
   const accountOptions =
@@ -274,11 +364,28 @@ export default function AddTransactionScreen() {
           payment_mode: paymentMode.trim() || null,
           tag_ids: selectedTagIds.length > 0 ? selectedTagIds : undefined,
         });
+
+        // Save UPI preferences for auto-fill on future transactions
+        if (extractedUpiId) {
+          upsertUpiPreference.mutate({
+            upi_id: extractedUpiId,
+            category_id: categoryId,
+            note: note.trim() || null,
+            payment_mode: paymentMode.trim() || null,
+            tag_ids: selectedTagIds.length > 0 ? selectedTagIds : undefined,
+          });
+        }
+
         Alert.alert("Success", "Transaction created successfully");
       }
       router.back();
     } catch (error) {
-      Alert.alert("Error", isEditMode ? "Failed to update transaction" : "Failed to create transaction");
+      Alert.alert(
+        "Error",
+        isEditMode
+          ? "Failed to update transaction"
+          : "Failed to create transaction",
+      );
     }
   };
 
@@ -303,7 +410,7 @@ export default function AddTransactionScreen() {
             }
           },
         },
-      ]
+      ],
     );
   };
 
@@ -311,7 +418,7 @@ export default function AddTransactionScreen() {
     setSelectedTagIds((prev) =>
       prev.includes(tagId)
         ? prev.filter((id) => id !== tagId)
-        : [...prev, tagId]
+        : [...prev, tagId],
     );
   };
 
@@ -326,7 +433,7 @@ export default function AddTransactionScreen() {
   const handleAmountChange = (text: string) => {
     // Only allow numbers and one decimal point
     const numericRegex = /^\d*\.?\d*$/;
-    if (text === '' || numericRegex.test(text)) {
+    if (text === "" || numericRegex.test(text)) {
       setAmount(text);
     }
   };
@@ -369,7 +476,9 @@ export default function AddTransactionScreen() {
   if (isEditMode && !transaction) {
     return (
       <View className="flex-1 justify-center items-center bg-gray-50 dark:bg-black">
-        <Text className="text-gray-500 dark:text-gray-400">Transaction not found</Text>
+        <Text className="text-gray-500 dark:text-gray-400">
+          Transaction not found
+        </Text>
       </View>
     );
   }
@@ -398,6 +507,15 @@ export default function AddTransactionScreen() {
           contentContainerStyle={{ paddingBottom: 100, flexGrow: 1 }}
           keyboardShouldPersistTaps="handled"
         >
+          {/* Extract from Image Bar — only in create mode */}
+          {!isEditMode && (
+            <ExtractFromImageBar
+              onPickImage={handlePickImage}
+              onPasteImage={handlePasteImage}
+              isExtracting={isExtracting}
+            />
+          )}
+
           {/* Type Selector */}
           {settings.incomeCalculationEnabled && (
             <View className="px-4 pt-6 mb-6">
@@ -407,19 +525,20 @@ export default function AddTransactionScreen() {
                     handleBlurAmount();
                     setType("expense");
                   }}
-                  className={`flex-1 rounded-2xl p-4 flex-row items-center justify-center gap-2 ${type === "expense"
-                    ? "bg-red-500 dark:bg-red-600"
-                    : "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
-                    }`}
+                  className={`flex-1 rounded-2xl p-4 flex-row items-center justify-center gap-2 ${
+                    type === "expense"
+                      ? "bg-red-500 dark:bg-red-600"
+                      : "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+                  }`}
                   style={
                     type === "expense"
                       ? {
-                        shadowColor: "#EF4444",
-                        shadowOffset: { width: 0, height: 4 },
-                        shadowOpacity: 0.3,
-                        shadowRadius: 8,
-                        elevation: 4,
-                      }
+                          shadowColor: "#EF4444",
+                          shadowOffset: { width: 0, height: 4 },
+                          shadowOpacity: 0.3,
+                          shadowRadius: 8,
+                          elevation: 4,
+                        }
                       : {}
                   }
                 >
@@ -429,10 +548,11 @@ export default function AddTransactionScreen() {
                     color={type === "expense" ? "#FFFFFF" : "#EF4444"}
                   />
                   <Text
-                    className={`font-bold text-base ${type === "expense"
-                      ? "text-white"
-                      : "text-red-500 dark:text-red-400"
-                      }`}
+                    className={`font-bold text-base ${
+                      type === "expense"
+                        ? "text-white"
+                        : "text-red-500 dark:text-red-400"
+                    }`}
                   >
                     Expense
                   </Text>
@@ -443,19 +563,20 @@ export default function AddTransactionScreen() {
                     handleBlurAmount();
                     setType("income");
                   }}
-                  className={`flex-1 rounded-2xl p-4 flex-row items-center justify-center gap-2 ${type === "income"
-                    ? "bg-green-500 dark:bg-green-600"
-                    : "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
-                    }`}
+                  className={`flex-1 rounded-2xl p-4 flex-row items-center justify-center gap-2 ${
+                    type === "income"
+                      ? "bg-green-500 dark:bg-green-600"
+                      : "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+                  }`}
                   style={
                     type === "income"
                       ? {
-                        shadowColor: "#10B981",
-                        shadowOffset: { width: 0, height: 4 },
-                        shadowOpacity: 0.3,
-                        shadowRadius: 8,
-                        elevation: 4,
-                      }
+                          shadowColor: "#10B981",
+                          shadowOffset: { width: 0, height: 4 },
+                          shadowOpacity: 0.3,
+                          shadowRadius: 8,
+                          elevation: 4,
+                        }
                       : {}
                   }
                 >
@@ -465,10 +586,11 @@ export default function AddTransactionScreen() {
                     color={type === "income" ? "#FFFFFF" : "#10B981"}
                   />
                   <Text
-                    className={`font-bold text-base ${type === "income"
-                      ? "text-white"
-                      : "text-green-500 dark:text-green-400"
-                      }`}
+                    className={`font-bold text-base ${
+                      type === "income"
+                        ? "text-white"
+                        : "text-green-500 dark:text-green-400"
+                    }`}
                   >
                     Income
                   </Text>
@@ -478,10 +600,7 @@ export default function AddTransactionScreen() {
           )}
 
           {/* Hero Amount Section */}
-          <TouchableOpacity
-            onPress={handleFocusAmount}
-            activeOpacity={0.7}
-          >
+          <TouchableOpacity onPress={handleFocusAmount} activeOpacity={0.7}>
             <View
               className="px-4 py-6"
               style={{
@@ -505,10 +624,10 @@ export default function AddTransactionScreen() {
                 {/* Amount Container - Relative positioning for overlay */}
                 <View
                   style={{
-                    position: 'relative',
+                    position: "relative",
                     minWidth: 120,
-                    alignItems: 'center',
-                    justifyContent: 'center',
+                    alignItems: "center",
+                    justifyContent: "center",
                   }}
                 >
                   {/* Hidden Amount Input */}
@@ -520,12 +639,12 @@ export default function AddTransactionScreen() {
                     placeholderTextColor="#9CA3AF"
                     keyboardType="numeric"
                     style={{
-                      position: 'absolute',
+                      position: "absolute",
                       opacity: 0,
                       fontSize: 48,
-                      fontWeight: '700',
-                      textAlign: 'center',
-                      width: '100%',
+                      fontWeight: "700",
+                      textAlign: "center",
+                      width: "100%",
                       height: 60,
                     }}
                   />
@@ -535,8 +654,8 @@ export default function AddTransactionScreen() {
                     className="text-gray-400 dark:text-gray-500"
                     style={{
                       fontSize: 48,
-                      fontWeight: '700',
-                      textAlign: 'center',
+                      fontWeight: "700",
+                      textAlign: "center",
                     }}
                   >
                     {amount || "0.00"}
@@ -567,10 +686,11 @@ export default function AddTransactionScreen() {
                         Account
                       </Text>
                       <Text
-                        className={`text-base font-semibold ${selectedAccount
-                          ? "text-gray-900 dark:text-gray-100"
-                          : "text-gray-400 dark:text-gray-500"
-                          }`}
+                        className={`text-base font-semibold ${
+                          selectedAccount
+                            ? "text-gray-900 dark:text-gray-100"
+                            : "text-gray-400 dark:text-gray-500"
+                        }`}
                       >
                         {selectedAccount?.name || "Select account"}
                       </Text>
@@ -596,10 +716,11 @@ export default function AddTransactionScreen() {
                         Category
                       </Text>
                       <Text
-                        className={`text-base font-semibold ${selectedCategory
-                          ? "text-gray-900 dark:text-gray-100"
-                          : "text-gray-400 dark:text-gray-500"
-                          }`}
+                        className={`text-base font-semibold ${
+                          selectedCategory
+                            ? "text-gray-900 dark:text-gray-100"
+                            : "text-gray-400 dark:text-gray-500"
+                        }`}
                       >
                         {selectedCategory?.name || "No category"}
                       </Text>
@@ -710,7 +831,7 @@ export default function AddTransactionScreen() {
                         selected={selectedTagIds.includes(tag.id)}
                         onPress={() => toggleTag(tag.id)}
                       />
-                      {isEditMode && 'isDeleted' in tag && tag.isDeleted && (
+                      {isEditMode && "isDeleted" in tag && tag.isDeleted && (
                         <View className="bg-gray-200 dark:bg-gray-700 px-2 py-0.5 rounded ml-1">
                           <Text className="text-xs text-gray-600 dark:text-gray-400">
                             Deleted
@@ -762,11 +883,15 @@ export default function AddTransactionScreen() {
               }}
             >
               {deleteTransaction.isPending ? (
-                <Text className="text-white font-bold text-lg">Deleting...</Text>
+                <Text className="text-white font-bold text-lg">
+                  Deleting...
+                </Text>
               ) : (
                 <View className="flex-row items-center">
                   <Ionicons name="trash" size={20} color="#FFFFFF" />
-                  <Text className="text-white font-bold text-base ml-2">Delete</Text>
+                  <Text className="text-white font-bold text-base ml-2">
+                    Delete
+                  </Text>
                 </View>
               )}
             </TouchableOpacity>
@@ -793,7 +918,9 @@ export default function AddTransactionScreen() {
               ) : (
                 <View className="flex-row items-center">
                   <Ionicons name="checkmark-circle" size={24} color="#FFFFFF" />
-                  <Text className="text-white font-bold text-lg ml-2">Save</Text>
+                  <Text className="text-white font-bold text-lg ml-2">
+                    Save
+                  </Text>
                 </View>
               )}
             </TouchableOpacity>

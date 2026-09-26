@@ -6,6 +6,7 @@ import { makePaymentModeNullable } from "./006_make_payment_mode_nullable";
 import { addExchangesTable } from "./007_add_exchanges_table";
 import { addExchangeInstallmentsTable } from "./008_add_exchange_installments";
 import { addExchangeRemindersTable } from "./009_add_exchange_reminders";
+import { addUpiPreferences } from "./010_add_upi_preferences";
 
 const INITIAL_SCHEMA_SQL = `
 -- Accounts table
@@ -125,7 +126,7 @@ export async function runMigrations(db: SQLite.SQLiteDatabase): Promise<void> {
 
   // Get applied migrations
   const result = await db.getAllAsync<{ version: number }>(
-    "SELECT version FROM schema_migrations ORDER BY version"
+    "SELECT version FROM schema_migrations ORDER BY version",
   );
   const appliedVersions = new Set(result.map((r) => Number(r.version)));
 
@@ -140,17 +141,17 @@ export async function runMigrations(db: SQLite.SQLiteDatabase): Promise<void> {
 
           // Check if category_id column already exists, if not add it
           const tableInfo = await db.getAllAsync<{ name: string }>(
-            "PRAGMA table_info(transactions)"
+            "PRAGMA table_info(transactions)",
           );
           const hasCategoryId = tableInfo.some(
-            (col) => col.name === "category_id"
+            (col) => col.name === "category_id",
           );
 
           if (!hasCategoryId) {
             // Add category_id column to transactions
             try {
               await db.execAsync(
-                "ALTER TABLE transactions ADD COLUMN category_id INTEGER REFERENCES categories(id)"
+                "ALTER TABLE transactions ADD COLUMN category_id INTEGER REFERENCES categories(id)",
               );
             } catch (e: any) {
               const message = e?.message ?? String(e);
@@ -161,7 +162,7 @@ export async function runMigrations(db: SQLite.SQLiteDatabase): Promise<void> {
             }
             // Create index for category_id
             await db.execAsync(
-              "CREATE INDEX IF NOT EXISTS idx_transactions_category_id ON transactions(category_id)"
+              "CREATE INDEX IF NOT EXISTS idx_transactions_category_id ON transactions(category_id)",
             );
           }
         } else {
@@ -172,7 +173,7 @@ export async function runMigrations(db: SQLite.SQLiteDatabase): Promise<void> {
         // Record migration
         await db.runAsync(
           "INSERT OR IGNORE INTO schema_migrations (version, name) VALUES (?, ?)",
-          [migration.version, migration.name]
+          [migration.version, migration.name],
         );
 
         log(`Migration ${migration.name} applied successfully`);
@@ -191,7 +192,7 @@ export async function runMigrations(db: SQLite.SQLiteDatabase): Promise<void> {
       // Record migration
       await db.runAsync(
         "INSERT OR IGNORE INTO schema_migrations (version, name) VALUES (?, ?)",
-        [3, "003_encrypt_existing_data"]
+        [3, "003_encrypt_existing_data"],
       );
 
       log("Migration 003_encrypt_existing_data applied successfully");
@@ -209,7 +210,7 @@ export async function runMigrations(db: SQLite.SQLiteDatabase): Promise<void> {
       // Record migration
       await db.runAsync(
         "INSERT OR IGNORE INTO schema_migrations (version, name) VALUES (?, ?)",
-        [4, "004_add_currency_to_accounts"]
+        [4, "004_add_currency_to_accounts"],
       );
 
       log("Migration 004_add_currency_to_accounts applied successfully");
@@ -247,7 +248,7 @@ CREATE INDEX IF NOT EXISTS idx_transactions_type_date ON transactions(type, date
       // Record migration
       await db.runAsync(
         "INSERT OR IGNORE INTO schema_migrations (version, name) VALUES (?, ?)",
-        [5, "005_add_composite_indexes"]
+        [5, "005_add_composite_indexes"],
       );
 
       log("Migration 005_add_composite_indexes applied successfully");
@@ -265,12 +266,15 @@ CREATE INDEX IF NOT EXISTS idx_transactions_type_date ON transactions(type, date
       // Record migration
       await db.runAsync(
         "INSERT OR IGNORE INTO schema_migrations (version, name) VALUES (?, ?)",
-        [6, "006_make_payment_mode_nullable"]
+        [6, "006_make_payment_mode_nullable"],
       );
 
       log("Migration 006_make_payment_mode_nullable applied successfully");
     } catch (error) {
-      logError("Error applying migration 006_make_payment_mode_nullable:", error);
+      logError(
+        "Error applying migration 006_make_payment_mode_nullable:",
+        error,
+      );
       throw error;
     }
   }
@@ -283,23 +287,31 @@ CREATE INDEX IF NOT EXISTS idx_transactions_type_date ON transactions(type, date
 
       // Verify table was created before marking migration as complete
       const verifyResult = await db.getAllAsync<{ name: string }>(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name='exchanges' LIMIT 1"
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='exchanges' LIMIT 1",
       );
-      
+
       if (verifyResult.length === 0) {
-        logError("CRITICAL: Migration 007 completed but exchanges table not found!");
-        throw new Error("Migration 007_add_exchanges_table completed but exchanges table was not created");
+        logError(
+          "CRITICAL: Migration 007 completed but exchanges table not found!",
+        );
+        throw new Error(
+          "Migration 007_add_exchanges_table completed but exchanges table was not created",
+        );
       }
-      
-      log(`Migration 007 verification: exchanges table exists (${verifyResult.length} found)`);
+
+      log(
+        `Migration 007 verification: exchanges table exists (${verifyResult.length} found)`,
+      );
 
       // Record migration
       await db.runAsync(
         "INSERT OR IGNORE INTO schema_migrations (version, name) VALUES (?, ?)",
-        [7, "007_add_exchanges_table"]
+        [7, "007_add_exchanges_table"],
       );
 
-      log("Migration 007_add_exchanges_table applied and verified successfully");
+      log(
+        "Migration 007_add_exchanges_table applied and verified successfully",
+      );
     } catch (error) {
       logError("Error applying migration 007_add_exchanges_table:", error);
       throw error;
@@ -307,17 +319,19 @@ CREATE INDEX IF NOT EXISTS idx_transactions_type_date ON transactions(type, date
   } else {
     // Even if migration is marked as applied, verify table exists
     const verifyResult = await db.getAllAsync<{ name: string }>(
-      "SELECT name FROM sqlite_master WHERE type='table' AND name='exchanges' LIMIT 1"
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='exchanges' LIMIT 1",
     );
-    
+
     if (verifyResult.length === 0) {
-      logError("WARNING: Migration 7 is marked as applied but exchanges table is missing! Re-running migration...");
+      logError(
+        "WARNING: Migration 7 is marked as applied but exchanges table is missing! Re-running migration...",
+      );
       // Remove the migration record and re-run
       await db.runAsync("DELETE FROM schema_migrations WHERE version = 7");
       await addExchangesTable(db);
       await db.runAsync(
         "INSERT OR IGNORE INTO schema_migrations (version, name) VALUES (?, ?)",
-        [7, "007_add_exchanges_table"]
+        [7, "007_add_exchanges_table"],
       );
       log("Migration 007_add_exchanges_table re-applied successfully");
     } else {
@@ -332,24 +346,33 @@ CREATE INDEX IF NOT EXISTS idx_transactions_type_date ON transactions(type, date
       await addExchangeInstallmentsTable(db);
 
       const verifyResult = await db.getAllAsync<{ name: string }>(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name='exchange_installments' LIMIT 1"
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='exchange_installments' LIMIT 1",
       );
-      
+
       if (verifyResult.length === 0) {
-        logError("CRITICAL: Migration 008 completed but exchange_installments table not found!");
-        throw new Error("Migration 008_add_exchange_installments completed but exchange_installments table was not created");
+        logError(
+          "CRITICAL: Migration 008 completed but exchange_installments table not found!",
+        );
+        throw new Error(
+          "Migration 008_add_exchange_installments completed but exchange_installments table was not created",
+        );
       }
-      
+
       log(`Migration 008 verification: exchange_installments table exists`);
 
       await db.runAsync(
         "INSERT OR IGNORE INTO schema_migrations (version, name) VALUES (?, ?)",
-        [8, "008_add_exchange_installments"]
+        [8, "008_add_exchange_installments"],
       );
 
-      log("Migration 008_add_exchange_installments applied and verified successfully");
+      log(
+        "Migration 008_add_exchange_installments applied and verified successfully",
+      );
     } catch (error) {
-      logError("Error applying migration 008_add_exchange_installments:", error);
+      logError(
+        "Error applying migration 008_add_exchange_installments:",
+        error,
+      );
       throw error;
     }
   }
@@ -361,24 +384,59 @@ CREATE INDEX IF NOT EXISTS idx_transactions_type_date ON transactions(type, date
       await addExchangeRemindersTable(db);
 
       const verifyResult = await db.getAllAsync<{ name: string }>(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name='exchange_reminders' LIMIT 1"
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='exchange_reminders' LIMIT 1",
       );
-      
+
       if (verifyResult.length === 0) {
-        logError("CRITICAL: Migration 009 completed but exchange_reminders table not found!");
-        throw new Error("Migration 009_add_exchange_reminders completed but exchange_reminders table was not created");
+        logError(
+          "CRITICAL: Migration 009 completed but exchange_reminders table not found!",
+        );
+        throw new Error(
+          "Migration 009_add_exchange_reminders completed but exchange_reminders table was not created",
+        );
       }
-      
+
       log(`Migration 009 verification: exchange_reminders table exists`);
 
       await db.runAsync(
         "INSERT OR IGNORE INTO schema_migrations (version, name) VALUES (?, ?)",
-        [9, "009_add_exchange_reminders"]
+        [9, "009_add_exchange_reminders"],
       );
 
-      log("Migration 009_add_exchange_reminders applied and verified successfully");
+      log(
+        "Migration 009_add_exchange_reminders applied and verified successfully",
+      );
     } catch (error) {
       logError("Error applying migration 009_add_exchange_reminders:", error);
+      throw error;
+    }
+  }
+
+  // Run migration 10 (add upi_preferences table)
+  if (!appliedVersions.has(10)) {
+    try {
+      await addUpiPreferences(db);
+
+      const verifyResult = await db.getAllAsync<{ name: string }>(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='upi_preferences' LIMIT 1",
+      );
+
+      if (verifyResult.length === 0) {
+        throw new Error(
+          "Migration 010_add_upi_preferences completed but upi_preferences table was not created",
+        );
+      }
+
+      await db.runAsync(
+        "INSERT OR IGNORE INTO schema_migrations (version, name) VALUES (?, ?)",
+        [10, "010_add_upi_preferences"],
+      );
+
+      log(
+        "Migration 010_add_upi_preferences applied and verified successfully",
+      );
+    } catch (error) {
+      logError("Error applying migration 010_add_upi_preferences:", error);
       throw error;
     }
   }

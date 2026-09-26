@@ -1,4 +1,4 @@
-export type AccountType = 'debit' | 'credit' | 'borrowed' | 'lent';
+export type AccountType = "debit" | "credit" | "borrowed" | "lent";
 
 export interface Account {
   id: number;
@@ -19,12 +19,12 @@ export interface Account {
 
 export type DecryptedAccount = Omit<
   Account,
-  | 'name'
-  | 'bank_name'
-  | 'credit_limit'
-  | 'billing_start_date'
-  | 'billing_end_date'
-  | 'payment_due_date'
+  | "name"
+  | "bank_name"
+  | "credit_limit"
+  | "billing_start_date"
+  | "billing_end_date"
+  | "payment_due_date"
 > & {
   name: string;
   currency: string;
@@ -35,7 +35,7 @@ export type DecryptedAccount = Omit<
   payment_due_date: string | null;
 };
 
-export type TransactionType = 'expense' | 'income';
+export type TransactionType = "expense" | "income";
 
 export interface Transaction {
   id: number;
@@ -135,8 +135,8 @@ export interface UpdateCategoryInput {
   name: string;
 }
 
-export type ExchangeType = 'lent' | 'borrowed';
-export type ExchangeStatus = 'pending' | 'paid' | 'received';
+export type ExchangeType = "lent" | "borrowed";
+export type ExchangeStatus = "pending" | "paid" | "received";
 
 export interface Exchange {
   id: number;
@@ -156,7 +156,7 @@ export interface Exchange {
 
 export type DecryptedExchange = Omit<
   Exchange,
-  'person_name' | 'amount' | 'note'
+  "person_name" | "amount" | "note"
 > & {
   person_name: string;
   amount: number;
@@ -200,7 +200,7 @@ export interface ExchangeInstallment {
 
 export type DecryptedExchangeInstallment = Omit<
   ExchangeInstallment,
-  'amount' | 'note'
+  "amount" | "note"
 > & {
   amount: number;
   note: string | null;
@@ -221,7 +221,7 @@ export interface UpdateExchangeInstallmentInput {
 }
 
 // Exchange Reminders
-export type ExchangeReminderType = 'due_date' | 'overdue' | 'periodic';
+export type ExchangeReminderType = "due_date" | "overdue" | "periodic";
 
 export interface ExchangeReminder {
   id: number;
@@ -252,3 +252,36 @@ export interface UpdateExchangeReminderInput {
   notification_id?: string | null;
 }
 
+// UPI Payee Preferences
+// Stores the last-used transaction settings per UPI ID for auto-fill.
+
+export interface UpiPreference {
+  id: number;
+  upi_id: string;
+  category_id: number | null;
+  note: string | null;
+  payment_mode: string | null;
+  tag_ids: string | null; // JSON array string e.g. "[1,3,7]"
+  created_at: string;
+  updated_at: string;
+}
+
+/** Parsed version with tag_ids as a number array instead of JSON string */
+export interface UpiPreferenceParsed {
+  id: number;
+  upi_id: string;
+  category_id: number | null;
+  note: string | null;
+  payment_mode: string | null;
+  tag_ids: number[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UpsertUpiPreferenceInput {
+  upi_id: string;
+  category_id?: number | null;
+  note?: string | null;
+  payment_mode?: string | null;
+  tag_ids?: number[];
+}
