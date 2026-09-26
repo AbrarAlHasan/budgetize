@@ -1,9 +1,9 @@
-import * as Notifications from 'expo-notifications';
-import { log, logError } from '@/utils/logger';
-import { exchangeReminderRepository } from '@/repositories/exchange-reminder.repository';
-import { exchangeRepository } from '@/repositories/exchange.repository';
-import { ExchangeReminderType } from '@/db/schema/types';
-import { format, addDays, parseISO } from 'date-fns';
+import { ExchangeReminderType } from "@/db/schema/types";
+import { exchangeReminderRepository } from "@/repositories/exchange-reminder.repository";
+import { exchangeRepository } from "@/repositories/exchange.repository";
+import { logError } from "@/utils/logger";
+import { addDays, parseISO } from "date-fns";
+import * as Notifications from "expo-notifications";
 
 /**
  * Service for managing exchange reminders and notifications
@@ -15,7 +15,7 @@ export class ExchangeReminderService {
   async createRemindersForExchange(
     exchangeId: number,
     dueDate: string | null,
-    reminderDaysBefore: number[] = [1, 0] // 1 day before, on due date
+    reminderDaysBefore: number[] = [1, 0], // 1 day before, on due date
   ): Promise<void> {
     try {
       // Delete existing reminders for this exchange
@@ -36,15 +36,18 @@ export class ExchangeReminderService {
 
         // Only create reminders for future dates
         if (reminderDate >= today) {
-          const reminderType: ExchangeReminderType = daysBefore === 0 
-            ? (reminderDate < dueDateObj ? 'due_date' : 'due_date')
-            : 'due_date';
+          const reminderType: ExchangeReminderType =
+            daysBefore === 0
+              ? reminderDate < dueDateObj
+                ? "due_date"
+                : "due_date"
+              : "due_date";
 
           // Schedule notification
           const notificationId = await this.scheduleNotification(
             exchangeId,
             reminderDate,
-            reminderType
+            reminderType,
           );
 
           // Create reminder record
@@ -60,23 +63,23 @@ export class ExchangeReminderService {
       // Create overdue reminder (1 day after due date if still pending)
       const overdueDate = addDays(dueDateObj, 1);
       overdueDate.setHours(9, 0, 0, 0);
-      
+
       if (overdueDate >= today) {
         const notificationId = await this.scheduleNotification(
           exchangeId,
           overdueDate,
-          'overdue'
+          "overdue",
         );
 
         await exchangeReminderRepository.create({
           exchange_id: exchangeId,
-          reminder_type: 'overdue',
+          reminder_type: "overdue",
           reminder_date: overdueDate.toISOString(),
           notification_id: notificationId,
         });
       }
     } catch (error) {
-      logError('Error creating reminders for exchange:', error);
+      logError("Error creating reminders for exchange:", error);
     }
   }
 
@@ -86,26 +89,27 @@ export class ExchangeReminderService {
   private async scheduleNotification(
     exchangeId: number,
     reminderDate: Date,
-    reminderType: ExchangeReminderType
+    reminderType: ExchangeReminderType,
   ): Promise<string | null> {
     try {
       const exchange = await exchangeRepository.findById(exchangeId);
       if (!exchange) return null;
 
-      const decryptedExchange = await exchangeRepository.decryptExchange(exchange);
+      const decryptedExchange =
+        await exchangeRepository.decryptExchange(exchange);
       const personName = decryptedExchange.person_name;
       const amount = decryptedExchange.amount;
       // Default currency symbol - can be enhanced to get from settings if needed
-      const currencySymbol = '₹';
+      const currencySymbol = "₹";
 
-      let title = '';
-      let body = '';
+      let title = "";
+      let body = "";
 
-      if (reminderType === 'due_date') {
-        title = 'Exchange Due Today';
+      if (reminderType === "due_date") {
+        title = "Exchange Due Today";
         body = `${personName} - ${currencySymbol}${amount.toLocaleString()} is due today`;
-      } else if (reminderType === 'overdue') {
-        title = 'Exchange Overdue';
+      } else if (reminderType === "overdue") {
+        title = "Exchange Overdue";
         body = `${personName} - ${currencySymbol}${amount.toLocaleString()} is overdue`;
       }
 
@@ -123,12 +127,15 @@ export class ExchangeReminderService {
             reminderType,
           },
         },
-        trigger: reminderDate,
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DATE,
+          date: reminderDate,
+        },
       });
 
       return identifier;
     } catch (error) {
-      logError('Error scheduling notification:', error);
+      logError("Error scheduling notification:", error);
       return null;
     }
   }
@@ -138,15 +145,21 @@ export class ExchangeReminderService {
    */
   async cancelRemindersForExchange(exchangeId: number): Promise<void> {
     try {
-      const reminders = await exchangeReminderRepository.findByExchangeId(exchangeId);
-      
+      const reminders =
+        await exchangeReminderRepository.findByExchangeId(exchangeId);
+
       // Cancel notifications
       for (const reminder of reminders) {
         if (reminder.notification_id) {
           try {
-            await Notifications.cancelScheduledNotificationAsync(reminder.notification_id);
+            await Notifications.cancelScheduledNotificationAsync(
+              reminder.notification_id,
+            );
           } catch (error) {
-            logError(`Error canceling notification ${reminder.notification_id}:`, error);
+            logError(
+              `Error canceling notification ${reminder.notification_id}:`,
+              error,
+            );
           }
         }
       }
@@ -154,7 +167,7 @@ export class ExchangeReminderService {
       // Delete reminder records
       await exchangeReminderRepository.deleteByExchangeId(exchangeId);
     } catch (error) {
-      logError('Error canceling reminders for exchange:', error);
+      logError("Error canceling reminders for exchange:", error);
     }
   }
 
@@ -163,17 +176,20 @@ export class ExchangeReminderService {
    */
   async processOverdueReminders(): Promise<void> {
     try {
-      const overdueReminders = await exchangeReminderRepository.getOverdueReminders();
-      
+      const overdueReminders =
+        await exchangeReminderRepository.getOverdueReminders();
+
       for (const reminder of overdueReminders) {
         // Mark as sent
-        await exchangeReminderRepository.markAsSent(reminder.id, reminder.notification_id || undefined);
+        await exchangeReminderRepository.markAsSent(
+          reminder.id,
+          reminder.notification_id || undefined,
+        );
       }
     } catch (error) {
-      logError('Error processing overdue reminders:', error);
+      logError("Error processing overdue reminders:", error);
     }
   }
 }
 
 export const exchangeReminderService = new ExchangeReminderService();
-

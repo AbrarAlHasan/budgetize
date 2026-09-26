@@ -1,23 +1,20 @@
 import { getBackgroundColor, getHandleIndicatorColor } from "@/utils/colors";
 import {
-  BottomSheetBackdrop,
-  BottomSheetBackdropProps,
-  BottomSheetModal,
-  BottomSheetModalProps,
-  BottomSheetScrollView
+    BottomSheetBackdrop,
+    BottomSheetBackdropProps,
+    BottomSheetModal,
+    BottomSheetModalProps,
+    BottomSheetScrollView,
 } from "@gorhom/bottom-sheet";
 import { BottomSheetModalMethods } from "@gorhom/bottom-sheet/lib/typescript/types";
 import { useColorScheme } from "nativewind";
 import React, { ReactElement, useCallback, useMemo } from "react";
-import {
-  StyleSheet,
-  ViewStyle
-} from "react-native";
+import { StyleSheet, ViewStyle } from "react-native";
 
 export interface IBottomSheet extends BottomSheetModalProps {
   children: ReactElement;
   snapPoints?: Array<string>;
-  bottomSheetModalRef: React.RefObject<BottomSheetModalMethods>;
+  bottomSheetModalRef: React.RefObject<BottomSheetModalMethods | null>;
   index?: number;
   onBottomSheetChange?: (data: number) => void;
   onClose?: () => void;
@@ -37,23 +34,32 @@ const BottomSheet = ({
   ...props
 }: IBottomSheet) => {
   const { colorScheme } = useColorScheme();
-  const isDark = colorScheme === 'dark';
+  const isDark = colorScheme === "dark";
 
   // NativeWind theme-aware styles using Tailwind color system
   // Matches: bg-white dark:bg-gray-800
-  const backgroundStyle = useMemo(() => ({
-    backgroundColor: getBackgroundColor(isDark),
-  }), [isDark]);
+  const backgroundStyle = useMemo(
+    () => ({
+      backgroundColor: getBackgroundColor(isDark),
+    }),
+    [isDark],
+  );
 
   // Matches: bg-gray-300 dark:bg-gray-600
-  const handleIndicatorStyle = useMemo(() => ({
-    backgroundColor: getHandleIndicatorColor(isDark),
-  }), [isDark]);
+  const handleIndicatorStyle = useMemo(
+    () => ({
+      backgroundColor: getHandleIndicatorColor(isDark),
+    }),
+    [isDark],
+  );
 
   // Matches: bg-white dark:bg-gray-800
-  const scrollViewStyle = useMemo(() => ({
-    backgroundColor: getBackgroundColor(isDark),
-  }), [isDark]);
+  const scrollViewStyle = useMemo(
+    () => ({
+      backgroundColor: getBackgroundColor(isDark),
+    }),
+    [isDark],
+  );
 
   const renderBackdrop = useCallback(
     (props: BottomSheetBackdropProps) => (
@@ -68,7 +74,7 @@ const BottomSheet = ({
         {...props}
       />
     ),
-    [onClose]
+    [onClose],
   );
 
   return (

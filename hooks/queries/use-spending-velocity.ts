@@ -1,28 +1,28 @@
-import type { TransactionType } from '@/db/schema/types';
-import { useQuery } from '@tanstack/react-query';
-import { transactionRepository } from '@/repositories/transaction.repository';
+import type { TransactionType } from "@/db/schema/types";
+import { transactionRepository } from "@/repositories/transaction.repository";
+import { useUIStore } from "@/store/ui-store";
 import {
-  deriveSpendingVelocityMetrics,
-  type SpendingVelocityResult,
-} from '@/utils/spending-velocity';
-import { format, differenceInDays, subDays, addDays, min } from 'date-fns';
-import { useUIStore } from '@/store/ui-store';
+    deriveSpendingVelocityMetrics,
+    type SpendingVelocityResult,
+} from "@/utils/spending-velocity";
+import { useQuery } from "@tanstack/react-query";
+import { addDays, differenceInDays, format, min, subDays } from "date-fns";
 
-const QUERY_KEY = ['spendingVelocity'];
-const EXPENSE_TYPES: TransactionType[] = ['expense'];
+const QUERY_KEY = ["spendingVelocity"];
+const EXPENSE_TYPES: TransactionType[] = ["expense"];
 
 export type SpendingVelocity = SpendingVelocityResult;
 
 export function useSpendingVelocity(
   startDate: string,
   endDate: string,
-  useFilters: boolean = false
+  useFilters: boolean = false,
 ) {
   const filters = useUIStore((state) => state.filters.reports);
 
   return useQuery({
     queryKey: useFilters
-      ? [...QUERY_KEY, startDate, endDate, 'filters', filters]
+      ? [...QUERY_KEY, startDate, endDate, "filters", filters]
       : [...QUERY_KEY, startDate, endDate],
     queryFn: async (): Promise<SpendingVelocity> => {
       const periodStart = new Date(startDate);
@@ -36,18 +36,18 @@ export function useSpendingVelocity(
 
       const priorPeriodEnd = subDays(periodStart, 1);
       const priorPeriodStart = subDays(periodStart, totalDaysInPeriod);
-      const priorStartStr = format(priorPeriodStart, 'yyyy-MM-dd');
+      const priorStartStr = format(priorPeriodStart, "yyyy-MM-dd");
       const priorElapsedEnd = min([
         addDays(priorPeriodStart, daysElapsed - 1),
         priorPeriodEnd,
       ]);
-      const priorToDateEndStr = format(priorElapsedEnd, 'yyyy-MM-dd');
+      const priorToDateEndStr = format(priorElapsedEnd, "yyyy-MM-dd");
 
       const filterOptions =
         useFilters && filters
           ? {
               startDate,
-              endDate: format(actualEndDate, 'yyyy-MM-dd'),
+              endDate: format(actualEndDate, "yyyy-MM-dd"),
               accountIds:
                 filters.accountIds && filters.accountIds.length > 0
                   ? filters.accountIds
@@ -63,10 +63,9 @@ export function useSpendingVelocity(
                   ? filters.categoryIds
                   : undefined,
               categoryId: filters.categoryId || undefined,
-              types: ['expense'] as const,
+              types: EXPENSE_TYPES,
               transactionTypes:
-                filters.transactionTypes &&
-                filters.transactionTypes.length > 0
+                filters.transactionTypes && filters.transactionTypes.length > 0
                   ? filters.transactionTypes
                   : undefined,
               accountTypes:
@@ -77,14 +76,14 @@ export function useSpendingVelocity(
             }
           : {
               startDate,
-              endDate: format(actualEndDate, 'yyyy-MM-dd'),
-              types: ['expense'] as const,
+              endDate: format(actualEndDate, "yyyy-MM-dd"),
+              types: EXPENSE_TYPES,
             };
 
       const expenseFilter = {
         accountIds: filterOptions.accountIds,
         accountId: filterOptions.accountId,
-        types: ['expense'] as const,
+        types: EXPENSE_TYPES,
       };
 
       const [currentSpending, activeSpendingDays, priorToDateSpending] =

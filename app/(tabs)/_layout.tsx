@@ -7,20 +7,20 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useSettingsStore } from "@/store/settings-store";
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  const scheme = useColorScheme();
+  const colorScheme: "light" | "dark" = scheme === "dark" ? "dark" : "light";
   const { settings } = useSettingsStore();
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? "light"].tint,
+        tabBarActiveTintColor: Colors[colorScheme].tint,
         headerShown: false,
         tabBarButton: HapticTab,
-        tabBarInactiveTintColor: Colors[colorScheme ?? "light"].tabIconDefault,
+        tabBarInactiveTintColor: Colors[colorScheme].tabIconDefault,
         tabBarStyle: {
-          backgroundColor: Colors[colorScheme ?? "light"].background,
+          backgroundColor: Colors[colorScheme].background,
         },
-        
       }}
     >
       <Tabs.Screen
@@ -56,7 +56,11 @@ export default function TabLayout() {
           title: "Exchange",
           href: settings.exchangeEnabled ? undefined : null,
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="arrow.left.arrow.right.circle.fill" color={color} />
+            <IconSymbol
+              size={28}
+              name="arrow.left.arrow.right.circle.fill"
+              color={color}
+            />
           ),
         }}
       />

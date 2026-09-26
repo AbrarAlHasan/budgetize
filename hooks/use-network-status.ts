@@ -1,7 +1,7 @@
-import * as Network from "expo-network";
-import { useEffect, useState, useRef } from "react";
-import { AppState, AppStateStatus } from "react-native";
 import { useAuthStore } from "@/store/auth-store";
+import * as Network from "expo-network";
+import { useEffect, useRef, useState } from "react";
+import { AppState, AppStateStatus } from "react-native";
 
 interface NetworkStatus {
   isConnected: boolean;
@@ -23,8 +23,10 @@ export function useNetworkStatus() {
   const checkNetworkStatus = async () => {
     try {
       const networkState = await Network.getNetworkStateAsync();
-      const isAvailable = networkState.isConnected && networkState.isInternetReachable !== false;
-      
+      const isAvailable =
+        (networkState.isConnected ?? false) &&
+        networkState.isInternetReachable !== false;
+
       setNetworkStatus({
         isConnected: networkState.isConnected ?? false,
         isInternetReachable: networkState.isInternetReachable ?? false,
@@ -35,7 +37,10 @@ export function useNetworkStatus() {
         // Network just came online, check session in background
         const { checkSession } = useAuthStore.getState();
         checkSession(true).catch((error) => {
-          console.error('Error checking session after network came online:', error);
+          console.error(
+            "Error checking session after network came online:",
+            error,
+          );
         });
       }
 
@@ -64,7 +69,7 @@ export function useNetworkStatus() {
         if (nextAppState === "active") {
           checkNetworkStatus();
         }
-      }
+      },
     );
 
     return () => {

@@ -1,11 +1,16 @@
 // Fallback for using MaterialIcons on Android and web.
 
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { SymbolWeight, SymbolViewProps } from 'expo-symbols';
-import { ComponentProps } from 'react';
-import { OpaqueColorValue, type StyleProp, type TextStyle } from 'react-native';
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { SymbolViewProps, SymbolWeight } from "expo-symbols";
+import { ComponentProps } from "react";
+import { OpaqueColorValue, type StyleProp, type TextStyle } from "react-native";
 
-type IconMapping = Record<SymbolViewProps['name'], ComponentProps<typeof MaterialIcons>['name']>;
+type IconMapping = Partial<
+  Record<
+    SymbolViewProps["name"] & string,
+    ComponentProps<typeof MaterialIcons>["name"]
+  >
+>;
 type IconSymbolName = keyof typeof MAPPING;
 
 /**
@@ -14,18 +19,18 @@ type IconSymbolName = keyof typeof MAPPING;
  * - see SF Symbols in the [SF Symbols](https://developer.apple.com/sf-symbols/) app.
  */
 const MAPPING = {
-  'house.fill': 'home',
-  'paperplane.fill': 'send',
-  'chevron.left.forwardslash.chevron.right': 'code',
-  'chevron.right': 'chevron-right',
-  'chart.bar.fill': 'bar-chart',
-  'creditcard.fill': 'credit-card',
-  'list.bullet': 'format-list-bulleted',
-  'chart.pie.fill': 'pie-chart',
-  'chart.bar.xaxis': 'assessment',
-  'doc.text.fill': 'description',
-  'gearshape.fill': 'settings',
-  'arrow.left.arrow.right.circle.fill': 'compare-arrows',
+  "house.fill": "home",
+  "paperplane.fill": "send",
+  "chevron.left.forwardslash.chevron.right": "code",
+  "chevron.right": "chevron-right",
+  "chart.bar.fill": "bar-chart",
+  "creditcard.fill": "credit-card",
+  "list.bullet": "format-list-bulleted",
+  "chart.pie.fill": "pie-chart",
+  "chart.bar.xaxis": "assessment",
+  "doc.text.fill": "description",
+  "gearshape.fill": "settings",
+  "arrow.left.arrow.right.circle.fill": "compare-arrows",
 } as IconMapping;
 
 /**
@@ -45,5 +50,12 @@ export function IconSymbol({
   style?: StyleProp<TextStyle>;
   weight?: SymbolWeight;
 }) {
-  return <MaterialIcons color={color} size={size} name={MAPPING[name]} style={style} />;
+  return (
+    <MaterialIcons
+      color={color}
+      size={size}
+      name={MAPPING[name]}
+      style={style}
+    />
+  );
 }

@@ -1,11 +1,10 @@
-import React from "react";
-import { View, Text, TouchableOpacity } from "react-native";
-import { format } from "date-fns";
-import { cn } from "@/utils/cn";
-import { router } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
 import { ExchangeStatus, ExchangeType } from "@/db/schema/types";
 import { useInstallmentProgress } from "@/hooks/queries/use-exchange-installments";
+import { cn } from "@/utils/cn";
+import { Ionicons } from "@expo/vector-icons";
+import { format } from "date-fns";
+import { router } from "expo-router";
+import { Text, TouchableOpacity, View } from "react-native";
 
 interface ExchangeItemProps {
   id: number;
@@ -35,21 +34,17 @@ export function ExchangeItem({
   const isLent = type === "lent";
   const isPending = status === "pending";
   const isPaid = status === "paid" || status === "received";
-  
+
   // Get installment progress if pending and enabled
   const { data: progress } = useInstallmentProgress(
     isPending && showInstallmentProgress ? id : 0,
-    isPending && showInstallmentProgress ? amount : 0
+    isPending && showInstallmentProgress ? amount : 0,
   );
 
   // Color scheme based on type and status
   const iconColor = isLent ? "#3B82F6" : "#F59E0B"; // Blue for lent, amber for borrowed
   const iconBgColor = isLent ? "#DBEAFE" : "#FEF3C7";
-  const statusColor = isPending
-    ? "#F59E0B"
-    : isPaid
-    ? "#10B981"
-    : "#6B7280";
+  const statusColor = isPending ? "#F59E0B" : isPaid ? "#10B981" : "#6B7280";
 
   const statusText =
     status === "pending"
@@ -57,18 +52,18 @@ export function ExchangeItem({
         ? "Pending"
         : "Pending"
       : status === "paid"
-      ? "Paid"
-      : "Received";
+        ? "Paid"
+        : "Received";
 
   const iconName = isLent ? "arrow-up-circle" : "arrow-down-circle";
-  
+
   // Use more descriptive icons
   const exchangeIcon = isLent ? "trending-up" : "trending-down";
 
   const handleAddInstallment = () => {
     router.push({
-      pathname: `/exchanges/${id}`,
-      params: { addInstallment: 'true' }
+      pathname: "/exchanges/[id]",
+      params: { id: id.toString(), addInstallment: "true" },
     });
   };
 
@@ -95,7 +90,11 @@ export function ExchangeItem({
               className="w-12 h-12 rounded-xl items-center justify-center mr-3 flex-shrink-0"
               style={{ backgroundColor: iconBgColor }}
             >
-              <Ionicons name={exchangeIcon as any} size={24} color={iconColor} />
+              <Ionicons
+                name={exchangeIcon as any}
+                size={24}
+                color={iconColor}
+              />
             </View>
 
             {/* Content */}
@@ -122,7 +121,9 @@ export function ExchangeItem({
                   <Text
                     className={cn(
                       "text-base font-bold",
-                      isLent ? "text-blue-600 dark:text-blue-400" : "text-amber-600 dark:text-amber-400"
+                      isLent
+                        ? "text-blue-600 dark:text-blue-400"
+                        : "text-amber-600 dark:text-amber-400",
                     )}
                   >
                     {isLent ? "+" : "-"}
@@ -140,8 +141,8 @@ export function ExchangeItem({
                           status === "pending"
                             ? "#FEF3C7"
                             : status === "paid" || status === "received"
-                            ? "#D1FAE5"
-                            : "#F3F4F6",
+                              ? "#D1FAE5"
+                              : "#F3F4F6",
                       }}
                     >
                       <Text
@@ -209,12 +210,12 @@ export function ExchangeItem({
               className="flex-row items-center justify-center py-3 px-4"
               activeOpacity={0.6}
             >
-              <Ionicons 
-                name="add-circle-outline" 
-                size={18} 
-                color={isLent ? "#3B82F6" : "#F59E0B"} 
+              <Ionicons
+                name="add-circle-outline"
+                size={18}
+                color={isLent ? "#3B82F6" : "#F59E0B"}
               />
-              <Text 
+              <Text
                 className="text-sm font-medium ml-2"
                 style={{ color: isLent ? "#3B82F6" : "#F59E0B" }}
               >
@@ -227,4 +228,3 @@ export function ExchangeItem({
     </View>
   );
 }
-
