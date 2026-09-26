@@ -1,9 +1,9 @@
 diff --git a/node_modules/expo-app-metrics/ios/Network/NetworkPathObserver.swift b/node_modules/expo-app-metrics/ios/Network/NetworkPathObserver.swift
-index 0000000..1111111 100644
+index 66b6dcd..6b933e5 100644
 --- a/node_modules/expo-app-metrics/ios/Network/NetworkPathObserver.swift
 +++ b/node_modules/expo-app-metrics/ios/Network/NetworkPathObserver.swift
-@@ -16,7 +16,7 @@ protocol NetworkPathObserverDelegate: AnyObject, Sendable {
-  */
+@@ -14,7 +14,7 @@ protocol NetworkPathObserverDelegate: AnyObject, Sendable {
+ /// starting and stopping it around recording windows.
  final class NetworkPathObserver: Sendable {
    private let monitor = NWPathMonitor()
 -  private weak let delegate: NetworkPathObserverDelegate?
