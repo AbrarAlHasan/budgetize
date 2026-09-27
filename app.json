@@ -2,7 +2,7 @@
   "expo": {
     "name": "Budgetize",
     "slug": "budgetize",
-    "version": "1.0.14",
+    "version": "1.0.15",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "com.budgetize.app",
@@ -42,7 +42,7 @@
       "softwareKeyboardLayoutMode": "pan",
       "package": "com.budgetize.app",
       "googleServicesFile": "./google-services.json",
-      "versionCode": 52
+      "versionCode": 53
     },
     "web": {
       "output": "static",
@@ -86,7 +86,8 @@
               "RNFBApp",
               "RNFBAuth",
               "RNFBFirestore"
-            ]
+            ],
+            "enableSceneSupport": true
           },
           "android": {
             "compileSdkVersion": 36,
