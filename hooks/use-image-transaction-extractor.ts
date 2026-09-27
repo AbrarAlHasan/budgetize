@@ -24,6 +24,11 @@ interface UseImageTransactionExtractorReturn {
   pickAndExtract: () => Promise<ExtractionResult | null>;
   /** Paste an image from the clipboard and extract transaction data */
   pasteAndExtract: () => Promise<ExtractionResult | null>;
+  /**
+   * Extract transaction data from an arbitrary image URI (e.g. an image
+   * shared into the app via the OS share sheet).
+   */
+  extractFromUri: (imageUri: string) => Promise<ExtractionResult | null>;
   /** Clear the current result / error state */
   reset: () => void;
 }
@@ -214,6 +219,81 @@ export function useImageTransactionExtractor(): UseImageTransactionExtractorRetu
       }
     }, [runExtraction]);
 
+  // ── Extract from an arbitrary image URI (e.g. share intent) ─────────────
+
+  const extractFromUri = useCallback(
+    async (imageUri: string): Promise<ExtractionResult | null> => {
+      if (!isSupported) {
+        Alert.alert(
+          "Not Supported",
+          "Text extraction is not supported on this device.",
+        );
+        return null;
+      }
+
+      if (!imageUri) {
+        return null;
+      }
+
+      let workingUri = imageUri;
+      let tempFile: File | null = null;
+
+      try {
+        setIsExtracting(true);
+        setError(null);
+
+        // Shared URIs can be `content://` (Android) or point at a location the
+        // OCR engine cannot read directly. Copy into the app cache first so we
+        // always hand `extractTextFromImage` a stable local `file://` URI.
+        try {
+          const sourceFile = new File(imageUri);
+          const extension =
+            sourceFile.extension && sourceFile.extension.length <= 5
+              ? sourceFile.extension
+              : ".jpg";
+          tempFile = new File(
+            Paths.cache,
+            `shared_receipt_${Date.now()}${extension}`,
+          );
+          await sourceFile.copy(tempFile);
+          workingUri = tempFile.uri;
+        } catch (copyErr) {
+          // If the copy fails (e.g. already a readable file:// URI), fall back
+          // to the original URI rather than aborting the whole extraction.
+          logInfo(
+            `[ImageExtractor] could not copy shared image to cache, using original URI: ${
+              copyErr instanceof Error ? copyErr.message : String(copyErr)
+            }`,
+          );
+          workingUri = imageUri;
+          tempFile = null;
+        }
+
+        return await runExtraction(workingUri);
+      } catch (err) {
+        const message =
+          err instanceof Error
+            ? err.message
+            : "Failed to extract text from the shared image";
+        logError("[ImageExtractor] extractFromUri error:", err);
+        setError(message);
+        Alert.alert("Extraction Failed", message);
+        return null;
+      } finally {
+        // Clean up the temp copy (fire and forget)
+        if (tempFile) {
+          try {
+            tempFile.delete();
+          } catch {
+            /* ignore */
+          }
+        }
+        setIsExtracting(false);
+      }
+    },
+    [runExtraction],
+  );
+
   // ── Reset ──────────────────────────────────────────────────────────────
 
   const reset = useCallback(() => {
@@ -227,6 +307,7 @@ export function useImageTransactionExtractor(): UseImageTransactionExtractorRetu
     error,
     pickAndExtract,
     pasteAndExtract,
+    extractFromUri,
     reset,
   };
 }

@@ -1,6 +1,6 @@
 import {
-  AddTagBottomSheet,
-  AddTagBottomSheetRef,
+    AddTagBottomSheet,
+    AddTagBottomSheetRef,
 } from "@/components/add-tag-bottom-sheet";
 import { DatePicker } from "@/components/date-picker";
 import { ExtractFromImageBar } from "@/components/extract-from-image-bar";
@@ -12,10 +12,10 @@ import { useAccounts } from "@/hooks/queries/use-accounts";
 import { useCategories } from "@/hooks/queries/use-categories";
 import { useTags, useTagsForTransaction } from "@/hooks/queries/use-tags";
 import {
-  useCreateTransaction,
-  useDeleteTransaction,
-  useTransaction,
-  useUpdateTransaction,
+    useCreateTransaction,
+    useDeleteTransaction,
+    useTransaction,
+    useUpdateTransaction,
 } from "@/hooks/queries/use-transactions";
 import { useUpsertUpiPreference } from "@/hooks/queries/use-upi-preferences";
 import { useImageTransactionExtractor } from "@/hooks/use-image-transaction-extractor";
@@ -23,6 +23,7 @@ import { useMarkInteractive } from "@/hooks/use-mark-interactive";
 import { transactionTagRepository } from "@/repositories/transaction-tag.repository";
 import { upiPreferenceRepository } from "@/repositories/upi-preference.repository";
 import { useSettingsStore } from "@/store/settings-store";
+import { useShareIntentStore } from "@/store/share-intent-store";
 import { getCurrencySymbol } from "@/utils/currencies";
 import { Ionicons } from "@expo/vector-icons";
 import { format, parseISO } from "date-fns";
@@ -30,16 +31,16 @@ import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useNavigation } from "expo-router/react-navigation";
 import { useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Keyboard,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Keyboard,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -107,8 +108,15 @@ export default function AddTransactionScreen() {
   const { settings, loadSettings } = useSettingsStore();
 
   // Image extraction hook (only active in create mode)
-  const { isExtracting, pickAndExtract, pasteAndExtract } =
+  const { isExtracting, pickAndExtract, pasteAndExtract, extractFromUri } =
     useImageTransactionExtractor();
+
+  // Consume an image shared into the app via the OS share sheet (buffered in
+  // the share-intent store by the root layout once the app is unblocked).
+  const consumePendingImageUri = useShareIntentStore(
+    (state) => state.consumePendingImageUri,
+  );
+  const sharedImageHandledRef = useRef(false);
 
   // UPI preference mutation (saves prefs after successful create)
   const upsertUpiPreference = useUpsertUpiPreference();
@@ -162,6 +170,25 @@ export default function AddTransactionScreen() {
     const result = await pasteAndExtract();
     if (result?.data) applyExtractedData(result.data);
   };
+
+  // Auto-extract an image shared into the app via the OS share sheet.
+  // Only runs in create mode (never edit/duplicate) and only once per mount.
+  useEffect(() => {
+    if (isEditMode || isDuplicateMode) return;
+    if (sharedImageHandledRef.current) return;
+
+    const sharedUri = consumePendingImageUri();
+    if (!sharedUri) return;
+
+    sharedImageHandledRef.current = true;
+    Keyboard.dismiss();
+
+    (async () => {
+      const result = await extractFromUri(sharedUri);
+      if (result?.data) applyExtractedData(result.data);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditMode, isDuplicateMode]);
 
   useEffect(() => {
     loadSettings();

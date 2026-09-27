@@ -1,11 +1,11 @@
+import { QueryClientProvider } from "@tanstack/react-query";
+import { Observe, ObserveRoot, useObserve } from "expo-observe";
+import { router, Stack, useNavigationContainerRef } from "expo-router";
 import {
   DarkTheme,
   DefaultTheme,
   ThemeProvider,
 } from "expo-router/react-navigation";
-import { QueryClientProvider } from "@tanstack/react-query";
-import { Observe, ObserveRoot, useObserve } from "expo-observe";
-import { Stack, useNavigationContainerRef, router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-reanimated";
@@ -21,6 +21,7 @@ import { UpdateScreen } from "@/components/update-screen";
 import { useAutoCloudBackup } from "@/hooks/use-auto-cloud-backup";
 import { useInAppUpdates } from "@/hooks/use-in-app-updates";
 import { queryClient } from "@/hooks/use-query-client";
+import { useShareIntentHandler } from "@/hooks/use-share-intent-handler";
 import { useWidgetSync } from "@/hooks/use-widget-sync";
 import { trackInstallation } from "@/services/installation-tracker";
 import { onboardingStorage } from "@/storage/onboarding";
@@ -31,6 +32,7 @@ import { logError } from "@/utils/logger";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import * as Sentry from "@sentry/react-native";
 import { isRunningInExpoGo } from "expo";
+import { ShareIntentProvider } from "expo-share-intent";
 import { colorScheme, useColorScheme } from "nativewind";
 
 import { useCallback, useEffect, useState } from "react";
@@ -65,7 +67,10 @@ Sentry.init({
 
   debug: false,
   beforeBreadcrumb(breadcrumb) {
-    if (breadcrumb.category === "console" && typeof breadcrumb.message === "string") {
+    if (
+      breadcrumb.category === "console" &&
+      typeof breadcrumb.message === "string"
+    ) {
       breadcrumb.message = breadcrumb.message.replace(/\u001b\[[0-9;]*m/g, "");
     }
     return breadcrumb;
@@ -235,7 +240,7 @@ function RootLayout() {
         } catch (error) {
           logError("Error handling app state change:", error);
         }
-      }
+      },
     );
 
     return () => {
@@ -282,6 +287,29 @@ function RootLayout() {
     appState,
     markInteractive,
   ]);
+
+  // Whether every blocking gate has cleared (mirrors the render gates below):
+  //   - app finished initializing (isReady) and theme is synced
+  //   - security lock screen is not being shown
+  //   - the update screen is not being shown
+  //   - onboarding is complete
+  // A shared image is only routed into the app once this is true.
+  const isLockScreenActive =
+    isReady &&
+    themeSynced &&
+    isLockEnabled &&
+    !isAuthenticated &&
+    appState === "active";
+  const isUnblocked =
+    isReady &&
+    themeSynced &&
+    !isLockScreenActive &&
+    !showUpdateScreen &&
+    !showOnboarding;
+
+  // Handle images shared into the app via the OS share sheet. Buffers the
+  // shared image until the app is unblocked, then navigates to add-expense.
+  useShareIntentHandler(isUnblocked);
 
   const handleOnboardingComplete = (navigateToCloudBackup?: boolean) => {
     onboardingStorage.setCompleted();
@@ -357,8 +385,8 @@ function RootLayout() {
     settings.theme && settings.theme !== "auto"
       ? settings.theme
       : nativeWindColorScheme.colorScheme === "dark"
-      ? "dark"
-      : "light";
+        ? "dark"
+        : "light";
 
   const normalizedColorScheme = (
     effectiveTheme === "dark" ? "dark" : "light"
@@ -401,4 +429,21 @@ function RootLayout() {
   );
 }
 
-export default ObserveRoot.wrap(Sentry.wrap(RootLayout));
+// Wrap the root with ShareIntentProvider so `useShareIntentContext` is
+// available inside RootLayout. `resetOnBackground` is disabled so a share
+// intent that arrives while the app is behind a blocking gate (onboarding /
+// lock / update) isn't dropped when the user briefly backgrounds the app.
+function RootLayoutWithShareIntent() {
+  return (
+    <ShareIntentProvider
+      options={{
+        debug: __DEV__,
+        resetOnBackground: false,
+      }}
+    >
+      <RootLayout />
+    </ShareIntentProvider>
+  );
+}
+
+export default ObserveRoot.wrap(Sentry.wrap(RootLayoutWithShareIntent));

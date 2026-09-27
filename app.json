@@ -19,9 +19,7 @@
       },
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "UIBackgroundModes": [
-          "processing"
-        ],
+        "UIBackgroundModes": ["processing"],
         "BGTaskSchedulerPermittedIdentifiers": [
           "com.expo.modules.backgroundtask.processing"
         ]
@@ -115,7 +113,12 @@
       [
         "expo-share-intent",
         {
-          "iosAppGroupIdentifier": "group.widget.com.suzukibusinesscloud.SalesQA-3.0"
+          "iosAppGroupIdentifier": "group.widget.com.suzukibusinesscloud.SalesQA-3.0",
+          "iosShareExtensionName": "Budgetize Share",
+          "iosActivationRules": {
+            "NSExtensionActivationSupportsImageWithMaxCount": 1
+          },
+          "androidIntentFilters": ["image/*"]
         }
       ]
     ],
