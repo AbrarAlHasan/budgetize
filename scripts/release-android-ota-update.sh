@@ -1,45 +1,28 @@
 #!/bin/bash
 
-# Script to build Android production release
-# Reads EXPO_TOKEN from .env.local and runs EAS build
+# Publish an Android EAS Update using the local EAS CLI login.
 
-set -e  # Exit on error
+set -e
 
-# Get the directory where the script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-# Path to .env.local file
-ENV_FILE="$PROJECT_ROOT/.env.local"
+# A leftover EXPO_TOKEN overrides `eas login`. Always use the CLI session.
+unset EXPO_TOKEN
 
-# Check if .env.local exists
-if [ ! -f "$ENV_FILE" ]; then
-  echo "Error: .env.local file not found at $ENV_FILE"
-  echo "Please create .env.local with EXPO_TOKEN=your_token"
+cd "$PROJECT_ROOT"
+
+# shellcheck source=lib/pull-production-env.sh
+source "$SCRIPT_DIR/lib/pull-production-env.sh"
+
+if ! npx eas-cli whoami; then
+  echo "Error: not logged in to EAS. Run: npx eas-cli login"
   exit 1
 fi
 
-# Read EXPO_TOKEN from .env.local
-# This handles both EXPO_TOKEN=value and EXPO_TOKEN="value" formats
-EXPO_TOKEN=$(grep "^EXPO_TOKEN=" "$ENV_FILE" | cut -d '=' -f2- | sed 's/^"//;s/"$//' | tr -d ' ')
+pull_production_env "$PROJECT_ROOT/.env.local"
 
-# Check if EXPO_TOKEN was found
-if [ -z "$EXPO_TOKEN" ]; then
-  echo "Error: EXPO_TOKEN not found in .env.local"
-  echo "Please add EXPO_TOKEN=your_token to .env.local"
-  exit 1
-fi
-
-# Export EXPO_TOKEN
-export EXPO_TOKEN
-
-npx eas-cli whoami
-
-echo "✓ EXPO_TOKEN loaded from .env.local"
-echo "✓ Starting EAS Update for Android (production profile)..."
+echo "Starting EAS Update for Android (production channel)..."
 echo ""
 
-# Run EAS update (Android only - excludes web to avoid SQLite WASM issues)
-cd "$PROJECT_ROOT"
 npx eas-cli update --channel production --platform android --message "Add Transaction Bug Fixing and Update Alert UI Change for Android" --clear-cache
-

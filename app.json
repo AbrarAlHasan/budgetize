@@ -2,7 +2,7 @@
   "expo": {
     "name": "Budgetize",
     "slug": "budgetize",
-    "version": "1.0.14",
+    "version": "1.0.15",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "com.budgetize.app",
@@ -42,7 +42,7 @@
       "softwareKeyboardLayoutMode": "pan",
       "package": "com.budgetize.app",
       "googleServicesFile": "./google-services.json",
-      "versionCode": 51
+      "versionCode": 54
     },
     "web": {
       "output": "static",
@@ -86,12 +86,13 @@
               "RNFBApp",
               "RNFBAuth",
               "RNFBFirestore"
-            ]
+            ],
+            "enableSceneSupport": true
           },
           "android": {
-            "compileSdkVersion": 35,
-            "targetSdkVersion": 35,
-            "buildToolsVersion": "35.0.0"
+            "compileSdkVersion": 36,
+            "targetSdkVersion": 36,
+            "buildToolsVersion": "36.0.0"
           }
         }
       ],
@@ -111,7 +112,12 @@
       "expo-sharing",
       "expo-status-bar",
       "expo-web-browser",
-      "expo-share-intent"
+      [
+        "expo-share-intent",
+        {
+          "iosAppGroupIdentifier": "group.widget.com.suzukibusinesscloud.SalesQA-3.0"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
