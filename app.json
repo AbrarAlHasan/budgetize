@@ -42,7 +42,7 @@
       "softwareKeyboardLayoutMode": "pan",
       "package": "com.budgetize.app",
       "googleServicesFile": "./google-services.json",
-      "versionCode": 53
+      "versionCode": 54
     },
     "web": {
       "output": "static",
@@ -91,7 +91,7 @@
           },
           "android": {
             "compileSdkVersion": 36,
-            "targetSdkVersion": 35,
+            "targetSdkVersion": 36,
             "buildToolsVersion": "36.0.0"
           }
         }
