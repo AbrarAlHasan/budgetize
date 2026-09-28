@@ -19,7 +19,9 @@
       },
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "UIBackgroundModes": ["processing"],
+        "UIBackgroundModes": [
+          "processing"
+        ],
         "BGTaskSchedulerPermittedIdentifiers": [
           "com.expo.modules.backgroundtask.processing"
         ]
@@ -40,7 +42,7 @@
       "softwareKeyboardLayoutMode": "pan",
       "package": "com.budgetize.app",
       "googleServicesFile": "./google-services.json",
-      "versionCode": 54
+      "versionCode": 55
     },
     "web": {
       "output": "static",
@@ -118,7 +120,9 @@
           "iosActivationRules": {
             "NSExtensionActivationSupportsImageWithMaxCount": 1
           },
-          "androidIntentFilters": ["image/*"]
+          "androidIntentFilters": [
+            "image/*"
+          ]
         }
       ]
     ],
