@@ -1,0 +1,29 @@
+diff --git a/node_modules/expo-share-intent/plugin/build/ios/ShareExtensionViewController.swift b/node_modules/expo-share-intent/plugin/build/ios/ShareExtensionViewController.swift
+index f1f4b72..f9f83c1 100644
+--- a/node_modules/expo-share-intent/plugin/build/ios/ShareExtensionViewController.swift
++++ b/node_modules/expo-share-intent/plugin/build/ios/ShareExtensionViewController.swift
+@@ -52,6 +52,24 @@ class ShareViewController: UIViewController {
+         dismissWithError(message: "No content found")
+         return
+       }
++
++      // Host apps (e.g. Slice) often share an image together with text/URL.
++      // Stock handlers only persist + redirect on the LAST attachment index, so a
++      // trailing text item opens the host as a text share and drops the image.
++      // Prefer the first image attachment when present.
++      if let imageAttachment = attachments.first(where: {
++        $0.hasItemConformingToTypeIdentifier(imageContentType)
++      }) {
++        NSLog(
++          "[INFO] Preferring image attachment among \(attachments.count) shared item(s)"
++        )
++        let singleItem = NSExtensionItem()
++        singleItem.attachments = [imageAttachment]
++        await handleImages(
++          content: singleItem, attachment: imageAttachment, index: 0)
++        return
++      }
++
+       for (index, attachment) in (attachments).enumerated() {
+         if attachment.hasItemConformingToTypeIdentifier(imageContentType) {
+           await handleImages(content: content, attachment: attachment, index: index)

@@ -7,6 +7,23 @@ import { useEffect, useRef } from "react";
 /** Route that consumes a shared image and runs extraction */
 const ADD_EXPENSE_ROUTE = "/expenses/add";
 
+const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".heic", ".heif", ".bmp"];
+
+interface SharedFileLike {
+  path?: string | null;
+  mimeType?: string | null;
+  fileName?: string | null;
+}
+
+function isImageFile(file: SharedFileLike): boolean {
+  if (file.mimeType?.startsWith("image/")) {
+    return true;
+  }
+
+  const name = (file.fileName ?? file.path ?? "").toLowerCase();
+  return IMAGE_EXTENSIONS.some((ext) => name.endsWith(ext));
+}
+
 /**
  * Bridges `expo-share-intent` into the app's blocking flow.
  *
@@ -41,19 +58,17 @@ export function useShareIntentHandler(isUnblocked: boolean): void {
   useEffect(() => {
     if (!hasShareIntent) return;
 
-    // We only care about image shares for receipt parsing.
-    const firstImage = shareIntent.files?.find((file) =>
-      file.mimeType?.startsWith("image/"),
-    );
+    const files = shareIntent.files ?? [];
+    const firstImage = files.find((file) => isImageFile(file));
 
     if (firstImage?.path) {
       logInfo(
-        `[ShareIntent] received shared image: ${firstImage.fileName ?? firstImage.path}`,
+        `[ShareIntent] received shared image: ${firstImage.fileName ?? firstImage.path} (mime=${firstImage.mimeType ?? "unknown"}, type=${shareIntent.type})`,
       );
       setPendingImageUri(firstImage.path);
     } else {
       logWarn(
-        `[ShareIntent] ignoring non-image share (type=${shareIntent.type})`,
+        `[ShareIntent] ignoring non-image share (type=${shareIntent.type}, files=${files.length}, text=${shareIntent.text ? "yes" : "no"})`,
       );
     }
 
