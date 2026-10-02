@@ -244,6 +244,23 @@ export const sliceParser: ReceiptParser = {
   confidence(lines: string[]): number {
     const joined = lines.join(" ").toLowerCase();
 
+    // GPay receipts often mention "Slice Small Finance Bank" as the funding
+    // account. Those screenshots belong to the GPay parser — bail out early
+    // so we don't mis-claim them via the generic "slice" marker.
+    const gpayExclusiveMarkers = [
+      "google pay",
+      "google transaction id",
+      "on google pay",
+      "g pay",
+      "gpay",
+    ];
+    if (gpayExclusiveMarkers.some((marker) => joined.includes(marker))) {
+      logInfo(
+        "[SliceParser] confidence: 0.00 (GPay markers detected — deferring)",
+      );
+      return 0;
+    }
+
     let score = 0;
 
     // Strong markers worth 0.25 each (max 1.0 from strong alone)

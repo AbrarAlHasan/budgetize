@@ -1,4 +1,5 @@
 import { logInfo, logWarn } from "@/utils/logger";
+import { gpayParser } from "./parsers/gpay";
 import { sliceParser } from "./parsers/slice";
 import { ParsedTransaction, ReceiptParser } from "./types";
 
@@ -6,14 +7,14 @@ import { ParsedTransaction, ReceiptParser } from "./types";
  * Registry of all available receipt/screenshot parsers.
  *
  * To add a new format:
- *   1. Create a new parser file in `parsers/` (e.g. `parsers/gpay.ts`)
+ *   1. Create a new parser file in `parsers/` (e.g. `parsers/phonepe.ts`)
  *   2. Implement the `ReceiptParser` interface
  *   3. Import and add it to this array
  */
 const PARSERS: ReceiptParser[] = [
   sliceParser,
+  gpayParser,
   // Future parsers go here:
-  // gpayParser,
   // phonePeParser,
   // paytmParser,
 ];
