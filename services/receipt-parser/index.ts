@@ -1,5 +1,6 @@
 import { logInfo, logWarn } from "@/utils/logger";
 import { gpayParser } from "./parsers/gpay";
+import { paytmParser } from "./parsers/paytm";
 import { sliceParser } from "./parsers/slice";
 import { ParsedTransaction, ReceiptParser } from "./types";
 
@@ -14,9 +15,9 @@ import { ParsedTransaction, ReceiptParser } from "./types";
 const PARSERS: ReceiptParser[] = [
   sliceParser,
   gpayParser,
+  paytmParser,
   // Future parsers go here:
   // phonePeParser,
-  // paytmParser,
 ];
 
 /** Minimum confidence threshold to consider a parser viable */
