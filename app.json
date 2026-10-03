@@ -4,7 +4,7 @@
     "slug": "budgetize",
     "version": "1.0.17",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/app-icons/ios-icon.png",
     "scheme": "com.budgetize.app",
     "userInterfaceStyle": "automatic",
     "ios": {
@@ -13,9 +13,9 @@
       "googleServicesFile": "./GoogleService-Info.plist",
       "appleTeamId": "53TFLVBQKB",
       "icon": {
-        "dark": "./assets/app-icons/ios-dark.png",
-        "light": "./assets/app-icons/ios-light.png",
-        "tinted": "./assets/app-icons/ios-tinted.png"
+        "dark": "./assets/app-icons/ios-icon.png",
+        "light": "./assets/app-icons/ios-icon.png",
+        "tinted": "./assets/app-icons/ios-icon.png"
       },
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
@@ -35,31 +35,31 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#ffffff",
-        "foregroundImage": "./assets/app-icons/adaptive-icon.png",
-        "monochromeImage": "./assets/app-icons/adaptive-icon.png"
+        "foregroundImage": "./assets/app-icons/android-icon.png",
+        "monochromeImage": "./assets/app-icons/android-icon.png"
       },
       "predictiveBackGestureEnabled": false,
       "softwareKeyboardLayoutMode": "pan",
       "package": "com.budgetize.app",
       "googleServicesFile": "./google-services.json",
-      "versionCode": 57
+      "versionCode": 58
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/app-icons/favicon.png"
     },
     "plugins": [
       "expo-router",
       [
         "expo-splash-screen",
         {
-          "image": "./assets/app-icons/splash-icon-light.png",
+          "image": "./assets/app-icons/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff",
           "dark": {
             "backgroundColor": "#000000",
-            "image": "./assets/app-icons/splash-icon-dark.png"
+            "image": "./assets/app-icons/splash-icon.png"
           }
         }
       ],
@@ -68,7 +68,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/images/icon.png",
+          "icon": "./assets/app-icons/android-icon.png",
           "color": "#ffffff",
           "sounds": []
         }
@@ -92,7 +92,9 @@
           "android": {
             "compileSdkVersion": 36,
             "targetSdkVersion": 36,
-            "buildToolsVersion": "36.0.0"
+            "buildToolsVersion": "36.0.0",
+            "enableMinifyInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true
           }
         }
       ],

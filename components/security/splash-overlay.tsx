@@ -2,11 +2,11 @@ import { useColorScheme } from 'nativewind';
 import { useEffect, useRef, useState } from 'react';
 import { AppState, AppStateStatus, Image, StyleSheet, View } from 'react-native';
 import Animated, {
-    cancelAnimation,
-    runOnJS,
-    useAnimatedStyle,
-    useSharedValue,
-    withTiming,
+  cancelAnimation,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
 } from 'react-native-reanimated';
 
 export function SplashOverlay() {
@@ -32,7 +32,7 @@ export function SplashOverlay() {
 
   useEffect(() => {
     let subscription: ReturnType<typeof AppState.addEventListener> | null = null;
-    
+
     try {
       subscription = AppState.addEventListener(
         'change',
@@ -75,7 +75,7 @@ export function SplashOverlay() {
         cancelAnimation(opacity);
         opacity.value = 0;
         isMountedRef.current = false;
-        
+
         if (subscription) {
           subscription.remove();
         }
@@ -95,18 +95,18 @@ export function SplashOverlay() {
   }
 
   const backgroundColor = isDark ? '#000000' : '#ffffff';
-  
+
   // Safely load splash icons
   let splashIcon;
   try {
     splashIcon = isDark
-      ? require('@/assets/app-icons/splash-icon-dark.png')
-      : require('@/assets/app-icons/splash-icon-light.png');
+      ? require('@/assets/app-icons/splash-icon.png')
+      : require('@/assets/app-icons/splash-icon.png');
   } catch (error) {
     console.error('Error loading splash icon:', error);
     // Fallback to light icon if dark fails
     try {
-      splashIcon = require('@/assets/app-icons/splash-icon-light.png');
+      splashIcon = require('@/assets/app-icons/splash-icon.png');
     } catch {
       // If both fail, return null to prevent crash
       return null;
